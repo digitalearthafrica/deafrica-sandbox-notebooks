@@ -428,7 +428,7 @@ def animated_timeseries(ds,
                         output_path,
                         width_pixels=500,
                         interval=200,
-                        bands=['nbart_red', 'nbart_green', 'nbart_blue'],
+                        bands=['red', 'green', 'blue'],
                         percentile_stretch=(0.02, 0.98),
                         image_proc_func=None,
                         title=False,
@@ -456,7 +456,7 @@ def animated_timeseries(ds,
     
     This function can be used to produce visually appealing 
     cloud-free animations when used in combination with the `load_ard` 
-    function from `dea-notebooks/Scripts/dea_datahandling`.
+    function from `deafrica-sandbox-notebooks/Scripts/deafrica_datahandling`.
     
     Last modified: October 2019
     
@@ -482,7 +482,7 @@ def animated_timeseries(ds,
     bands : list of strings, optional
         An optional list of either one or three bands to be plotted, 
         all of which must exist in `ds`. Defaults to 
-        `['nbart_red', 'nbart_green', 'nbart_blue']`.         
+        `['red', 'green', 'blue']`.         
     percentile_stretch : tuple of floats, optional
         An optional tuple of two floats that can be used to clip one or 
         three-band arrays by percentiles to produce a more vibrant, 

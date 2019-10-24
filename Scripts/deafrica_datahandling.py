@@ -42,287 +42,291 @@ from datacube.storage import masking
 from scipy.ndimage import binary_dilation
 
 
-# def load_masked_usgs(dc,
-#              products=None,
-#              min_gooddata=0.0,
-#              quality_flags=None,
-#              mask_pixel_quality=True,
-#              mask_invalid_data=True,
-#              ls7_slc_off=True,
-#              product_metadata=False,
-#              dask_chunks={'time': 1},
-#              lazy_load=False,
-#              **dcload_kwargs):
-#     '''
-#     Loads Landsat Collection 3 or Sentinel 2 Definitive and Near Real 
-#     Time data for multiple sensors (i.e. ls5t, ls7e and ls8c for 
-#     Landsat; s2a and s2b for Sentinel 2), and returns a single masked 
-#     xarray dataset containing only observations that contain greater 
-#     than a given proportion of good quality pixels. This can be used 
-#     to extract clean time series of observations that are not affected 
-#     by cloud, for example as an input to the `animated_timeseries` 
-#     function from `dea_plotting`.
+def load_masked_usgs(dc,
+             products=None,
+             min_gooddata=0.0,
+             quality_flags=None,
+             mask_pixel_quality=True,
+             mask_invalid_data=True,
+             ls7_slc_off=True,
+             product_metadata=False,
+             dask_chunks={'time': 1},
+             lazy_load=False,
+             **dcload_kwargs):
+    '''
+    Loads USGS Landsat Collection 1 and Collection 2 data for multiple 
+    satellites (i.e. Landsat 5, 7, 8), and returns a single masked 
+    xarray dataset containing only observations that contain greater 
+    than a given proportion of good quality pixels. This can be used 
+    to extract clean time series of observations that are not affected 
+    by cloud, for example as an input to the `animated_timeseries` 
+    function from `deafrica-sandbox-notebooks/deafrica_plotting`.
     
-#     The proportion of good quality pixels is calculated by summing the 
-#     pixels flagged as good quality in `fmask`. By default non-cloudy or 
-#     shadowed land, snow and water pixels are treated as good quality, 
-#     but this can be customised using the `fmask_gooddata` parameter.
+    The proportion of good quality pixels is calculated by summing the 
+    pixels flagged as good quality in the product's pixel quality band 
+    (i.e. 'pixel_qa' for USGS Collection 1, and 'quality_l2_aerosol' for
+    USGS Collection 2). By default non-cloudy or non-shadowed pixels 
+    are considered as good data, but this can be customised using the 
+    `quality_flags` parameter.
     
-#     MEMORY ISSUES: For large data extractions, it can be advisable to 
-#     set `mask_pixel_quality=False`. The masking step coerces all 
-#     numeric values to float32 when NaN values are inserted into the 
-#     array, potentially causing your data to use twice the memory. 
-#     Be aware that the resulting arrays will contain invalid values 
-#     which may affect future analyses.
+    MEMORY ISSUES: For large data extractions, it can be advisable to 
+    set `mask_pixel_quality=False`. The masking step coerces all 
+    numeric values to float32 when NaN values are inserted into the 
+    array, potentially causing your data to use twice the memory. 
+    Be aware that the resulting arrays will contain invalid values 
+    which may affect future analyses.
     
-#     Last modified: September 2019
+    Last modified: October 2019
     
-#     Parameters
-#     ----------  
-#     dc : datacube Datacube object
-#         The Datacube to connect to, i.e. `dc = datacube.Datacube()`.
-#         This allows you to also use development datacubes if required.    
-#     products : list
-#         A list of product names to load data from. Valid options are 
-#         ['ga_ls5t_ard_3', 'ga_ls7e_ard_3', 'ga_ls8c_ard_3'] for Landsat,
-#         ['s2a_ard_granule', 's2b_ard_granule'] for Sentinel 2 Definitive, 
-#         and ['s2a_nrt_granule', 's2b_nrt_granule'] for Sentinel 2 Near 
-#         Real Time.
-#     min_gooddata : float, optional
-#         An optional float giving the minimum percentage of good quality 
-#         pixels required for a satellite observation to be loaded. 
-#         Defaults to 0.0 which will return all observations regardless of
-#         pixel quality (set to e.g. 0.99 to return only observations with
-#         more than 99% good quality pixels).
-#     load_masked_usgs : list, optional
-#         An optional list of fmask values to treat as good quality 
-#         observations in the above `min_gooddata` calculation. The 
-#         default is `[1, 4, 5]` which will return non-cloudy or shadowed 
-#         land, snow and water pixels. Choose from: 
-#         `{'0': 'nodata', '1': 'valid', '2': 'cloud', 
-#           '3': 'shadow', '4': 'snow', '5': 'water'}`.
-#     mask_pixel_quality : bool, optional
-#         An optional boolean indicating whether to apply the good data 
-#         mask to all observations that were not filtered out for having 
-#         less good quality pixels than `min_gooddata`. E.g. if 
-#         `min_gooddata=0.99`, the filtered observations may still contain 
-#         up to 1% poor quality pixels. The default of False simply 
-#         returns the resulting observations without masking out these 
-#         pixels; True masks them out and sets them to NaN using the good 
-#         data mask. This will convert numeric values to float32 which can 
-#         cause memory issues, set to False to prevent this.
-#     mask_invalid_data : bool, optional
-#         An optional boolean indicating whether invalid -999 nodata 
-#         values should be replaced with NaN. These invalid values can be
-#         caused by missing data along the edges of scenes, or terrain 
-#         effects (for NBAR-T). Setting `mask_invalid_data=True` will 
-#         convert all numeric values to float32 when -999 values are 
-#         replaced with NaN which can cause memory issues; set to False 
-#         to prevent this. Defaults to True. 
-#     ls7_slc_off : bool, optional
-#         An optional boolean indicating whether to include data from 
-#         after the Landsat 7 SLC failure (i.e. SLC-off). Defaults to 
-#         True, which keeps all Landsat 7 observations > May 31 2003. 
-#     product_metadata : bool, optional
-#         An optional boolean indicating whether to return the dataset 
-#         with a `product` variable that gives the name of the product 
-#         that each observation in the time series came from (e.g. 
-#         'ga_ls5t_ard_3'). Defaults to False.
-#     dask_chunks : dict, optional
-#         An optional dictionary containing the coords and sizes you wish 
-#         to create dask chunks over. Usually used in combination with 
-#         `lazy_load=True` (see below). For example: 
-#         `dask_chunks = {'x': 500, 'y': 500}`
-#     lazy_load : boolean, optional
-#         Setting this variable to True will delay the computation of the 
-#         function until you explicitly run `ds.compute()`. If used in 
-#         conjuction with `dask.distributed.Client()` this will allow for 
-#         automatic parallel computation.
-#     **dcload_kwargs : 
-#         A set of keyword arguments to `dc.load` that define the 
-#         spatiotemporal query used to extract data. This can include `x`,
-#         `y`, `time`, `resolution`, `resampling`, `group_by`, `crs`
-#         etc, and can either be listed directly in the `load_ard` call 
-#         (e.g. `x=(150.0, 151.0)`), or by passing in a query kwarg 
-#         (e.g. `**query`). For a full list of possible options, see: 
-#         https://datacube-core.readthedocs.io/en/latest/dev/api/generate/datacube.Datacube.load.html          
+    Parameters
+    ----------  
+    dc : datacube Datacube object
+        The Datacube to connect to, i.e. `dc = datacube.Datacube()`.
+        This allows you to also use development datacubes if required.    
+    products : list
+        A list of product names to load data from. Valid options for 
+        USGS Collection 1 are ['ls5_usgs_sr_scene', 'ls7_usgs_sr_scene', 
+        'ls8_usgs_sr_scene'] and for USGS Collection 2 are 
+        ['usgs_ls5t_level2_2', 'usgs_ls7e_level2_2', 'usgs_ls8c_level2_2'].
+    min_gooddata : float, optional
+        An optional float giving the minimum percentage of good quality 
+        pixels required for a satellite observation to be loaded. 
+        Defaults to 0.0 which will return all observations regardless of
+        pixel quality (set to e.g. 0.99 to return only observations with
+        more than 99% good quality pixels).
+    quality_flags : dict, optional
+        An optional dictionary that is used to generate a good quality 
+        pixel mask from the selected product's pixel quality band (i.e. 
+        'pixel_qa' for USGS Collection 1, and 'quality_l2_aerosol' for
+        USGS Collection 2). This mask is used for both masking out low
+        quality pixels (e.g. cloud or shadow), and for dropping 
+        observations entirely based on the above `min_gooddata` 
+        calculation. Default is None, which will apply the following mask 
+        for USGS Collection 1: `{'cloud': 'no_cloud', 'cloud_shadow': 
+        'no_cloud_shadow', 'nodata': False}`, and for USGS Collection 2:
+        `{'cloud_shadow': 'not_cloud_shadow', 'cloud_or_cirrus': 
+        'not_cloud_or_cirrus', 'nodata': False}.
+    mask_pixel_quality : bool, optional
+        An optional boolean indicating whether to apply the good data 
+        mask to all observations that were not filtered out for having 
+        less good quality pixels than `min_gooddata`. E.g. if 
+        `min_gooddata=0.99`, the filtered observations may still contain 
+        up to 1% poor quality pixels. The default of False simply 
+        returns the resulting observations without masking out these 
+        pixels; True masks them out and sets them to NaN using the good 
+        data mask. This will convert numeric values to float32 which can 
+        cause memory issues, set to False to prevent this.
+    ls7_slc_off : bool, optional
+        An optional boolean indicating whether to include data from 
+        after the Landsat 7 SLC failure (i.e. SLC-off). Defaults to 
+        True, which keeps all Landsat 7 observations > May 31 2003. 
+    product_metadata : bool, optional
+        An optional boolean indicating whether to return the dataset 
+        with a `product` variable that gives the name of the product 
+        that each observation in the time series came from (e.g. 
+        'usgs_ls8c_level2_2'). Defaults to False.
+    dask_chunks : dict, optional
+        An optional dictionary containing the coords and sizes you wish 
+        to create dask chunks over. Usually used in combination with 
+        `lazy_load=True` (see below). For example: 
+        `dask_chunks = {'x': 500, 'y': 500}`
+    lazy_load : boolean, optional
+        Setting this variable to True will delay the computation of the 
+        function until you explicitly run `ds.compute()`. If used in 
+        conjuction with `dask.distributed.Client()` this will allow for 
+        automatic parallel computation.
+    **dcload_kwargs : 
+        A set of keyword arguments to `dc.load` that define the 
+        spatiotemporal query used to extract data. This can include `x`,
+        `y`, `time`, `resolution`, `resampling`, `group_by`, `crs`
+        etc, and can either be listed directly in the `load_ard` call 
+        (e.g. `x=(150.0, 151.0)`), or by passing in a query kwarg 
+        (e.g. `**query`). For a full list of possible options, see: 
+        https://datacube-core.readthedocs.io/en/latest/dev/api/generate/datacube.Datacube.load.html          
         
-#     Returns
-#     -------
-#     combined_ds : xarray Dataset
-#         An xarray dataset containing only satellite observations that 
-#         contains greater than `min_gooddata` proportion of good quality 
-#         pixels.   
+    Returns
+    -------
+    combined_ds : xarray Dataset
+        An xarray dataset containing only satellite observations that 
+        contains greater than `min_gooddata` proportion of good quality 
+        pixels.   
         
-#     '''
+    '''
     
-#     # Due to possible bug in xarray 0.13.0, define temporary function 
-#     # which converts dtypes in a way that preserves attributes
-#     def astype_attrs(da, dtype=np.float32):
-#         '''
-#         Loop through all data variables in the dataset, record 
-#         attributes, convert to float32, then reassign attributes. If 
-#         the data variable cannot be converted to float32 (e.g. for a
-#         non-numeric dtype like strings), skip and return the variable 
-#         unchanged.
-#         '''
+    # Due to possible bug in xarray 0.13.0, define temporary function 
+    # which converts dtypes in a way that preserves attributes
+    def astype_attrs(da, dtype=np.float32):
+        '''
+        Loop through all data variables in the dataset, record 
+        attributes, convert to float32, then reassign attributes. If 
+        the data variable cannot be converted to float32 (e.g. for a
+        non-numeric dtype like strings), skip and return the variable 
+        unchanged.
+        '''
         
-#         try:            
-#             da_attr = da.attrs
-#             da = da.astype(dtype)
-#             da = da.assign_attrs(**da_attr)
-#             return da
+        try:            
+            da_attr = da.attrs
+            da = da.astype(dtype)
+            da = da.assign_attrs(**da_attr)
+            return da
         
-#         except ValueError:        
-#             return da
+        except ValueError:        
+            return da
     
-#     # Verify that products were provided
-#     if not products:
-#         raise ValueError("Please provide a list of product names "
-#                          "to load data from. Valid options include "
-#                          "")
+    # List of valid USGS Collection 1 products
+    c1_products = ['ls5_usgs_sr_scene',
+                   'ls7_usgs_sr_scene',
+                   'ls8_usgs_sr_scene']
+
+    # List of valid USGS Collection 2 products
+    c2_products = ['usgs_ls5t_level2_2', 
+                   'usgs_ls7e_level2_2', 
+                   'usgs_ls8c_level2_2']
+    
+    # Verify that products were provided
+    if not products:
+        raise ValueError(f'Please provide a list of product names '
+                         f'to load data from. Valid options include '
+                         f'{c1_products} and {c2_products}')
         
-#     c1_products = ['ls5_usgs_sr_scene',
-#                    'ls7_usgs_sr_scene',
-#                    'ls8_usgs_sr_scene']
+    # Verify that all provided products are valid
+    not_in_list = [i for i in products if 
+                   i not in c1_products + c2_products]
+    if not_in_list:
+        raise ValueError(f'The product(s) {not_in_list} are not '
+                         f'supported by this function. Valid options '
+                         f'include {c1_products} and {c2_products}')    
 
-#     c2_products = ['usgs_ls5t_level2_2', 
-#                    'usgs_ls7e_level2_2', 
-#                    'usgs_ls8c_level2_2']
+    # Create a list to hold data for each product
+    product_data = []
 
-#     # Create a list to hold data for each product
-#     product_data = []
+    # Iterate through each requested product
+    for product in products:
 
-#     # Iterate through each requested product
-#     for product in products:
+        try:
 
-# #         try:
+            # Set quality band according to collection
+            if product in c2_products:
+                print('Using parameters for USGS Collection 2')
+                quality_band = 'quality_l2_aerosol'
+            elif product in c1_products:
+                print('Using parameters for USGS Collection 1')
+                quality_band = 'pixel_qa'
 
-#             # Set quality band according to collection
-#             if product in c2_products:
-#                 quality_band = 'quality_l2_aerosol'
-#             elif product in c1_products:
-#                 quality_band = 'pixel_qa'
-
-#             # Set quality flags according to collection
-#             if (product in c2_products) and not quality_flags:
-#                 quality_flags = {'cloud_shadow': 'not_cloud_shadow',
-#                                  'cloud_or_cirrus': 'not_cloud_or_cirrus',
-#                                  'nodata': False}
-#             elif (product in c1_products) and not quality_flags:
-#                 quality_flags = {'cloud': 'no_cloud',
-#                                  'cloud_shadow': 'no_cloud_shadow',
-#                                  'nodata': False}
-                
-#             # If `measurements` are specified but do not include fmask, add it
-#             if (('measurements' in dcload_kwargs) and 
-#                 (quality_band not in dcload_kwargs['measurements'])):
-#                 dcload_kwargs['measurements'].append(quality_band)
-
-#             # Load data including fmask band
-#             print(f'Loading {product} data')
-#             try:
-#                 ds = dc.load(product=f'{product}',
-#                              dask_chunks=dask_chunks,
-#                              **dcload_kwargs)
-#             except KeyError as e:
-#                 raise ValueError(f'Band {e} does not exist in this product. '
-#                                  f'Verify all requested `measurements` exist '
-#                                  f'in {products}')
+            # Set quality flags according to collection
+            if (product in c2_products) and not quality_flags:
+                quality_flags_prod = {'cloud_shadow': 'not_cloud_shadow',
+                                      'cloud_or_cirrus': 'not_cloud_or_cirrus',
+                                      'nodata': False}
+            elif (product in c1_products) and not quality_flags:
+                quality_flags_prod = {'cloud': 'no_cloud',
+                                      'cloud_shadow': 'no_cloud_shadow',
+                                      'nodata': False}
             
-#             # Keep a record of the original number of observations
-#             total_obs = len(ds.time)
-
-#             # Remove Landsat 7 SLC-off observations if ls7_slc_off=False
-#             if not ls7_slc_off and product == 'ga_ls7e_ard_3':
-#                 print('    Ignoring SLC-off observations for ls7')
-#                 ds = ds.sel(time=ds.time < np.datetime64('2003-05-30'))
+            elif quality_flags:
+                quality_flags_prod = quality_flags
                 
-#             # Identify all pixels not affected by cloud/shadow/invalid
-#             good_quality = masking.make_mask(ds[quality_band], 
-#                                              **quality_flags)
+            # If `measurements` are specified but do not include fmask, add it
+            if (('measurements' in dcload_kwargs) and 
+                (quality_band not in dcload_kwargs['measurements'])):
+                dcload_kwargs['measurements'].append(quality_band)
+
+            # Load data including fmask band
+            print(f'Loading {product} data')
+            try:
+                ds = dc.load(product=f'{product}',
+                             dask_chunks=dask_chunks,
+                             **dcload_kwargs)
+            except KeyError as e:
+                raise ValueError(f'Band {e} does not exist in this product. '
+                                 f'Verify all requested `measurements` exist '
+                                 f'in {products}')
             
-#             # The good data percentage calculation has to load in all `fmask`
-#             # data, which can be slow. If the user has chosen no filtering 
-#             # by using the default `min_gooddata = 0`, we can skip this step 
-#             # completely to save processing time
-#             if min_gooddata > 0.0:
+            # Keep a record of the original number of observations
+            total_obs = len(ds.time)
 
-#                 # Compute good data for each observation as % of total pixels
-#                 data_perc = (good_quality.sum(axis=1).sum(axis=1) / 
-#                     (good_quality.shape[1] * good_quality.shape[2]))
-
-#                 # Filter by `min_gooddata` to drop low quality observations
-#                 ds = ds.sel(time=data_perc >= min_gooddata)
-#                 print(f'    Filtering to {len(ds.time)} '
-#                       f'out of {total_obs} observations')
-
-#             # Optionally apply pixel quality mask to observations remaining 
-#             # after the filtering step above to mask out all remaining
-#             # bad quality pixels
-#             if mask_pixel_quality & (len(ds.time) > 0):
-#                 print('    Applying pixel quality mask')
+            # Remove Landsat 7 SLC-off observations if ls7_slc_off=False
+            if not ls7_slc_off and product in ['ls7_usgs_sr_scene', 
+                                               'usgs_ls7e_level2_2']:
+                print('    Ignoring SLC-off observations for ls7')
+                ds = ds.sel(time=ds.time < np.datetime64('2003-05-30'))
                 
-#                 # First change dtype to float32, then mask out values using
-#                 # `.where()`. By casting to float32, we prevent `.where()` 
-#                 # from automatically casting to float64, using 2x the memory.
-#                 # We need to do this by applying a custom function to every
-#                 # variable in the dataset instead of using `.astype()`, due 
-#                 # to a possible bug in xarray 0.13.0 that drops attributes 
-#                 ds = ds.apply(astype_attrs, dtype=np.float32, keep_attrs=True)
-#                 ds = ds.where(good_quality)
+            # Identify all pixels not affected by cloud/shadow/invalid
+            good_quality = masking.make_mask(ds[quality_band], 
+                                             **quality_flags_prod)
+            
+            # The good data percentage calculation has to load in all `fmask`
+            # data, which can be slow. If the user has chosen no filtering 
+            # by using the default `min_gooddata = 0`, we can skip this step 
+            # completely to save processing time
+            if min_gooddata > 0.0:
 
-#             # Optionally add satellite/product name as a new variable
-#             if product_metadata:
-#                 ds['product'] = xr.DataArray(
-#                     [product] * len(ds.time), [('time', ds.time)])
+                # Compute good data for each observation as % of total pixels
+                data_perc = (good_quality.sum(axis=1).sum(axis=1) / 
+                    (good_quality.shape[1] * good_quality.shape[2]))
 
-#             # If any data was returned, add result to list
-#             if len(ds.time) > 0:
-#                 product_data.append(ds.drop(quality_band))
+                # Filter by `min_gooddata` to drop low quality observations
+                ds = ds.sel(time=data_perc >= min_gooddata)
+                print(f'    Filtering to {len(ds.time)} '
+                      f'out of {total_obs} observations')
 
-# #         # If  AttributeError due to there being no pixel quality variable 
-# #         # in the dataset, skip this product and move on to the next
-# #         except AttributeError:
-# #             print(f'    No data for {product}')
+            # Optionally apply pixel quality mask to observations remaining 
+            # after the filtering step above to mask out all remaining
+            # bad quality pixels
+            if mask_pixel_quality & (len(ds.time) > 0):
+                print('    Applying pixel quality mask')
+                
+                # First change dtype to float32, then mask out values using
+                # `.where()`. By casting to float32, we prevent `.where()` 
+                # from automatically casting to float64, using 2x the memory.
+                # We need to do this by applying a custom function to every
+                # variable in the dataset instead of using `.astype()`, due 
+                # to a possible bug in xarray 0.13.0 that drops attributes 
+                ds = ds.apply(astype_attrs, dtype=np.float32, keep_attrs=True)
+                ds = ds.where(good_quality)
 
-#     # If any data was returned above, combine into one xarray
-#     if (len(product_data) > 0):
+            # Optionally add satellite/product name as a new variable
+            if product_metadata:
+                ds['product'] = xr.DataArray(
+                    [product] * len(ds.time), [('time', ds.time)])
 
-#         # Concatenate results and sort by time
-#         print(f'Combining and sorting data')
-#         combined_ds = xr.concat(product_data, dim='time').sortby('time')
+            # If any data was returned, add result to list
+            if len(ds.time) > 0:
+                product_data.append(ds.drop(quality_band))
+
+        # If  AttributeError due to there being no pixel quality variable 
+        # in the dataset, skip this product and move on to the next
+        except AttributeError:
+            print(f'    No data for {product}')
+
+    # If any data was returned above, combine into one xarray
+    if (len(product_data) > 0):
+
+        # Concatenate results and sort by time
+        try:
+            print(f'Combining and sorting data')
+            combined_ds = xr.concat(product_data, dim='time').sortby('time')
+            
+        except KeyError as e:
+            raise ValueError(f'The requested products {products} contain '
+                             f'bands with non-matching names (e.g. {e}). Please '
+                             f'select products with identical band names.')
         
-#         # Optionally filter to replace no data values with nans
-#         if mask_invalid_data:
-#             print('    Masking out invalid values')
-            
-#             # First change dtype to float32, then mask out values using
-#             # `.where()`. By casting to float32, we prevent `.where()` 
-#             # from automatically casting to float64, using 2x the memory.
-#             # We need to do this by applying a custom function to every
-#             # variable in the dataset instead of using `.astype()`, due 
-#             # to a possible bug in xarray 0.13.0 that drops attributes           
-#             combined_ds = combined_ds.apply(astype_attrs, 
-#                                             dtype=np.float32, 
-#                                             keep_attrs=True)
-#             combined_ds = masking.mask_invalid_data(combined_ds)
+        # If `lazy_load` is True, return data as a dask array without
+        # actually loading it in
+        if lazy_load:
+            print(f'    Returning {len(combined_ds.time)} observations'
+                  ' as a dask array')
+            return combined_ds
 
-#         # If `lazy_load` is True, return data as a dask array without
-#         # actually loading it in
-#         if lazy_load:
-#             print(f'    Returning {len(combined_ds.time)} observations'
-#                   ' as a dask array')
-#             return combined_ds
+        else:
+            print(f'    Returning {len(combined_ds.time)} observations ')
+            return combined_ds.compute()
 
-#         else:
-#             print(f'    Returning {len(combined_ds.time)} observations ')
-#             return combined_ds.compute()
-
-#     # If no data was returned:
-#     else:
-#         print('No data returned for query')
-#         return None
+    # If no data was returned:
+    else:
+        print('No data returned for query')
+        return None
 
 
 def array_to_geotiff(fname, data, geo_transform, projection,
