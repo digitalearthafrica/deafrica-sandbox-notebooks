@@ -18,7 +18,7 @@ If you would like to report an issue with this script, you can file one on
 Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new
 
 Functions included:
-    # load_masked_usgs (work in progress)
+    load_masked_usgs
     array_to_geotiff
     mostcommon_utm
     download_unzip
