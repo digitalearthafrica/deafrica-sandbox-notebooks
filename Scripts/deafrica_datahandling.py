@@ -205,12 +205,14 @@ def load_masked_usgs(dc,
 
         try:
 
+            print(f'Loading {product} data')
+            
             # Set quality band according to collection
             if product in c2_products:
-                print('Using parameters for USGS Collection 2')
+                print('    Using pixel quality parameters for USGS Collection 2')
                 quality_band = 'quality_l2_aerosol'
             elif product in c1_products:
-                print('Using parameters for USGS Collection 1')
+                print('    Using pixel quality parameters for USGS Collection 1')
                 quality_band = 'pixel_qa'
 
             # Set quality flags according to collection
@@ -231,8 +233,7 @@ def load_masked_usgs(dc,
                 (quality_band not in dcload_kwargs['measurements'])):
                 dcload_kwargs['measurements'].append(quality_band)
 
-            # Load data including fmask band
-            print(f'Loading {product} data')
+            # Load data
             try:
                 ds = dc.load(product=f'{product}',
                              dask_chunks=dask_chunks,
