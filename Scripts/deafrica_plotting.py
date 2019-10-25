@@ -22,6 +22,8 @@ Functions included:
     display_map
     map_shapefile
     animated_timeseries
+    animated_timeseriesline
+    animated_doubletimeseries
 
 Last modified: October 2019
 
