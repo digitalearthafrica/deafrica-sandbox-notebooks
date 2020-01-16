@@ -1,1 +1,4 @@
 .ipynb_checkpoints
+*.tif
+*.xml
+__pycache__
