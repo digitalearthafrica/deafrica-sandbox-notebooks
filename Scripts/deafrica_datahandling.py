@@ -451,7 +451,17 @@ def load_masked_FC(dc,
         pixels.   
 
     '''
-
+    def removekey(d, key):
+        '''
+        funtion to remove 'measurements' from
+        the dcload_kwargs dictionary so they dont
+        conflict with loading the correct measurements
+        for the cloud dataset
+        '''
+        r = dict(d)
+        del r[key]
+        return r
+            
     # Due to possible bug in xarray 0.13.0, define temporary function
     # which converts dtypes in a way that preserves attributes
     def astype_attrs(da, dtype=np.float32):
@@ -481,7 +491,7 @@ def load_masked_FC(dc,
     if not products:
         raise ValueError(f'Please provide a list of product names '
                          f'to load data from. Valid options include '
-                         f'{c1_products} and {c2_products}')
+                         f'{c2_products}')
 
     # Verify that all provided products are valid
     not_in_list = [i for i in products if
@@ -534,25 +544,30 @@ def load_masked_FC(dc,
             if not ls7_slc_off and product in ['ga_ls7e_fractional_cover_2']:
                 print(' Ignoring SLC-off observations for ls7')
                 ds = ds.sel(time=ds.time < np.datetime64('2003-05-30'))
-
+            
+            #remove 'measurements' so it doesn't conflict with loading
+            #clouds datasets
+            if 'measurements' in dcload_kwargs:
+                cloud_kwargs = removekey(dcload_kwargs, 'measurements')
+            
             # loud the clouds dataset
             if product == 'ga_ls8c_fractional_cover_2':
                 clouds = dc.load(product='usgs_ls8c_level2_2',
                                  dask_chunks=dask_chunks,
                                  measurements=['quality_l2_aerosol'],
-                                 **dcload_kwargs)
+                                 **cloud_kwargs)
 
             elif product == 'ga_ls7e_fractional_cover_2':
                 clouds = dc.load(product='usgs_ls7e_level2_2',
                                  dask_chunks=dask_chunks,
                                  measurements=['quality_l2_aerosol'],
-                                 **dcload_kwargs)
+                                 **cloud_kwargs)
 
             elif product == 'ga_ls5t_fractional_cover_2':
                 clouds = dc.load(product='usgs_ls5t_level2_2',
                                  dask_chunks=dask_chunks,
                                  measurements=['quality_l2_aerosol'],
-                                 **dcload_kwargs)
+                                 **cloud_kwargs)
 
             # Identify all pixels not affected by cloud/shadow/invalid
             good_quality = masking.make_mask(clouds[quality_band],
