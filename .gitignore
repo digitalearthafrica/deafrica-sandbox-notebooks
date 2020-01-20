@@ -2,3 +2,4 @@
 *.tif
 *.xml
 __pycache__
+dask-worker-space
