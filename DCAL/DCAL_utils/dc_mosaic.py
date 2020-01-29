@@ -22,7 +22,7 @@
 import numpy as np
 import xarray as xr
 from collections import OrderedDict
-#import hdmedians as hd
+import hdmedians as hd
 
 import dc_utilities as utilities
 from dc_utilities import create_default_clean_mask
@@ -542,12 +542,12 @@ def create_hdmedians_multiple_band_mosaic(dataset_in,
             # If all bands have nan values across time, the geomedians are nans.
             hdmedians_result[:, x] = np.full((bands_shape), np.nan)
     output_dict = {
-        value: (('latitude', 'longitude'), hdmedians_result[index, :].reshape(lat_shape, lon_shape))
+        value: (('y', 'x'), hdmedians_result[index, :].reshape(lat_shape, lon_shape))
         for index, value in enumerate(band_list)
     }
     dataset_out = xr.Dataset(output_dict,
-                             coords={'latitude': dataset_in['latitude'],
-                                     'longitude': dataset_in['longitude']},
+                             coords={'y': dataset_in['y'],
+                                     'x': dataset_in['x']},
                              attrs=dataset_in.attrs)
     dataset_out = restore_or_convert_dtypes(dtype, band_list, dataset_in_dtypes, dataset_out, no_data)
     return dataset_out
