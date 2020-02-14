@@ -242,14 +242,8 @@ def load_ard(dc,
 
             # Load data
             try:
-#                 try:
                 ds = dc.load(product=f'{product}',
                              **dcload_kwargs)
-                
-#                 except ValueError:
-#                     print(f'    Passing {product} as dataset does not exist in '
-#                           f'this location')
-#                     continue
             
             except KeyError as e:
                 raise ValueError(f'Band {e} does not exist in this product. '
