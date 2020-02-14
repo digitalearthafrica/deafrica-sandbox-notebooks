@@ -1,8 +1,38 @@
 # deafrica_wetlandstools.py
 
+'''
+Description: This file contains a set of python functions for working with
+the Wetlands Insight Tool (WIT)
+
+License: The code in this notebook is licensed under the Apache License,
+Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth 
+Africa data is licensed under the Creative Commons by Attribution 4.0 
+license (https://creativecommons.org/licenses/by/4.0/).
+
+Contact: If you need assistance, please post a question on the Open Data 
+Cube Slack channel (http://slack.opendatacube.org/) or on the GIS Stack 
+Exchange (https://gis.stackexchange.com/questions/ask?tags=open-data-cube) 
+using the `open-data-cube` tag (you can view previously asked questions 
+here: https://gis.stackexchange.com/questions/tagged/open-data-cube). 
+
+If you would like to report an issue with this script, you can file one on 
+Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new
+
+Functions included:
+    WIT_drill
+    thresholded_tasseled_cap
+    animated_timeseries_WIT
+    _ds_to_arrraylist
+    _add_colourbar
+    
+
+Last modified: Feb 2020
+
+'''
+
+
 # Import required packages
 
-import deafrica_tasseledcaptools
 import deafrica_plotting
 import deafrica_datahandling
 from deafrica_datahandling import wofs_fuser
@@ -35,8 +65,8 @@ import numpy as np
 import pandas as pd
 import rasterio.mask
 import rasterio.features
+import dask
 
-# from shapely import geometry
 import seaborn as sns
 import sys
 import xarray as xr
@@ -46,19 +76,59 @@ from datacube.storage import masking
 from datacube.utils import geometry
 import datacube.utils.rio
 
-sys.path.append("Scripts")
 
-# set Sandbox configs to load COG's faster
-datacube.utils.rio.set_default_rio_config(aws="auto", cloud_defaults=True)
+def WIT_drill(gdf_poly,
+              time,
+              min_gooddata=0.80,
+              TCW_threshold=-6000,
+              export_csv=None,
+              dask_chunks=None):
+    """
+    The Wetlands Insight Tool. This function loads FC, WOfS, Landsat-ARD,
+    and calculate tasseled cap wetness, in order to determine the dominant
+    land cover class within a polygon at each satellite observation.
 
+    The output is a pandas dataframe containing a timeseries of the relative
+    fractions of each class at each time-step. This forms the input to produce
+    a stacked line-plot.
 
-def WIT_drill(gdf_poly, time, name=None, export_csv=None, dask_chunks=None):
+    Last modified: Feb 2020
+
+    Parameters
+    ----------  
+    gdf_poly : geopandas.GeoDataFrame
+        The dataframe must only contain a single row,
+        containing the polygon you wish to interrograte.
+    time : tuple
+        a tuple containing the time range over which to run the WIT.
+        e.g. ('2015-01' , '2019-12')
+    min_gooddata : Float, optional
+        A number between 0 and 1 (e.g 0.8) indicating the minimum percentage
+        of good quality pixels required for a satellite observation to be loaded
+        and therefore included in the WIT plot.  Defaults to 0.8, which should
+        be considered a minimum percentage.
+    TCW_threshold : Int, optional
+        The tasseled cap wetness threshold, beyond which a pixel will be 
+        considered 'wet'. Defaults to -6000. Consider the surface reflectance
+        scaling of the Landsat product when adjusting this (C2 = 1-65,535) 
+    export_csv : str, optional
+        To export the returned pandas dataframe provide
+        a location string (e.g. 'output/results.csv')
+    dask_chunks : dict, optional
+        To lazily load the datasets using dask, pass a dictionary containing
+        the dimensions over which to chunk e.g. {'time':-1, 'x':250, 'y':250}.
+        The function is not currently set up to handle dask arrays very well, so
+        memory efficieny using dask will be of limited use here.
+        
+    Returns
+    -------
+    PolyDrill_df : Pandas.Dataframe
+        A pandas dataframe containing the timeseries of relative fractions
+        of each land cover class (WOfs, FC, TCW) 
+
     """
 
-
-    """
-
-    print("\r", "working on polygon: " + name + ".  ", end="")
+    print("working on polygon: " +str(gdf_poly.drop('geometry', axis=1).values) + ".  ")
 
     # make quaery from polygon
     geom = geometry.Geometry(
@@ -67,6 +137,10 @@ def WIT_drill(gdf_poly, time, name=None, export_csv=None, dask_chunks=None):
     )
     query = {"geopolygon": geom, "time": time}
 
+    
+    # set Sandbox configs to load COG's faster
+    datacube.utils.rio.set_default_rio_config(aws="auto", cloud_defaults=True)
+    
     # Create a datacube instance
     dc = datacube.Datacube(app="wetlands insight tool")
 
@@ -80,9 +154,8 @@ def WIT_drill(gdf_poly, time, name=None, export_csv=None, dask_chunks=None):
         dc=dc,
         products=["usgs_ls8c_level2_2"],
         output_crs=crs,
-        min_gooddata=0.80,
+        min_gooddata=min_gooddata,
         measurements=["red", "green", "blue", "nir", "swir_1", "swir_2"],
-        lazy_load=False,
         align=(15, 15),
         dask_chunks=dask_chunks,
         resolution=(-30, 30),
@@ -99,7 +172,7 @@ def WIT_drill(gdf_poly, time, name=None, export_csv=None, dask_chunks=None):
         invert=False,
     )
 
-    # for some reason xarray is not playing nicely with our old masking function
+    # mask the data with the polygon
     mask_xr = xr.DataArray(mask, dims=("y", "x"))
     ls578_ds = data.where(mask_xr == False)
     print("size of wetlands array: " +
@@ -109,8 +182,8 @@ def WIT_drill(gdf_poly, time, name=None, export_csv=None, dask_chunks=None):
 
     # calculate tasselled cap wetness within masked AOI
     print("calculating tasseled cap index ")
-    tci = deafrica_tasseledcaptools.thresholded_tasseled_cap(
-        ls578_ds, wetness_threshold=-6000, drop=True, drop_tc_bands=True
+    tci = thresholded_tasseled_cap(
+        ls578_ds, wetness_threshold=TCW_threshold, drop=True, drop_tc_bands=True
     )
     # select only finite values (over threshold values)
     tcw = xr.ufuncs.isfinite(tci.wetness_thresholded)
@@ -286,7 +359,7 @@ def WIT_drill(gdf_poly, time, name=None, export_csv=None, dask_chunks=None):
 
     # save the csv of the output data used to create the stacked plot for the polygon drill
     if export_csv:
-        print('exporting csv: ' +export_csv)
+        print('exporting csv: ' + export_csv)
         PolyDrill_df.to_csv(
             export_csv, index_label="Datetime"
         )
@@ -298,6 +371,101 @@ def WIT_drill(gdf_poly, time, name=None, export_csv=None, dask_chunks=None):
     tci = None
 
     return PolyDrill_df
+
+
+
+def thresholded_tasseled_cap(sensor_data, tc_bands=['greenness', 'brightness', 'wetness'],
+                             greenness_threshold=700, brightness_threshold=4000,
+                             wetness_threshold=-6000, drop=True, drop_tc_bands=True):
+    """
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    NOTE: We need to think more about the thresholds to account for the different
+    scalings on the C2 Landsat product. Only the wetness threshold has been looked at,
+    the other thresholds are imported from DEA and are almost certainly incorrect.
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    
+    Computes thresholded tasseled cap wetness, greenness and brightness bands 
+    from a six band xarray dataset, and returns a new xarray dataset with old bands
+    optionally dropped.
+    
+    Parameters
+    ----------
+    sensor_data: xarray.Dataset
+        Input xarray dataset with six optical Landsat bands
+    tc_bands: list, optional
+        Tasseled cap bands to compute e.g. ['wetness', 'greenness','brightness']
+    greeness_threshold: Int, optional
+        The tasseled cap greeness threshold, beyond which a pixel will be 
+        considered 'green'. Defaults to 700. Consider the surface reflectance
+        scaling of the Landsat product when adjusting this (C2 = 1-65,535) 
+    brightness_threshold: Int, optional
+        The tasseled cap brightness threshold, beyond which a pixel will be 
+        considered 'bright'. Defaults to 4000. Consider the surface reflectance
+        scaling of the Landsat product when adjusting this (C2 = 1-65,535)
+    wetness_threshold: Int, optional
+        The tasseled cap wetness threshold, beyond which a pixel will be 
+        considered 'wet'. Defaults to -6000. Consider the surface reflectance
+        scaling of the Landsat product when adjusting this (C2 = 1-65,535)
+    drop: boolean, optional
+        if 'drop = False', return all original Landsat bands
+    drop_tc_bands: boolean, optional 
+        if 'drop_tc_bands = False', return all unthresholded tasseled 
+        cap bands as well as the thresholded bands
+    
+    Returns
+    -------
+    output_array : xarray.dataset
+        Dataset containing computed thresholded tasseled cap bands
+    
+    
+    Last modified: Feb 2020
+    """
+
+    # Copy input dataset
+    output_array = sensor_data.copy(deep=True)
+
+    # Coefficients for each tasseled cap band
+    wetness_coeff = {'blue': 0.0315, 'green': 0.2021, 'red': 0.3102,
+                     'nir': 0.1594, 'swir_1': -0.6806, 'swir_2': -0.6109}
+
+    greenness_coeff = {'blue': -0.1603, 'green': -0.2819, 'red': -0.4934,
+                       'nir': 0.7940, 'swir_1': -0.0002, 'swir_2': -0.1446}
+
+    brightness_coeff = {'blue': 0.2043, 'green': 0.4158, 'red': 0.5524,
+                        'nir': 0.5741, 'swir_1': 0.3124, 'swir_2': 0.2303}
+
+    # Dict to use correct coefficients for each tasseled cap band
+    analysis_coefficient = {'wetness': wetness_coeff,
+                            'greenness': greenness_coeff,
+                            'brightness': brightness_coeff}
+
+    # make dictionary of thresholds for wetness, brightness and greenness
+    # FIXME:add statistical and/or secant thresholding options?
+
+    analysis_thresholds = {'wetness_threshold': wetness_threshold,
+                           'greenness_threshold': greenness_threshold,
+                           'brightness_threshold': brightness_threshold}
+
+    # For each band, compute tasseled cap band and add to output dataset
+    for tc_band in tc_bands:
+        # Create xarray of coefficient values used to multiply each band of input
+        coeff = xr.Dataset(analysis_coefficient[tc_band])
+        sensor_coeff = sensor_data * coeff
+        # Sum all bands
+        output_array[tc_band] = sensor_coeff.blue + sensor_coeff.green + \
+            sensor_coeff.red + sensor_coeff.nir + sensor_coeff.swir_1 + sensor_coeff.swir_2
+        output_array[str(tc_band+'_thresholded')] = output_array[tc_band].where(
+            output_array[tc_band] > analysis_thresholds[str(tc_band+'_threshold')])
+        if drop_tc_bands:
+            output_array = output_array.drop(tc_band)
+
+    # If drop = True, remove original bands
+    if drop:
+        bands_to_drop = list(sensor_data.data_vars)
+        output_array = output_array.drop(bands_to_drop)
+
+    return output_array
+
 
 
 def animated_timeseries_WIT(
