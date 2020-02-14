@@ -42,8 +42,8 @@ from collections import Counter
 from datacube.storage import masking
 from scipy.ndimage import binary_dilation
 
-
-def load_masked_usgs(dc,
+    
+def load_ard(dc,
              products=None,
              min_gooddata=0.0,
              quality_flags=None,
@@ -51,8 +51,6 @@ def load_masked_usgs(dc,
              mask_invalid_data=True,
              ls7_slc_off=True,
              product_metadata=False,
-             dask_chunks={'time': 1},
-             lazy_load=False,
              **dcload_kwargs):
     '''
     Loads USGS Landsat Collection 1 and Collection 2 data for multiple 
@@ -77,7 +75,7 @@ def load_masked_usgs(dc,
     Be aware that the resulting arrays will contain invalid values 
     which may affect future analyses.
     
-    Last modified: October 2019
+    Last modified: Feb 2020
     
     Parameters
     ----------  
@@ -117,6 +115,13 @@ def load_masked_usgs(dc,
         pixels; True masks them out and sets them to NaN using the good 
         data mask. This will convert numeric values to float32 which can 
         cause memory issues, set to False to prevent this.
+    mask_invalid_data : bool, optional
+        An optional boolean indicating whether invalid -999 (or 0 for C2)
+        nodata values should be replaced with NaN. These invalid values can be
+        caused by missing data along the edges of scenes, or terrain 
+        effects. Be aware that masking out invalid values 
+        will convert all numeric values to floating point values when 
+        values are replaced with NaN, which can cause memory issues.
     ls7_slc_off : bool, optional
         An optional boolean indicating whether to include data from 
         after the Landsat 7 SLC failure (i.e. SLC-off). Defaults to 
@@ -126,18 +131,6 @@ def load_masked_usgs(dc,
         with a `product` variable that gives the name of the product 
         that each observation in the time series came from (e.g. 
         'usgs_ls8c_level2_2'). Defaults to False.
-    dask_chunks : dict, optional
-        An optional dictionary containing the coords and sizes you wish 
-        to create dask chunks over. Usually used in combination with 
-        `lazy_load=True` (see below). For example: 
-        `dask_chunks = {'x': 500, 'y': 500}`
-    lazy_load : boolean, optional
-        Setting this variable to True will delay the computation of the 
-        function until you explicitly run `ds.compute()`. If used in 
-        conjuction with `dask.distributed.Client()` this will allow for 
-        automatic parallel computation. Be aware that computation will
-        still occur if min_gooddata > 0, as the pixel quality will be
-        loaded to compute the 'good data' percentage.
     **dcload_kwargs : 
         A set of keyword arguments to `dc.load` that define the 
         spatiotemporal query used to extract data. This can include `x`,
@@ -175,6 +168,9 @@ def load_masked_usgs(dc,
         
         except ValueError:        
             return da
+    
+    # Determine if lazy loading is required
+    lazy_load = 'dask_chunks' in dcload_kwargs
     
     # List of valid USGS Collection 1 products
     c1_products = ['ls5_usgs_sr_scene',
@@ -246,9 +242,15 @@ def load_masked_usgs(dc,
 
             # Load data
             try:
+#                 try:
                 ds = dc.load(product=f'{product}',
-                             dask_chunks=dask_chunks,
                              **dcload_kwargs)
+                
+#                 except ValueError:
+#                     print(f'    Passing {product} as dataset does not exist in '
+#                           f'this location')
+#                     continue
+            
             except KeyError as e:
                 raise ValueError(f'Band {e} does not exist in this product. '
                                  f'Verify all requested `measurements` exist '
@@ -349,8 +351,6 @@ def load_masked_FC(dc,
                    mask_invalid_data=True,
                    ls7_slc_off=True,
                    product_metadata=False,
-                   dask_chunks={'time': 1},
-                   lazy_load=False,
                    **dcload_kwargs):
     '''
     Loads Fractional Cover, calculated from the 
@@ -422,18 +422,6 @@ def load_masked_FC(dc,
         with a `product` variable that gives the name of the product 
         that each observation in the time series came from (e.g. 
         'ga_ls8c_fractional_cover_2'). Defaults to False.
-    dask_chunks : dict, optional
-        An optional dictionary containing the coords and sizes you wish 
-        to create dask chunks over. Usually used in combination with 
-        `lazy_load=True` (see below). For example: 
-        `dask_chunks = {'x': 500, 'y': 500}`
-    lazy_load : boolean, optional
-        Setting this variable to True will delay the computation of the 
-        function until you explicitly run `ds.compute()`. If used in 
-        conjuction with `dask.distributed.Client()` this will allow for 
-        automatic parallel computation. Be aware that computation will
-        still occur if min_gooddata > 0, as the pixel quality will be
-        loaded to compute the 'good data' percentage.
     **dcload_kwargs : 
         A set of keyword arguments to `dc.load` that define the 
         spatiotemporal query used to extract data. This can include `x`,
@@ -481,7 +469,10 @@ def load_masked_FC(dc,
 
         except ValueError:
             return da
-
+    
+    # Determine if lazy loading is required
+    lazy_load = 'dask_chunks' in dcload_kwargs
+    
     # List of valid USGS Collection 2 products
     c2_products = ['ga_ls5t_fractional_cover_2',
                    'ga_ls7e_fractional_cover_2',
@@ -534,7 +525,6 @@ def load_masked_FC(dc,
 
             # Load data
             ds = dc.load(product=f'{product}',
-                         dask_chunks=dask_chunks,
                          **dcload_kwargs)
 
             # Keep a record of the original number of observations
@@ -553,19 +543,16 @@ def load_masked_FC(dc,
             # loud the clouds dataset
             if product == 'ga_ls8c_fractional_cover_2':
                 clouds = dc.load(product='usgs_ls8c_level2_2',
-                                 dask_chunks=dask_chunks,
                                  measurements=['quality_l2_aerosol'],
                                  **cloud_kwargs)
 
             elif product == 'ga_ls7e_fractional_cover_2':
                 clouds = dc.load(product='usgs_ls7e_level2_2',
-                                 dask_chunks=dask_chunks,
                                  measurements=['quality_l2_aerosol'],
                                  **cloud_kwargs)
 
             elif product == 'ga_ls5t_fractional_cover_2':
                 clouds = dc.load(product='usgs_ls5t_level2_2',
-                                 dask_chunks=dask_chunks,
                                  measurements=['quality_l2_aerosol'],
                                  **cloud_kwargs)
 
