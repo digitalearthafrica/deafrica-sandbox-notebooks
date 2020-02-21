@@ -11,34 +11,28 @@ from scipy.ndimage import binary_dilation
 from copy import deepcopy
 import odc.algo
 
-def _split_dc_params(**kw):
-    """ Partition parameters meant for `dc.load(..)` into query-time and load-time.
-    Note that some parameters are used for both.
+def _dc_query_only(**kw):
+    """ Remove load-only parameters, the rest can be passed to Query
+
     Returns
     =======
-    (query: dict, load: dict)
+
+    dict of query parameters
     """
-    _nothing = object()
 
-    def _impl(measurements=_nothing,
-              output_crs=_nothing,
-              resolution=_nothing,
-              resampling=_nothing,
-              skip_broken_datasets=_nothing,
-              dask_chunks=_nothing,
-              like=_nothing,
-              fuse_func=_nothing,
-              align=_nothing,
-              datasets=_nothing,
-              progress_cbk=_nothing,
+    def _impl(measurements=None,
+              output_crs=None,
+              resolution=None,
+              resampling=None,
+              skip_broken_datasets=None,
+              dask_chunks=None,
+              fuse_func=None,
+              align=None,
+              datasets=None,
+              progress_cbk=None,
+              group_by=None,
               **query):
-        if like is not _nothing:
-            query = dict(like=like, **query)
-
-        load_args = {k: v for k, v in locals().items() if v is not _nothing}
-        load_args.pop('query')
-
-        return query, load_args
+        return query
 
     return _impl(**kw)
 
@@ -46,9 +40,10 @@ def _split_dc_params(**kw):
 def load_ard(dc,
              products=None,
              min_gooddata=0.0,
-             fmask_categories=['valid', 'snow', 'water'],
+             pq_categories_s2=['vegetation','snow or ice','water',
+                                'bare soils','unclassified'],
+             pq_categories_ls=None,
              mask_pixel_quality=True,
-#              mask_contiguity='nbart_contiguity',
              ls7_slc_off=True,
              filter_func=None,
              **extras):
@@ -87,12 +82,24 @@ def load_ard(dc,
         Defaults to 0.0 which will return all observations regardless of
         pixel quality (set to e.g. 0.99 to return only observations with
         more than 99% good quality pixels).
-    fmask_categories : list, optional
-        An optional list of fmask category names to treat as good
-        quality observations in the above `min_gooddata` calculation.
-        The default is `['valid', 'snow', 'water']` which will return
-        non-cloudy or shadowed land, snow and water pixels. Choose from:
-        'nodata', 'valid', 'cloud', 'shadow', 'snow', and 'water'.
+    pq_categories_s2 : list, optional
+        An optional list of S2 Scene Classification Layer (SCL) names 
+        to treat as good quality observations in the above `min_gooddata` 
+        calculation. T The default is ['vegetation','snow or ice','water',
+        'bare soils','unclassified'] which will return
+        non-cloudy or shadowed land, snow, water, veg, and non-veg pixels.
+    pq_categories_ls : dict, optional
+        An optional dictionary that is used to generate a good quality 
+        pixel mask from the selected USGS product's pixel quality band (i.e. 
+        'pixel_qa' for USGS Collection 1, and 'quality_l2_aerosol' for
+        USGS Collection 2). This mask is used for both masking out low
+        quality pixels (e.g. cloud or shadow), and for dropping 
+        observations entirely based on the above `min_gooddata` 
+        calculation. Default is None, which will apply the following mask 
+        for USGS Collection 1: `{'cloud': 'no_cloud', 'cloud_shadow': 
+        'no_cloud_shadow', 'nodata': False}`, and for USGS Collection 2:
+        `{'cloud_shadow': 'not_cloud_shadow', 'cloud_or_cirrus': 
+        'not_cloud_or_cirrus', 'nodata': False}.
     mask_pixel_quality : bool, optional
         An optional boolean indicating whether to apply the good data
         mask to all observations that were not filtered out for having
@@ -156,10 +163,11 @@ def load_ard(dc,
     # Setup #
     #########
 
-    query, load_params = _split_dc_params(**extras)
+    query = _dc_query_only(**extras)
 
     # We deal with `dask_chunks` separately
-    dask_chunks = load_params.pop('dask_chunks', None)
+    dask_chunks = extras.pop('dask_chunks', None)
+    requested_measurements = extras.pop('measurements', None)
 
     # Warn user if they combine lazy load with min_gooddata
     if (min_gooddata > 0.0) and dask_chunks is not None:
@@ -168,55 +176,45 @@ def load_ard(dc,
                       "loading pixel-quality data to calculate "
                       "'good pixel' percentage. This can "
                       "slow the return of your dataset.")
-
-    # Verify that products were provided, and that only Sentinel-2 or
-    # only Landsat products are being loaded at the same time
+    
+    # Verify that products were provided
     if not products:
-        raise ValueError("Please provide a list of product names "
-                         "to load data from. Valid options are: \n"
-                         "['ls5_usgs_sr_scene', 'ls7_usgs_sr_scene', 'ls8_usgs_sr_scene'] "
-                         "or ['usgs_ls5t_level2_2', 'usgs_ls7e_level2_2', 'usgs_ls8c_level2_2']
-                         "for Landsat. Sentinel 2: ['s2a_msil2a', 's2b_msil2a']"
-                         
-    elif all(['ls' in product for product in products]):
-        product_type = 'ls'
+        raise ValueError(f'Please provide a list of product names '
+                         f'to load data from. Valid options include '
+                         f'{c1_products}, {c2_products} and {s2_products}')
+        
+    elif all(['level2' in product for product in products]):
+        product_type = 'c2'
+    elif all(['sr' in product for product in products]):
+        product_type = 'c1'
     elif all(['s2' in product for product in products]):
         product_type = 's2'
-    
-    # List of valid USGS Collection 1 products
-    c1_products = ['ls5_usgs_sr_scene',
-                   'ls7_usgs_sr_scene',
-                   'ls8_usgs_sr_scene']
-
-    # List of valid USGS Collection 2 products
-    c2_products = ['usgs_ls5t_level2_2', 
-                   'usgs_ls7e_level2_2', 
-                   'usgs_ls8c_level2_2']
-    
-    # List of valid Sentinel 2 products
-    s2_products = ['s2a_msil2a', 's2b_msil2a']
                          
     # If `measurements` are specified but do not include pixel quality bands,
     #  add these to `measurements` according to collection
-    if product in c2_products:
-        print('    Using pixel quality parameters for USGS Collection 2')
+    if product_type == 'c2':
+        print('Using pixel quality parameters for USGS Collection 2')
         fmask_band = 'quality_l2_aerosol'
                         
-    elif product in c1_products:
-        print('    Using pixel quality parameters for USGS Collection 1')
+    elif product_type == 'c1':
+        print('Using pixel quality parameters for USGS Collection 1')
         fmask_band = 'pixel_qa'
     
-    elif product in s2_products:
-        print('    Using pixel quality parameters for Sentinel 2')
+    elif product_type == 's2':
+        print('Using pixel quality parameters for Sentinel 2')
         fmask_band = 'scl'
     
-    requested_measurements = load_params.pop('measurements', None)
+    print("pq band is: " + fmask_band)
     measurements = requested_measurements.copy() if requested_measurements else None
-                     
+    
+    print(measurements)                 
+    
     if measurements:
         if fmask_band not in measurements:
             measurements.append(fmask_band)
-
+    
+    print(measurements)
+    
     #################
     # Find datasets #
     #################
@@ -266,36 +264,42 @@ def load_ard(dc,
     # Note we always load using dask here so that
     # we can lazy load data before filtering by good data
     ds = dc.load(datasets=dataset_list,
+                 measurements=measurements,
                  dask_chunks={} if dask_chunks is None else dask_chunks,
-                 **load_params)
+                 **extras)
 
     ###############
     # Apply masks #
     ###############
-    #need to distinguish between products due to different "fmask" band properties                     
-    if product in c2_products:
+    #need to distinguish between products due to different
+    # "fmask" band properties                     
+    
+    #collection 2 USGS
+    if product_type == 'c2':
+        if pq_categories_ls is None:
+            quality_flags_prod = {'cloud_shadow': 'not_cloud_shadow',
+                                  'cloud_or_cirrus': 'not_cloud_or_cirrus',
+                                   'nodata': False}
+        else:
+            quality_flags_prod = pq_categories_ls
 
-                        
-    elif product in c1_products:
-        fmask_categories = {'cloud': 'no_cloud',
-                            'cloud_shadow': 'no_cloud_shadow',
-                            'nodata': False}
         pq_mask = masking.make_mask(ds[fmask_band], 
                                     **quality_flags_prod)
-                         
-    elif product in s2_products:
-        fmask_categories = ['vegetation','snow or ice','water',
-                            'bare soils','unclassified']
+    # collection 1 USGS                    
+    if product_type == 'c1':
+        if pq_categories_ls is None:
+            quality_flags_prod = {'cloud': 'no_cloud',
+                                  'cloud_shadow': 'no_cloud_shadow',
+                                   'nodata': False}
+        else:
+            quality_flags_prod = pq_categories_ls
+            
+        pq_mask = masking.make_mask(ds[fmask_band], 
+                                    **quality_flags_prod)
+    # sentinel 2                     
+    if product_type == 's2':
         pq_mask = odc.algo.fmask_to_bool(ds[fmask_band],
-                                     categories=fmask_categories)
-
-                         
-                         
-                         
-                         
-    # Calculate pixel quality mask
-    pq_mask = odc.algo.fmask_to_bool(ds[fmask_band],
-                                     categories=fmask_categories)
+                                     categories=pq_categories_s2)
 
     # Generate good quality data mask
     mask = None
@@ -328,11 +332,11 @@ def load_ard(dc,
         print(f'Filtering to {len(ds.time)} out of {total_obs} '
               f'time steps with at least {min_gooddata:.1%} '
               f'good quality pixels')
-
+    
     # Drop bands not originally requested by user
     if requested_measurements:
         ds = ds[requested_measurements]
-
+        
     ###############
     # Return data #
     ###############
