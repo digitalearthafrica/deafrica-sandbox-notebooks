@@ -18,7 +18,7 @@ If you would like to report an issue with this script, you can file one on
 Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new
 
 Functions included:
-    load_masked_usgs
+    load_ard
     load_masked_FC
     array_to_geotiff
     mostcommon_utm
@@ -26,7 +26,7 @@ Functions included:
     wofs_fuser
     dilate
 
-Last modified: October 2019
+Last modified: Feb 2020
 
 '''
 
