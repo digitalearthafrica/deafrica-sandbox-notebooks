@@ -41,6 +41,8 @@ import xarray as xr
 from collections import Counter
 from datacube.storage import masking
 from scipy.ndimage import binary_dilation
+from copy import deepcopy
+import odc.algo
 
     
 def load_ard(dc,
@@ -50,6 +52,7 @@ def load_ard(dc,
              mask_pixel_quality=True,
              mask_invalid_data=True,
              ls7_slc_off=True,
+             filter_func=None,
              product_metadata=False,
              **dcload_kwargs):
     '''
@@ -83,10 +86,10 @@ def load_ard(dc,
         The Datacube to connect to, i.e. `dc = datacube.Datacube()`.
         This allows you to also use development datacubes if required.    
     products : list
-        A list of product names to load data from. Valid options for 
-        USGS Collection 1 are ['ls5_usgs_sr_scene', 'ls7_usgs_sr_scene', 
-        'ls8_usgs_sr_scene'] and for USGS Collection 2 are 
-        ['usgs_ls5t_level2_2', 'usgs_ls7e_level2_2', 'usgs_ls8c_level2_2'].
+        A list of product names to load data from. Valid options: 
+        USGS Collection 1: ['ls5_usgs_sr_scene', 'ls7_usgs_sr_scene', 'ls8_usgs_sr_scene']
+        USGS Collection 2: ['usgs_ls5t_level2_2', 'usgs_ls7e_level2_2', 'usgs_ls8c_level2_2']
+        Sentinel 2: ['s2a_msil2a', 's2b_msil2a']
     min_gooddata : float, optional
         An optional float giving the minimum percentage of good quality 
         pixels required for a satellite observation to be loaded. 
@@ -126,6 +129,14 @@ def load_ard(dc,
         An optional boolean indicating whether to include data from 
         after the Landsat 7 SLC failure (i.e. SLC-off). Defaults to 
         True, which keeps all Landsat 7 observations > May 31 2003. 
+    filter_func : function, optional
+        An optional function that can be passed in to restrict the
+        datasets that are loaded by the function. A filter function
+        should take a `datacube.model.Dataset` object as an input (i.e.
+        as returned from `dc.find_datasets`), and return a boolean.
+        For example, a filter function could be used to return True on
+        only datasets acquired in January:
+        `dataset.time.begin.month == 1`
     product_metadata : bool, optional
         An optional boolean indicating whether to return the dataset 
         with a `product` variable that gives the name of the product 
@@ -148,6 +159,12 @@ def load_ard(dc,
         pixels.   
         
     '''
+    
+    # To prevent modifications to dcload_kwargs being made by this
+    # function remaining after the function is run (potentially causing
+    # different results each time the function is run), first take a
+    # deep copy of the dcload_kwargs object.
+    dcload_kwargs = deepcopy(dcload_kwargs)
     
     # Due to possible bug in xarray 0.13.0, define temporary function 
     # which converts dtypes in a way that preserves attributes
@@ -182,15 +199,17 @@ def load_ard(dc,
                    'usgs_ls7e_level2_2', 
                    'usgs_ls8c_level2_2']
     
+    s2_products = ['s2a_msil2a', 's2b_msil2a']
+    
     # Verify that products were provided
     if not products:
         raise ValueError(f'Please provide a list of product names '
                          f'to load data from. Valid options include '
-                         f'{c1_products} and {c2_products}')
+                         f'{c1_products}, {c2_products} and {s2_products}')
         
     # Verify that all provided products are valid
     not_in_list = [i for i in products if 
-                   i not in c1_products + c2_products]
+                   i not in c1_products + c2_products + s2_products]
     if not_in_list:
         raise ValueError(f'The product(s) {not_in_list} are not '
                          f'supported by this function. Valid options '
@@ -221,12 +240,16 @@ def load_ard(dc,
             elif product in c1_products:
                 print('    Using pixel quality parameters for USGS Collection 1')
                 quality_band = 'pixel_qa'
+            elif product in s2_products:
+                print('    Using pixel quality parameters for Sentinel 2')
+                quality_band = 'scl'
 
             # Set quality flags according to collection
             if (product in c2_products) and not quality_flags:
                 quality_flags_prod = {'cloud_shadow': 'not_cloud_shadow',
                                       'cloud_or_cirrus': 'not_cloud_or_cirrus',
                                       'nodata': False}
+            
             elif (product in c1_products) and not quality_flags:
                 quality_flags_prod = {'cloud': 'no_cloud',
                                       'cloud_shadow': 'no_cloud_shadow',
@@ -240,6 +263,57 @@ def load_ard(dc,
                 (quality_band not in dcload_kwargs['measurements'])):
                 dcload_kwargs['measurements'].append(quality_band)
 
+            
+            #################
+            # Find datasets #
+            #################
+
+            # Extract datasets for each product using subset of dcload_kwargs
+            dataset_list = []
+            datasets_query = {k: v for k, v in dcload_kwargs.items()
+                              if k in ['time', 'x', 'y']}
+
+            # Get list of datasets for each product
+            print('Finding datasets')
+            for product in products:
+
+                # Obtain list of datasets for product
+                print(f'    {product}')
+                datasets = dc.find_datasets(product=product, **datasets_query)
+            
+                # Remove Landsat 7 SLC-off observations if ls7_slc_off=False
+                if not ls7_slc_off and product in ['ls7_usgs_sr_scene', 
+                                                   'usgs_ls7e_level2_2']:
+                    print('    Ignoring SLC-off observations for ls7')
+                    datasets = [i for i in datasets if i.time.begin <
+                                datetime.datetime(2003, 5, 31)]
+
+                # Add any returned datasets to list
+                dataset_list.extend(datasets)
+            
+             # Raise exception if no datasets are returned
+            if len(dataset_list) == 0:
+                raise ValueError("No data available for query: ensure that "
+                                 "the products specified have data for the "
+                                 "time and location requested")
+
+            # If filter_func is specified, use this function to filter the list
+            # of datasets prior to load
+            if filter_func:
+                print(f'Filtering datasets using filter function')
+                dataset_list = [ds for ds in dataset_list if filter_func(ds)]
+
+            # Raise exception if filtering removes all datasets
+            if len(dataset_list) == 0:
+                raise ValueError("No data available after filtering with "
+                                 "filter function")
+            
+            
+            
+            
+            
+            
+            
             # Load data
             try:
                 
