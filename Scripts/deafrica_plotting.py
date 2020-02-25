@@ -37,7 +37,7 @@ import ipywidgets
 import matplotlib as mpl
 from pyproj import Proj, transform
 from IPython.display import display
-from ipyleaflet import Map, Marker, Popup, GeoJSON, basemaps
+from ipyleaflet import Map, Marker, Popup, GeoJSON, basemaps, Choropleth
 from skimage import exposure
 import matplotlib.patheffects as PathEffects
 import matplotlib.pyplot as plt
