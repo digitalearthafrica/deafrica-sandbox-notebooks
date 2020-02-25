@@ -42,6 +42,7 @@ from skimage import exposure
 import matplotlib.patheffects as PathEffects
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from branca.colormap import linear
 
 from datetime import datetime
 import calendar
@@ -49,7 +50,6 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import geopandas as gpd
 from matplotlib.colors import ListedColormap
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
 
 def rgb(ds,
         bands=['red', 'green', 'blue'],
