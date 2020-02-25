@@ -137,7 +137,6 @@ def WIT_drill(gdf_poly,
     )
     query = {"geopolygon": geom, "time": time}
 
-    
     # set Sandbox configs to load COG's faster
     datacube.utils.rio.set_default_rio_config(aws="auto", cloud_defaults=True)
     
@@ -150,7 +149,7 @@ def WIT_drill(gdf_poly,
     )
 
     # load landsat 5,7,8 data
-    ls578_ds = deafrica_datahandling.load_masked_usgs(
+    ls578_ds = deafrica_datahandling.load_ard(
         dc=dc,
         products=["usgs_ls8c_level2_2"],
         output_crs=crs,
@@ -158,6 +157,7 @@ def WIT_drill(gdf_poly,
         measurements=["red", "green", "blue", "nir", "swir_1", "swir_2"],
         align=(15, 15),
         dask_chunks=dask_chunks,
+        group_by='solar_day',
         resolution=(-30, 30),
         **query,
     )
