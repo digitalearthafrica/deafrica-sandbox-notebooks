@@ -287,10 +287,10 @@ def get_training_data_for_shp(path,
                               resolution = None,
                               output_crs=None,
                               crs=None,
-                              field='classnum',
+                              field=None,
                               calc_indices=None, 
                               feature_stats=None, 
-                              collection='ga_ls_2'):
+                              collection=None):
     """
     Function to extract data for training classifier using a shapefile 
     of labelled polygons. Currently works for single time steps.
