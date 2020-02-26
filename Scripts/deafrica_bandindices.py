@@ -286,7 +286,7 @@ def calculate_indices(ds,
         if collection is None:
 
             raise ValueError("No `collection` was provided. Please specify "
-                             "either 'c1' or 'c2' to ensure the \nfunction "
+                             "either 'c1', 'c2' or 's2' to ensure the \nfunction "
                              "calculates indices using the correct spectral "
                              "bands")
 
@@ -308,11 +308,17 @@ def calculate_indices(ds,
             # Pass an empty dict as no bands need renaming
             bands_to_rename = {}
 
+        elif collection == 's2':
+            bands_to_rename = {
+                "nir_1": "nir",
+                "swir_1": "swir1",
+                "swir_2": "swir2",
+            }
         # Raise error if no valid collection name is provided:
         else:
             raise ValueError(f"'{collection}' is not a valid option for "
                               "`collection`. Please specify either \n"
-                              "'c1' or 'c2'")
+                              "'c1', 'c2' or 's2'")
 
         # Apply index function 
         try:
