@@ -286,7 +286,7 @@ def calculate_indices(ds,
         if collection is None:
 
             raise ValueError("No `collection` was provided. Please specify "
-                             "either 'c1' or 'c2' to ensure the \nfunction "
+                             "either 'c1', 'c2' or 's2' to ensure the \nfunction "
                              "calculates indices using the correct spectral "
                              "bands")
 
@@ -318,7 +318,7 @@ def calculate_indices(ds,
         else:
             raise ValueError(f"'{collection}' is not a valid option for "
                               "`collection`. Please specify either \n"
-                              "'c1' or 'c2'")
+                              "'c1', 'c2' or 's2'")
 
         # Apply index function 
         try:
