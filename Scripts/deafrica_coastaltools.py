@@ -1,11 +1,11 @@
-## dea_coastaltools.py
+## deafrica_coastaltools.py
 '''
 Description: This file contains a set of python functions for conducting 
-coastal analyses on Digital Earth Australia data.
+coastal analyses on Digital Earth Africa data.
 
 License: The code in this notebook is licensed under the Apache License, 
 Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth 
-Australia data is licensed under the Creative Commons by Attribution 4.0 
+Africa data is licensed under the Creative Commons by Attribution 4.0 
 license (https://creativecommons.org/licenses/by/4.0/).
 
 Contact: If you need assistance, post a question on the Open Data Cube 
