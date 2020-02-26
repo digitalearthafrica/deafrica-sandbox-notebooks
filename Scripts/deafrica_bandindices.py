@@ -308,6 +308,12 @@ def calculate_indices(ds,
             # Pass an empty dict as no bands need renaming
             bands_to_rename = {}
 
+        elif collection == 's2':
+            bands_to_rename = {
+                "nir_1": "nir",
+                "swir_1": "swir1",
+                "swir_2": "swir2",
+            }
         # Raise error if no valid collection name is provided:
         else:
             raise ValueError(f"'{collection}' is not a valid option for "
