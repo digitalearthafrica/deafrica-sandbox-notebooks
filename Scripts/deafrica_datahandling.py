@@ -38,6 +38,8 @@ import zipfile
 import warnings
 import numpy as np
 import xarray as xr
+import datetime
+import pytz
 from collections import Counter
 from datacube.storage import masking
 from scipy.ndimage import binary_dilation
@@ -245,8 +247,9 @@ def load_ard(dc,
         if not ls7_slc_off and product in ['ls7_usgs_sr_scene', 
                                            'usgs_ls7e_level2_2']:
             print('    Ignoring SLC-off observations for ls7')
+            utc = pytz.UTC
             datasets = [i for i in datasets if i.time.begin <
-                        datetime.datetime(2003, 5, 31)]
+                        utc.localize(datetime.datetime(2003, 5, 31))]
 
         # Add any returned datasets to list
         dataset_list.extend(datasets)
