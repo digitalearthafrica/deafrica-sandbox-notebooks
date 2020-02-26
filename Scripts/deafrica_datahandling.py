@@ -73,8 +73,9 @@ def _dc_query_only(**kw):
 def load_ard(dc,
              products=None,
              min_gooddata=0.0,
-             pq_categories_s2=['vegetation','snow or ice','water',
-                                'bare soils','unclassified'],
+             pq_categories_s2=['vegetation','snow or ice',
+                               'water','bare soils',
+                               'unclassified', 'dark area pixels'],
              pq_categories_ls=None,
              mask_pixel_quality=True,
              ls7_slc_off=True,
@@ -105,10 +106,9 @@ def load_ard(dc,
         This allows you to also use development datacubes if required.
     products : list
         A list of product names to load data from. Valid options are
-        ['ga_ls5t_ard_3', 'ga_ls7e_ard_3', 'ga_ls8c_ard_3'] for Landsat,
-        ['s2a_ard_granule', 's2b_ard_granule'] for Sentinel 2 Definitive,
-        and ['s2a_nrt_granule', 's2b_nrt_granule'] for Sentinel 2 Near
-        Real Time (on the DEA Sandbox only).
+        ['ls5_usgs_sr_scene', 'ls7_usgs_sr_scene', 'ls8_usgs_sr_scene'] for Landsat C1,
+        ['usgs_ls8c_level2_2'] for Landsat C2, and
+        ['s2a_msil2a', 's2b_msil2a'] for Sentinel 2.
     min_gooddata : float, optional
         An optional float giving the minimum percentage of good quality
         pixels required for a satellite observation to be loaded.
@@ -119,7 +119,7 @@ def load_ard(dc,
         An optional list of S2 Scene Classification Layer (SCL) names 
         to treat as good quality observations in the above `min_gooddata` 
         calculation. T The default is ['vegetation','snow or ice','water',
-        'bare soils','unclassified'] which will return
+        'bare soils','unclassified', 'dark area pixels'] which will return
         non-cloudy or shadowed land, snow, water, veg, and non-veg pixels.
     pq_categories_ls : dict, optional
         An optional dictionary that is used to generate a good quality 
@@ -241,6 +241,7 @@ def load_ard(dc,
         datasets = dc.find_datasets(product=product, **query)
 
         # Remove Landsat 7 SLC-off observations if ls7_slc_off=False
+                    #!!!Update when we have C2 lS7!!!
         if not ls7_slc_off and product in ['ls7_usgs_sr_scene', 
                                            'usgs_ls7e_level2_2']:
             print('    Ignoring SLC-off observations for ls7')
