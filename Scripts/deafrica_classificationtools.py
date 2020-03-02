@@ -279,7 +279,7 @@ def predict_xr(model, input_xr, progress=True):
     return output_xr
 
 
-def get_training_data_for_shp(path, 
+def get_training_data_for_shp(geometry, 
                               out, 
                               product, 
                               time,
@@ -342,7 +342,7 @@ def get_training_data_for_shp(path,
     query['crs'] = crs
     query['output_crs'] = output_crs
     query['resolution'] = resolution
-    shp = gp.read_file(path)
+    shp = geometry
     bounds = shp.total_bounds
     minx = bounds[0]
     maxx = bounds[2]
