@@ -25,7 +25,7 @@ Last modified: Feb 2020
 
 import numpy as np
 import xarray as xr
-import geopandas as gp
+import geopandas as gpd
 import datacube
 from dask.diagnostics import ProgressBar
 from rasterio.features import geometry_mask
@@ -37,6 +37,7 @@ import sys
 sys.path.append('../Scripts')
 from deafrica_bandindices import calculate_indices
 from deafrica_datahandling import mostcommon_crs, load_ard
+from deafrica_spatialtools import xr_rasterize
 
 # 'Wrappers' to translate xarrays to np arrays and back for interfacing 
 # with sklearn models
@@ -278,7 +279,7 @@ def predict_xr(model, input_xr, progress=True):
     return output_xr
 
 
-def get_training_data_for_shp(geometry, 
+def get_training_data_for_shp(polygons, 
                               out, 
                               products,
                               dc_query,
@@ -293,29 +294,30 @@ def get_training_data_for_shp(geometry,
 
     Parameters
     ----------
-    path : string
-        Path to shapefile containing labelled polygons.
+    polygons : geopandas geodataframe
+        polygon data in the form of a geopandas geodataframe
     out : list
         Empty list to contain output data.
-    dc_query : dictionaty
-        datacube query object
+    dc_query : dictionary
+        Datacube query object
     field : string 
         A string containing name of column with labels in shapefile 
         attribute table. Field must contain numeric values.
     calc_indices: list, optional
         An optional list giving the names of any remote sensing indices 
         to be calculated on the loaded data (e.g. `['NDWI', 'NDVI']`. 
-        This step will be skipped if any of the indices cannot be 
-        computed on the input product.
+        If indices are provided, then the spectral bands will be dropped
+        in favour of the band indices.
     reduce_func : string, optional 
         Function to reduce the data from multiple time steps to
-        a single timestep, e.g. if  'mean' then a mean composite
-        will be calculated. options are 'mean' or 'median'. This only
-        operates if 'calc_indices' is also provided.
+        a single timestep, this will only apply if calc_indices is not None.
+        Options are 'mean' or 'median'.
     zonal_stats: string, optional
         An optional string giving the names of zonal statistics to calculate 
         for the polygon. Default is None (all pixel values). Supported 
         values are 'mean' or 'median' 
+    collection:
+        
 
     Returns
     --------
@@ -326,85 +328,90 @@ def get_training_data_for_shp(geometry,
             
     dc = datacube.Datacube(app='training_data')
     
+    #remove dask_chunks to prevent mostcommon_crs failing
+    chunks = dc_query.pop('dask_chunks', None)
+    
     # Identify the most common projection system in the input query 
     output_crs = mostcommon_crs(dc=dc, product=products, query=dc_query)
-    data = load_ard(dc=dc,
+    
+    #load data
+    ds = load_ard(dc=dc,
                     products=products,
                     output_crs=output_crs,
+                    dask_chunks=chunks,
                     **dc_query)
-            
+    
     # Check if band indices are wanted
     if calc_indices is not None:
         try:
-            print("Calculating indices...")
+            print("Calculating indices: " + str(calc_indices))
             # Calculate indices - will use for all features
-            for index in calc_indices:
-                    if len(data.time.values) > 1:
-                        if reduce_func == 'mean':
-                            data = calculate_indices(data, 
-                                                     index, 
-                                                     collection=collection)
-                            data = data.mean('time')
-                            
-                        if reduce_func == 'median':
-                            data = calculate_indices(data, 
-                                                     index, 
-                                                     collection=collection)
-                            data = data.median('time')
-                    else:
-                        data = calculate_indices(data, 
-                                                 index, 
-                                                 collection=collection)
+            if len(ds.time.values) > 1:
+                if reduce_func == 'mean':
+                    data = calculate_indices(ds, 
+                                             index=calc_indices,
+                                             drop=True,
+                                             collection=collection)
+                    data = data.mean('time')
+
+                if reduce_func == 'median':
+                    data = calculate_indices(ds, 
+                                             index=calc_indices, 
+                                             drop=True,
+                                             collection=collection)
+                    data = data.median('time')
+            else:
+                data = calculate_indices(ds, 
+                                         index=calc_indices,
+                                         drop=True,
+                                         collection=collection)
         except ValueError:
             print("Input dataset not suitable for selected indices, just extracting product data")
             pass 
-
+    
     # Remove time step if present
     try:
-        data = data.isel(time=0)
+        data = ds.isel(time=0)
     # Don't worry if it isn't
     except ValueError:
         pass
-
+    
+    #get the dimensions names in the data
+    dim_names = [i for i in data.data_vars]
+    
     print("Rasterizing features and extracting data...")
     # Initialize counter for status messages.
     i = 0
+    print(data)
     # Go through each feature
-    for poly_geom, poly_class_id in zip(shp.geometry, shp[field]):
-        print(" Feature {:04}/{:04}\r".format(i + 1, len(shp.geometry)), 
-              end='')
-
-        # Rasterise the feature
-        mask = rasterize([(poly_geom, poly_class_id)],
-                         out_shape=(data.y.size, data.x.size),
-                         transform=data.affine)
-
-        # Convert mask from numpy to DataArray
-        mask = xr.DataArray(mask, coords=(data.y, data.x))
-        # Mask out areas that were not within the labelled feature
-        data_masked = data.where(mask == poly_class_id, np.nan)
-
+    for index, row in polygons.iterrows():
+        gdf = gpd.GeoDataFrame(row).transpose()
+        gdf.crs = ds.crs
+        mask =  xr_rasterize(gdf=gdf,
+                             attribute_col=field,
+                             da=data[dim_names[0]])
+        
+        print(row[field])
+        data_masked = data.where(mask==row[field], np.nan)
+        data_masked
+        
         if zonal_stats is None:
             # If no summary stats were requested then
             # extract all pixel values
             flat_train = sklearn_flatten(data_masked)
             # Make a labelled array of identical size
-            flat_val = np.repeat(poly_class_id, flat_train.shape[0])
+            flat_val = np.repeat(row[field], flat_train.shape[0])
             stacked = np.hstack((np.expand_dims(flat_val, axis=1), flat_train))
         elif zonal_stats == 'mean':
             # For the mean of each polygon take the mean over all
             # axis, ignoring masked out values (nan).
-            # This gives a single pixel value for each band
             flat_train = data_masked.mean(axis=None, skipna=True)
             flat_train = flat_train.to_array()
-            stacked = np.hstack((poly_class_id, flat_train))
+            stacked = np.hstack((row[field], flat_train))
         elif zonal_stats == 'median':
-            # For the mean of each polygon take the mean over all
-            # axis, ignoring masked out values (nan).
-            # This gives a single pixel value for each band
             flat_train = data_masked.median(axis=None, skipna=True)
             flat_train = flat_train.to_array()
-            stacked = np.hstack((poly_class_id, flat_train))
+            stacked = np.hstack((row[field], flat_train))
 
         # Append training data and label to list
         out.append(stacked)
@@ -414,7 +421,7 @@ def get_training_data_for_shp(geometry,
 
     # Return a list of labels for columns in output array
     return [field] + list(data.data_vars)
-
+#     return mask, data_masked
 
 class KMeans_tree(ClusterMixin):
     """
