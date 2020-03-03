@@ -2,11 +2,11 @@
 '''
 Description: This file contains a set of python functions for applying 
 machine learning classifiying remote sensing data from Digital Earth 
-Australia.
+Africa
 
 License: The code in this notebook is licensed under the Apache License, 
 Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth 
-Australia data is licensed under the Creative Commons by Attribution 4.0 
+Africa data is licensed under the Creative Commons by Attribution 4.0 
 license (https://creativecommons.org/licenses/by/4.0/).
 
 Contact: If you need assistance, please post a question on the Open Data 
@@ -16,11 +16,10 @@ using the `open-data-cube` tag (you can view previously asked questions
 here: https://gis.stackexchange.com/questions/tagged/open-data-cube).
 
 If you would like to report an issue with this script, you can file one on 
-Github (https://github.com/GeoscienceAustralia/dea-notebooks/issues/new).
+Github https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues
 
-Last modified: November 2019
+Last modified: Feb 2020
 
-Authors: Richard Taylor, Sean Chua, Dan Clewley
 
 '''
 
@@ -36,8 +35,8 @@ from sklearn.base import ClusterMixin
 import sys
 
 sys.path.append('../Scripts')
-import deafrica_bandindices
-
+from deafrica_bandindices import calculate_indices
+from deafrica_datahandling import mostcommon_crs, load_ard
 
 # 'Wrappers' to translate xarrays to np arrays and back for interfacing 
 # with sklearn models
@@ -281,16 +280,13 @@ def predict_xr(model, input_xr, progress=True):
 
 def get_training_data_for_shp(geometry, 
                               out, 
-                              product, 
-                              time,
-                              measurements = None,
-                              resolution = None,
-                              output_crs=None,
-                              crs=None,
+                              products,
+                              dc_query,
                               field='classnum',
                               calc_indices=None, 
-                              feature_stats=None, 
-                              collection='ga_ls_2'):
+                              reduce_func='mean',
+                              zonal_stats=None,
+                              collection='c1'):
     """
     Function to extract data for training classifier using a shapefile 
     of labelled polygons. Currently works for single time steps.
@@ -301,14 +297,8 @@ def get_training_data_for_shp(geometry,
         Path to shapefile containing labelled polygons.
     out : list
         Empty list to contain output data.
-    product : string
-        String of product name from which to load and extract datacube 
-        data e.g. 'ls8_nbart_tmad_annual'
-    time : tuple 
-        A tuple containing the time period from which to extract 
-        training data e.g. ('2015-01-01', '2015-12-31').
-    crs : string
-        A string containing desired crs e.g. 'EPSG:3577'
+    dc_query : dictionaty
+        datacube query object
     field : string 
         A string containing name of column with labels in shapefile 
         attribute table. Field must contain numeric values.
@@ -317,10 +307,15 @@ def get_training_data_for_shp(geometry,
         to be calculated on the loaded data (e.g. `['NDWI', 'NDVI']`. 
         This step will be skipped if any of the indices cannot be 
         computed on the input product.
-    feature_stats: string, optional
-        An optional string giving the names of statistics to calculate 
+    reduce_func : string, optional 
+        Function to reduce the data from multiple time steps to
+        a single timestep, e.g. if  'mean' then a mean composite
+        will be calculated. options are 'mean' or 'median'. This only
+        operates if 'calc_indices' is also provided.
+    zonal_stats: string, optional
+        An optional string giving the names of zonal statistics to calculate 
         for the polygon. Default is None (all pixel values). Supported 
-        values are 'mean' or 'geomedian' (from the `hdstats` module).
+        values are 'mean' or 'median' 
 
     Returns
     --------
@@ -328,42 +323,38 @@ def get_training_data_for_shp(geometry,
     each pixel or polygon.
 
     """
-    # Import hdstats as only needed for this function
-    if feature_stats == 'geomedian':
-        try:
-            import hdstats
-        except ImportError as err:
-            raise
-            raise ImportError('Can not import hdstats module needed to calculate'
-                              ' geomedian.\n{}'.format(err))
             
     dc = datacube.Datacube(app='training_data')
-    query = {'time': time}
-    query['crs'] = crs
-    query['output_crs'] = output_crs
-    query['resolution'] = resolution
-    shp = geometry
-    bounds = shp.total_bounds
-    minx = bounds[0]
-    maxx = bounds[2]
-    miny = bounds[1]
-    maxy = bounds[3]
-    query['x'] = (minx, maxx)
-    query['y'] = (miny, maxy)
-
-    print("Loading data...")
-
-    data = dc.load(product=product, measurements=measurements, group_by='solar_day', **query)
-
-    # Check if geomedian is in the product and if indices are wanted
+    
+    # Identify the most common projection system in the input query 
+    output_crs = mostcommon_crs(dc=dc, product=products, query=dc_query)
+    data = load_ard(dc=dc,
+                    products=products,
+                    output_crs=output_crs,
+                    **dc_query)
+            
+    # Check if band indices are wanted
     if calc_indices is not None:
         try:
             print("Calculating indices...")
             # Calculate indices - will use for all features
             for index in calc_indices:
-                data = deafrica_bandindices.calculate_indices(data, 
-                                                         index, 
-                                                         collection=collection)
+                    if len(data.time.values) > 1:
+                        if reduce_func == 'mean':
+                            data = calculate_indices(data, 
+                                                     index, 
+                                                     collection=collection)
+                            data = data.mean('time')
+                            
+                        if reduce_func == 'median':
+                            data = calculate_indices(data, 
+                                                     index, 
+                                                     collection=collection)
+                            data = data.median('time')
+                    else:
+                        data = calculate_indices(data, 
+                                                 index, 
+                                                 collection=collection)
         except ValueError:
             print("Input dataset not suitable for selected indices, just extracting product data")
             pass 
@@ -393,29 +384,27 @@ def get_training_data_for_shp(geometry,
         # Mask out areas that were not within the labelled feature
         data_masked = data.where(mask == poly_class_id, np.nan)
 
-        if feature_stats is None:
+        if zonal_stats is None:
             # If no summary stats were requested then
             # extract all pixel values
             flat_train = sklearn_flatten(data_masked)
             # Make a labelled array of identical size
             flat_val = np.repeat(poly_class_id, flat_train.shape[0])
             stacked = np.hstack((np.expand_dims(flat_val, axis=1), flat_train))
-        elif feature_stats == 'mean':
+        elif zonal_stats == 'mean':
             # For the mean of each polygon take the mean over all
             # axis, ignoring masked out values (nan).
             # This gives a single pixel value for each band
             flat_train = data_masked.mean(axis=None, skipna=True)
             flat_train = flat_train.to_array()
             stacked = np.hstack((poly_class_id, flat_train))
-        elif feature_stats == 'geomedian':
-            # For the geomedian flatten so have a 2D array with
-            # bands and pixel values. Then use hdstats
-            # to calculate the geomedian
-            flat_train = sklearn_flatten(data_masked)
-            flat_train_median = hdstats.geomedian(flat_train, axis=0)
-            # Geomedian will return a single value for each band so join
-            # this with class id to create a single row in output
-            stacked = np.hstack((poly_class_id, flat_train_median))
+        elif zonal_stats == 'median':
+            # For the mean of each polygon take the mean over all
+            # axis, ignoring masked out values (nan).
+            # This gives a single pixel value for each band
+            flat_train = data_masked.median(axis=None, skipna=True)
+            flat_train = flat_train.to_array()
+            stacked = np.hstack((poly_class_id, flat_train))
 
         # Append training data and label to list
         out.append(stacked)

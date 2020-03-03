@@ -196,8 +196,7 @@ def load_ard(dc,
     # Verify that products were provided
     if not products:
         raise ValueError(f'Please provide a list of product names '
-                         f'to load data from. Valid options include '
-                         f'{c1_products}, {c2_products} and {s2_products}')
+                         f'to load data from. ')
         
     elif all(['level2' in product for product in products]):
         product_type = 'c2'
