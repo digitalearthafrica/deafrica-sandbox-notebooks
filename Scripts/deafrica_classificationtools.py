@@ -413,12 +413,15 @@ def get_training_data_for_shp(polygons,
         # TODO: implement geomedians.
         if calc_indices is None:
             if len(ds.time.values) > 1:
-                
+
                 if reduce_func == 'mean':
+                    print('Taking temporal mean of measurements')
                     data = ds.mean('time')
 
                 if reduce_func == 'median':
+                    print('Taking temporal median of measurements')
                     data = ds.median('time')
+                    
             else:
                 data = ds.squeeze()
 
@@ -432,11 +435,12 @@ def get_training_data_for_shp(polygons,
             flat_val = np.repeat(row[field], flat_train.shape[0])
             stacked = np.hstack((np.expand_dims(flat_val, axis=1), flat_train))
         elif zonal_stats == 'mean':
-            # For the mean of each polygon take the mean over all pixels
+            print('Taking zonal mean of polygon')
             flat_train = data.mean(axis=None, skipna=True)
             flat_train = flat_train.to_array()
             stacked = np.hstack((row[field], flat_train))
         elif zonal_stats == 'median':
+            print('Taking zonal median of indices')
             flat_train = data.median(axis=None, skipna=True)
             flat_train = flat_train.to_array()
             stacked = np.hstack((row[field], flat_train))
