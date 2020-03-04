@@ -381,33 +381,36 @@ def get_training_data_for_shp(polygons,
         
         # Check if band indices are wanted
         if calc_indices is not None:
-            try:
-                print("Calculating indices: " + str(calc_indices))
-                # Calculate indices - will use for all features
-                if len(ds.time.values) > 1:
-                    if reduce_func == 'mean':
-                        data = calculate_indices(ds, 
-                                                 index=calc_indices,
-                                                 drop=drop,
-                                                 collection=collection)
-                        data = data.mean('time')
-
-                    if reduce_func == 'median':
-                        data = calculate_indices(ds, 
-                                                 index=calc_indices, 
-                                                 drop=drop,
-                                                 collection=collection)
-                        data = data.median('time')
-                else:
+#             try:
+            print("Calculating indices: " + str(calc_indices))
+            # Calculate indices - will use for all features
+            if len(ds.time.values) > 1:
+                if reduce_func == 'mean':
+                    print('Using temporal mean of indices')
                     data = calculate_indices(ds, 
                                              index=calc_indices,
                                              drop=drop,
                                              collection=collection)
+                    print('Using temporal mean of indices')
+                    data = data.mean('time')
+
+                if reduce_func == 'median':
+                    data = calculate_indices(ds, 
+                                             index=calc_indices, 
+                                             drop=drop,
+                                             collection=collection)
+                    print('Using temporal median of indices')
+                    data = data.median('time')
+            else:
+                data = calculate_indices(ds, 
+                                         index=calc_indices,
+                                         drop=drop,
+                                         collection=collection)
             
-            except ValueError:
-                print("Dataset not suitable for selected indices")
-                pass
-        
+#             except:
+# #                 print("Dataset not suitable for selected indices")
+# #                 pass
+      
         # when band indices are not required (or fails), reduce the
         # dataset to a 2d array through means or medians
         # TODO: implement geomedians.
