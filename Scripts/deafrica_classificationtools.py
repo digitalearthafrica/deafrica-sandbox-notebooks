@@ -292,7 +292,7 @@ def get_training_data_for_shp(polygons,
                               dc_query,
                               field=None,
                               calc_indices=None,
-                              reduce_func='mean',
+                              reduce_func='median',
                               drop=True,
                               zonal_stats=None,
                               collection='c1'):
@@ -320,7 +320,7 @@ def get_training_data_for_shp(polygons,
     reduce_func : string, optional 
         Function to reduce the data from multiple time steps to
         a single timestep, this will only apply if calc_indices is not None.
-        Options are 'mean' or 'median'.
+        Options are 'mean', 'median', or 'geomedian'
     drop : booleam, optional 
         If this variable is set to True, and 'calc_indices' are supplied, the
         spectral bands will be dropped from the dataset leaving only the
@@ -383,10 +383,17 @@ def get_training_data_for_shp(polygons,
 
         # Check if band indices are wanted
         if calc_indices is not None:
-            #             try:
             print("Calculating indices: " + str(calc_indices))
-            # Calculate indices - will use for all features
+
             if len(ds.time.values) > 1:
+                
+                if reduce_func == 'geomedian':
+                    data = GeoMedian().compute(ds)
+                    data = calculate_indices(data,
+                                             index=calc_indices,
+                                             drop=drop,
+                                             collection=collection)
+                
                 if reduce_func == 'mean':
                     data = calculate_indices(ds,
                                              index=calc_indices,
@@ -408,9 +415,8 @@ def get_training_data_for_shp(polygons,
                                          drop=drop,
                                          collection=collection)
 
-        # when band indices are not required (or fails), reduce the
-        # dataset to a 2d array through means or medians
-        # TODO: implement geomedians.
+        # when band indices are not required, reduce the
+        # dataset to a 2d array through means or (geo)medians
         if calc_indices is None:
             if len(ds.time.values) > 1:
                 if reduce_func == 'geomedian':
