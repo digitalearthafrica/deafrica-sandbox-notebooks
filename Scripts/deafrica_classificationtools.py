@@ -1,4 +1,4 @@
-## dea_classificationtools.py
+# deafrica_classificationtools.py
 '''
 Description: This file contains a set of python functions for applying 
 machine learning classifiying remote sensing data from Digital Earth 
@@ -23,6 +23,8 @@ Last modified: Feb 2020
 
 '''
 
+
+
 import numpy as np
 import xarray as xr
 import geopandas as gpd
@@ -36,16 +38,16 @@ from sklearn.base import ClusterMixin
 from datacube.storage.masking import make_mask
 from datacube.storage import masking
 from datacube.utils import geometry
+from datacube_stats.statistics import GeoMedian
 import rasterio
 import sys
+import os
 
 sys.path.append('../Scripts')
-from deafrica_bandindices import calculate_indices
 from deafrica_datahandling import mostcommon_crs, load_ard
-from deafrica_spatialtools import xr_rasterize
+from deafrica_bandindices import calculate_indices
 
-# 'Wrappers' to translate xarrays to np arrays and back for interfacing 
-# with sklearn models
+
 def sklearn_flatten(input_xr):
     """
     Reshape a DataArray or Dataset with spatial (and optionally 
@@ -84,24 +86,24 @@ def sklearn_flatten(input_xr):
     else:
         stacked = input_xr.stack(z=['x', 'y'])
 
-    # finding 'bands' dimensions in each pixel - these will not be 
+    # finding 'bands' dimensions in each pixel - these will not be
     # flattened as their context is important for sklearn
     pxdims = []
     for dim in stacked.dims:
         if dim != 'z':
             pxdims.append(dim)
 
-    # mask NaNs - we mask pixels with NaNs in *any* band, because 
+    # mask NaNs - we mask pixels with NaNs in *any* band, because
     # sklearn cannot accept NaNs as input
     mask = np.isnan(stacked)
     if len(pxdims) != 0:
         mask = mask.any(dim=pxdims)
 
-    # turn the mask into a numpy array (boolean indexing with xarrays 
+    # turn the mask into a numpy array (boolean indexing with xarrays
     # acts weird)
     mask = mask.data
 
-    # the dimension we are masking along ('z') needs to be the first 
+    # the dimension we are masking along ('z') needs to be the first
     # dimension in the underlying np array for the boolean indexing to work
     stacked = stacked.transpose('z', *pxdims)
     input_np = stacked.data[~mask]
@@ -173,7 +175,7 @@ def sklearn_unflatten(output_np, input_xr):
 
     # set the stacked coordinate to match the input
     output_xr = xr.DataArray(output_ma, coords={'z': stacked['z']},
-                             dims=['z', *['output_dim_' + str(idx) for 
+                             dims=['z', *['output_dim_' + str(idx) for
                                           idx in range(len(output_px_shape))]])
 
     output_xr = output_xr.unstack()
@@ -238,7 +240,7 @@ def predict_xr(model, input_xr, progress=True):
         # Flatten array
         input_data_flattened = np.array(input_data_flattened).transpose()
 
-        # Mask out no-data in input (not all classifiers can cope with 
+        # Mask out no-data in input (not all classifiers can cope with
         # Inf or NaN values)
         input_data_flattened = np.where(np.isfinite(input_data_flattened),
                                         input_data_flattened, 0)
@@ -270,7 +272,7 @@ def predict_xr(model, input_xr, progress=True):
     for var_name in input_xr.data_vars:
         input_data.append(input_xr[var_name])
 
-    # Run through classification. Need to expand and have a separate 
+    # Run through classification. Need to expand and have a separate
     # dataframe for each variable so chunking in dask works.
     if progress:
         with ProgressBar():
@@ -284,12 +286,12 @@ def predict_xr(model, input_xr, progress=True):
     return output_xr
 
 
-def get_training_data_for_shp(polygons, 
-                              out, 
+def get_training_data_for_shp(polygons,
+                              out,
                               products,
                               dc_query,
                               field=None,
-                              calc_indices=None, 
+                              calc_indices=None,
                               reduce_func='mean',
                               drop=True,
                               zonal_stats=None,
@@ -331,92 +333,90 @@ def get_training_data_for_shp(polygons,
         to calculate band indices, the satellite collection is required.
         Options include 'c1' for Landsat C1, 'c2', for Landsat C2, and 
         's2', for Sentinel 2.
-    
+
     Returns
     --------
     A list of numpy.arrays containing classes and extracted data for 
     each pixel or polygon.
 
     """
-    dc_query = deepcopy(dc_query)        
+    # hide print statements
+    dc_query = deepcopy(dc_query)
     dc = datacube.Datacube(app='training_data')
-    
-    #remove dask_chunks to prevent mostcommon_crs failing
-    if 'dask_chunks' in dc_query:
-        chunks = dc_query.pop('dask_chunks', None)
-    
-    #loop through polys and extract training data
+
+    # loop through polys and extract training data
     for index, row in polygons.iterrows():
-        
-        #set up query based on polygon
+
+        # set up query based on polygon
         geom = geometry.Geometry(
-        polygons.geometry.values[0].__geo_interface__, geometry.CRS(
-            'epsg:4326'))
-        
+            polygons.geometry.values[0].__geo_interface__, geometry.CRS(
+                'epsg:4326'))
+
         q = {"geopolygon": geom}
-        
-        #merge polygon query with user supplied query params
+
+        # merge polygon query with user supplied query params
         dc_query.update(q)
-        
-        #Identify the most common projection system in the input query 
+
+        # Identify the most common projection system in the input query
         output_crs = mostcommon_crs(dc=dc, product=products, query=dc_query)
         
-        #load data
-        ds = load_ard(dc=dc,
-                    products=products,
-                    output_crs=output_crs,
-                    dask_chunks=chunks,
-                    **dc_query)
-        
-        #create polygon mask
+        if 'ga_ls8c_gm_2_annual' in products:
+            ds = dc.load(product='ga_ls8c_gm_2_annual', **dc_query)
+            
+        else:
+            # load data
+            ds = load_ard(dc=dc,
+                          products=products,
+                          output_crs=output_crs,
+                          **dc_query)
+
+        # create polygon mask
         mask = rasterio.features.geometry_mask(
-                [geom.to_crs(ds.geobox.crs) for geoms in [geom]],
-                out_shape=ds.geobox.shape,
-                transform=ds.geobox.affine,
-                all_touched=False,
-                invert=False)
-        
+            [geom.to_crs(ds.geobox.crs) for geoms in [geom]],
+            out_shape=ds.geobox.shape,
+            transform=ds.geobox.affine,
+            all_touched=False,
+            invert=False)
+
         mask = xr.DataArray(mask, dims=("y", "x"))
-        ds = ds.where(mask==False)
-        
+        ds = ds.where(mask == False)
+
         # Check if band indices are wanted
         if calc_indices is not None:
-#             try:
+            #             try:
             print("Calculating indices: " + str(calc_indices))
             # Calculate indices - will use for all features
             if len(ds.time.values) > 1:
                 if reduce_func == 'mean':
-                    print('Using temporal mean of indices')
-                    data = calculate_indices(ds, 
+                    data = calculate_indices(ds,
                                              index=calc_indices,
                                              drop=drop,
                                              collection=collection)
-                    print('Using temporal mean of indices')
+
                     data = data.mean('time')
 
                 if reduce_func == 'median':
-                    data = calculate_indices(ds, 
-                                             index=calc_indices, 
+                    data = calculate_indices(ds,
+                                             index=calc_indices,
                                              drop=drop,
                                              collection=collection)
-                    print('Using temporal median of indices')
+
                     data = data.median('time')
             else:
-                data = calculate_indices(ds, 
+                data = calculate_indices(ds,
                                          index=calc_indices,
                                          drop=drop,
                                          collection=collection)
-            
-#             except:
-# #                 print("Dataset not suitable for selected indices")
-# #                 pass
-      
+
         # when band indices are not required (or fails), reduce the
         # dataset to a 2d array through means or medians
         # TODO: implement geomedians.
         if calc_indices is None:
             if len(ds.time.values) > 1:
-
+                if reduce_func == 'geomedian':
+                    print('Taking geomedian of measurements')
+                    data = GeoMedian().compute(ds)
+                
                 if reduce_func == 'mean':
                     print('Taking temporal mean of measurements')
                     data = ds.mean('time')
@@ -424,13 +424,13 @@ def get_training_data_for_shp(polygons,
                 if reduce_func == 'median':
                     print('Taking temporal median of measurements')
                     data = ds.median('time')
-                    
+
             else:
                 data = ds.squeeze()
 
-        #compute in case we have dask arrays
+        # compute in case we have dask arrays
         data = data.compute()
-        
+
         if zonal_stats is None:
             # If no summary stats were requested then extract all pixel values
             flat_train = sklearn_flatten(data)
@@ -483,9 +483,9 @@ class KMeans_tree(ClusterMixin):
         self.n_clusters = n_clusters
         # make child models
         if n_levels > 1:
-            self.branches = [KMeans_tree(n_levels=n_levels - 1, 
-                                         n_clusters=n_clusters, 
-                                         **kwargs) 
+            self.branches = [KMeans_tree(n_levels=n_levels - 1,
+                                         n_clusters=n_clusters,
+                                         **kwargs)
                              for _ in range(n_clusters)]
 
     def fit(self, X, y=None, sample_weight=None):
@@ -506,7 +506,7 @@ class KMeans_tree(ClusterMixin):
             observations are assigned equal weight (default: None)
         """
 
-        self.labels_ = self.base_model.fit(X, 
+        self.labels_ = self.base_model.fit(X,
                                            sample_weight=sample_weight).labels_
 
         if self.n_levels > 1:
@@ -517,7 +517,7 @@ class KMeans_tree(ClusterMixin):
             for clu in range(self.n_clusters):
                 # fit child models on their corresponding partition of the training set
                 self.branches[clu].fit(X[labels_old == clu], sample_weight=(
-                    sample_weight[labels_old == clu] 
+                    sample_weight[labels_old == clu]
                     if sample_weight is not None else None))
                 self.labels_[labels_old == clu] += self.branches[clu].labels_
 
@@ -527,7 +527,7 @@ class KMeans_tree(ClusterMixin):
         """
         Send X through the KMeans tree and predict the resultant 
         cluster. Compatible with KMeans.predict().
-        
+
         Parameters
         ----------
         X : {array-like, sparse matrix}, shape = [n_samples, n_features]
@@ -535,7 +535,7 @@ class KMeans_tree(ClusterMixin):
         sample_weight : array-like, shape (n_samples,), optional
             The weights for each observation in X. If None, all 
             observations are assigned equal weight (default: None)
-            
+
         Returns
         -------
         labels : array, shape [n_samples,]
@@ -546,7 +546,7 @@ class KMeans_tree(ClusterMixin):
 
         if self.n_levels > 1:
             rescpy = np.copy(result)
-            
+
             # make room to add the sub-cluster labels
             result *= (self.n_clusters) ** (self.n_levels - 1)
 

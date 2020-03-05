@@ -743,6 +743,11 @@ def mostcommon_crs(dc, product, query):
     by the query above
     
     """
+    # remove dask_chunks & align to prevent mostcommon_crs failing
+    if 'dask_chunks' in query:
+        chunks = query.pop('dask_chunks', None)
+    if 'align' in query:
+        align =  query.pop('align', None)
     
     # List of matching products
     matching_datasets = dc.find_datasets(product=product, **query)
