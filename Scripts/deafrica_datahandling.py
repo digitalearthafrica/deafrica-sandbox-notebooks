@@ -18,6 +18,7 @@ If you would like to report an issue with this script, you can file one on
 Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new
 
 Functions included:
+    odc-tools helper functions
     load_ard
     load_masked_FC
     array_to_geotiff
@@ -39,12 +40,82 @@ import warnings
 import numpy as np
 import xarray as xr
 import datetime
-import pytz
+
 from collections import Counter
 from datacube.storage import masking
 from scipy.ndimage import binary_dilation
 from copy import deepcopy
 import odc.algo
+from random import randint
+import numexpr as ne
+import dask
+import dask.array as da
+
+
+#adding some odc-tools function here until sandbox is updated
+def to_float_np(x, nodata=None, scale=1, offset=0, dtype='float32'):
+    float_type = np.dtype(dtype).type
+
+    _nan = float_type(np.nan)
+    scale = float_type(scale)
+    offset = float_type(offset)
+
+    params = dict(_nan=_nan,
+                  scale=scale,
+                  offset=offset,
+                  x=x,
+                  nodata=nodata)
+    out = np.empty_like(x, dtype=dtype)
+
+    if nodata is None:
+        return ne.evaluate('x*scale + offset',
+                           out=out,
+                           casting='unsafe',
+                           local_dict=params)
+    elif scale == 1 and offset == 0:
+        return ne.evaluate('where(x == nodata, _nan, x)',
+                           out=out,
+                           casting='unsafe',
+                           local_dict=params)
+    else:
+        return ne.evaluate('where(x == nodata, _nan, x*scale + offset)',
+                           out=out,
+                           casting='unsafe',
+                           local_dict=params)
+    
+    
+def to_float(x, scale=1, offset=0, dtype='float32'):
+    if isinstance(x, xr.Dataset):
+        return x.apply(to_float,
+                       scale=scale,
+                       offset=offset,
+                       dtype=dtype,
+                       keep_attrs=True)
+
+    attrs = x.attrs.copy()
+    nodata = attrs.pop('nodata', None)
+
+    if dask.is_dask_collection(x.data):
+        data = da.map_blocks(to_float_np,
+                             x.data, nodata, scale, offset, dtype,
+                             dtype=dtype,
+                             name=randomize('to_float'))
+    else:
+        data = to_float_np(x.data,
+                           nodata=nodata,
+                           scale=scale,
+                           offset=offset,
+                           dtype=dtype)
+
+    return xr.DataArray(data,
+                        dims=x.dims,
+                        coords=x.coords,
+                        name=x.name,
+                        attrs=attrs)
+
+def randomize(prefix: str):
+    return '{}-{:08x}'.format(prefix, randint(0, 0xFFFFFFFF))
+
 
 def _dc_query_only(**kw):
     """ Remove load-only parameters, the rest can be passed to Query
@@ -103,7 +174,8 @@ def load_ard(dc,
              mask_pixel_quality=True,
              ls7_slc_off=True,
              predicate=None,
-             **extras):
+             dtype='auto',
+             **kwargs):
 
     '''
     Loads and combines Landsat Collections 1 or 2, and Sentinel 2 for 
@@ -120,7 +192,6 @@ def load_ard(dc,
         s2a_msil2a
         s2b_msil2a
 
-    
     Last modified: March 2020
     
     Parameters
@@ -171,7 +242,7 @@ def load_ard(dc,
         An optional boolean indicating whether to include data from
         after the Landsat 7 SLC failure (i.e. SLC-off). Defaults to
         True, which keeps all Landsat 7 observations > May 31 2003.
-    filter_func : function, optional
+    predicate : function, optional
         An optional function that can be passed in to restrict the
         datasets that are loaded by the function. A filter function
         should take a `datacube.model.Dataset` object as an input (i.e.
@@ -179,6 +250,15 @@ def load_ard(dc,
         For example, a filter function could be used to return True on
         only datasets acquired in January:
         `dataset.time.begin.month == 1`
+    dtype : string, optional
+        An optional parameter that controls the data type/dtype that
+        layers are coerced to after loading. Valid values: 'native', 
+        'auto', 'float{16|32|64}'. When 'auto' is used, the data will be 
+        converted to `float32` if masking is used, otherwise data will 
+        be returned in the native data type of the data. Be aware that
+        if data is loaded in its native dtype, nodata and masked 
+        pixels will be returned with the data's native nodata value 
+        (typically -999), not NaN. 
     **kwargs :
         A set of keyword arguments to `dc.load` that define the
         spatiotemporal query used to extract data. This typically
@@ -189,6 +269,7 @@ def load_ard(dc,
         passing in a query kwarg dictionary (e.g. `**query`). For a
         list of possible options, see the `dc.load` documentation:
         https://datacube-core.readthedocs.io/en/latest/dev/api/generate/datacube.Datacube.load.html
+        
     Returns
     -------
     combined_ds : xarray Dataset
@@ -202,7 +283,6 @@ def load_ard(dc,
     # Setup #
     #########
     kwargs = deepcopy(kwargs)
-    query = _dc_query_only(**kwargs)
 
     # We deal with `dask_chunks` separately
     dask_chunks = kwargs.pop('dask_chunks', None)
@@ -244,16 +324,29 @@ def load_ard(dc,
         fmask_band = 'scl'
     
     measurements = requested_measurements.copy() if requested_measurements else None
-
+    
+    # Deal with "load all" case: pick a set of bands common across 
+    # all products
+    if measurements is None:
+        measurements = _common_bands(dc, products)
+    
+    # If `measurements` are specified but do not include pq, add.
     if measurements:
         if fmask_band not in measurements:
             measurements.append(fmask_band)
     
+    # Get list of data and mask bands so that we can later exclude
+    # mask bands from being masked themselves
+    data_bands = [band for band in measurements if band not in (fmask_band)]
+    mask_bands = [band for band in measurements if band not in data_bands]
     
     #################
     # Find datasets #
     #################
-
+    
+    # Pull out query params only to pass to dc.find_datasets
+    query = _dc_query_only(**kwargs)
+    
     # Extract datasets for each product using subset of dcload_kwargs
     dataset_list = []
 
@@ -266,13 +359,11 @@ def load_ard(dc,
         datasets = dc.find_datasets(product=product, **query)
 
         # Remove Landsat 7 SLC-off observations if ls7_slc_off=False
-                    #!!!Update when we have C2 lS7!!!
         if not ls7_slc_off and product in ['ls7_usgs_sr_scene', 
                                            'usgs_ls7e_level2_2']:
             print('    Ignoring SLC-off observations for ls7')
-            utc = pytz.UTC
             datasets = [i for i in datasets if i.time.begin <
-                        utc.localize(datetime.datetime(2003, 5, 31))]
+                        datetime.datetime(2003, 5, 31)]
 
         # Add any returned datasets to list
         dataset_list.extend(datasets)
@@ -283,11 +374,11 @@ def load_ard(dc,
                          "the products specified have data for the "
                          "time and location requested")
 
-    # If filter_func is specified, use this function to filter the list
+    # If pedicate is specified, use this function to filter the list
     # of datasets prior to load
-    if filter_func:
+    if predicate:
         print(f'Filtering datasets using filter function')
-        dataset_list = [ds for ds in dataset_list if filter_func(ds)]
+        dataset_list = [ds for ds in dataset_list if predicate(ds)]
 
     # Raise exception if filtering removes all datasets
     if len(dataset_list) == 0:
@@ -303,11 +394,12 @@ def load_ard(dc,
     ds = dc.load(datasets=dataset_list,
                  measurements=measurements,
                  dask_chunks={} if dask_chunks is None else dask_chunks,
-                 **extras)
-
-    ###############
-    # Apply masks #
-    ###############
+                 **kwargs)
+    
+    ####################
+    # Filter good data #
+    ####################
+    
     #need to distinguish between products due to different
     # "fmask" band properties                     
     
@@ -338,20 +430,6 @@ def load_ard(dc,
         pq_mask = odc.algo.fmask_to_bool(ds[fmask_band],
                                      categories=pq_categories_s2)
 
-    # Generate good quality data mask
-    mask = None
-    if mask_pixel_quality:
-        print('Applying pixel quality/cloud mask')
-        mask = pq_mask
-
-    # Mask data if either of the above masks were generated
-    if mask is not None:
-        ds = odc.algo.keep_good_only(ds, where=mask)
-
-    ####################
-    # Filter good data #
-    ####################
-
     # The good data percentage calculation has to load in all `fmask`
     # data, which can be slow. If the user has chosen no filtering
     # by using the default `min_gooddata = 0`, we can skip this step
@@ -362,26 +440,60 @@ def load_ard(dc,
         print('Counting good quality pixels for each time step')
         data_perc = (pq_mask.sum(axis=[1, 2], dtype='int32') /
                      (pq_mask.shape[1] * pq_mask.shape[2]))
-
+        
+        keep = data_perc >= min_gooddata
+        
         # Filter by `min_gooddata` to drop low quality observations
         total_obs = len(ds.time)
-        ds = ds.sel(time=data_perc >= min_gooddata)
+        ds = ds.sel(time=keep)
+        pq_mask = pq_mask.sel(time=keep)
         print(f'Filtering to {len(ds.time)} out of {total_obs} '
               f'time steps with at least {min_gooddata:.1%} '
               f'good quality pixels')
     
-    # Drop bands not originally requested by user
-    if requested_measurements:
-        ds = ds[requested_measurements]
-        
+    ###############
+    # Apply masks #
+    ###############
+
+    # Generate good quality data mask
+    mask = None
+    if mask_pixel_quality:
+        print('Applying pixel quality/cloud mask')
+        mask = pq_mask
+
+    # Split into data/masks bands, as conversion to float and masking 
+    # should only be applied to data bands
+    ds_data = ds[data_bands]
+    ds_masks = ds[mask_bands]
+    
+    # Mask data if either of the above masks were generated
+    if mask is not None:
+        ds_data = odc.algo.keep_good_only(ds_data, where=mask)
+    
+    # Automatically set dtype to either native or float32 depending
+    # on whether masking was requested
+    if dtype == 'auto':
+        dtype = 'native' if mask is None else 'float32'
+    
+    # Set nodata values using odc.algo tools to reduce peak memory
+    # use when converting data dtype    
+    if dtype != 'native':
+        ds_data = to_float(ds_data, dtype=dtype)
+#         ds_data = odc.algo.to_float(ds_data, dtype=dtype)
+    
+     # Put data and mask bands back together
+    attrs = ds.attrs
+    ds = xr.merge([ds_data, ds_masks])
+    ds.attrs.update(attrs)
+    
     ###############
     # Return data #
     ###############
-
-    # Set nodata valuses using odc.algo tools to reduce peak memory
-    # use when converting data to a float32 dtype
-    ds = odc.algo.to_f32(ds)
-
+    
+     # Drop bands not originally requested by user
+    if requested_measurements:
+        ds = ds[requested_measurements]
+    
     # If user supplied dask_chunks, return data as a dask array without
     # actually loading it in
     if dask_chunks is not None:
@@ -392,7 +504,6 @@ def load_ard(dc,
         return ds.compute()
     
     
-
 def load_masked_FC(dc,
                    products=None,
                    min_gooddata=0.0,
