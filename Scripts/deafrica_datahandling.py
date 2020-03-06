@@ -72,6 +72,27 @@ def _dc_query_only(**kw):
     return _impl(**kw)
 
 
+def _common_bands(dc, products):
+    """
+    Takes a list of products and returns a list of measurements/bands
+    that are present in all products
+    Returns
+    -------
+    List of band names
+    """
+    common = None
+    bands = None
+
+    for p in products:
+        p = dc.index.products.get_by_name(p)
+        if common is None:
+            common = set(p.measurements)
+            bands = list(p.measurements)
+        else:
+            common = common.intersection(set(p.measurements))
+    return [band for band in bands if band in common]
+
+
 def load_ard(dc,
              products=None,
              min_gooddata=0.0,
@@ -81,26 +102,27 @@ def load_ard(dc,
              pq_categories_ls=None,
              mask_pixel_quality=True,
              ls7_slc_off=True,
-             filter_func=None,
+             predicate=None,
              **extras):
 
     '''
-    Loads USGS Landsat Collection 1 and Collection 2 data for multiple 
-    satellites (i.e. Landsat 5, 7, 8), and returns a single masked 
-    xarray dataset containing only observations that contain greater 
-    than a given proportion of good quality pixels. This can be used 
-    to extract clean time series of observations that are not affected 
-    by cloud, for example as an input to the `animated_timeseries` 
-    function from `deafrica-sandbox-notebooks/deafrica_plotting`.
+    Loads and combines Landsat Collections 1 or 2, and Sentinel 2 for 
+    multiple sensors (i.e. ls5t, ls7e and ls8c for Landsat; s2a and s2b for Sentinel 2), 
+    optionally applies pixel quality masks, and drops time steps that 
+    contain greater than a minimum proportion of good quality (e.g. non-
+    cloudy or shadowed) pixels. 
+    The function supports loading the following DEA products:
     
-    The proportion of good quality pixels is calculated by summing the 
-    pixels flagged as good quality in the product's pixel quality band 
-    (i.e. 'pixel_qa' for USGS Collection 1, and 'quality_l2_aerosol' for
-    USGS Collection 2). By default non-cloudy or non-shadowed pixels 
-    are considered as good data, but this can be customised using the 
-    `fmask_categories` parameter.
+        ls5_usgs_sr_scene
+        ls7_usgs_sr_scene
+        ls8_usgs_sr_scene
+        usgs_ls8c_level2_2
+        s2a_msil2a
+        s2b_msil2a
+
     
-    Last modified: February 2020
+    Last modified: March 2020
+    
     Parameters
     ----------
     dc : datacube Datacube object
@@ -108,9 +130,9 @@ def load_ard(dc,
         This allows you to also use development datacubes if required.
     products : list
         A list of product names to load data from. Valid options are
-        ['ls5_usgs_sr_scene', 'ls7_usgs_sr_scene', 'ls8_usgs_sr_scene'] for Landsat C1,
-        ['usgs_ls8c_level2_2'] for Landsat C2, and
-        ['s2a_msil2a', 's2b_msil2a'] for Sentinel 2.
+        Landsat C1: ['ls5_usgs_sr_scene', 'ls7_usgs_sr_scene', 'ls8_usgs_sr_scene'],
+        Landsat C2: ['usgs_ls8c_level2_2']
+        Sentinel 2: ['s2a_msil2a', 's2b_msil2a']
     min_gooddata : float, optional
         An optional float giving the minimum percentage of good quality
         pixels required for a satellite observation to be loaded.
@@ -157,7 +179,7 @@ def load_ard(dc,
         For example, a filter function could be used to return True on
         only datasets acquired in January:
         `dataset.time.begin.month == 1`
-    **extras :
+    **kwargs :
         A set of keyword arguments to `dc.load` that define the
         spatiotemporal query used to extract data. This typically
         includes `measurements`, `x`, `y`, `time`, `resolution`,
@@ -173,17 +195,18 @@ def load_ard(dc,
         An xarray dataset containing only satellite observations that
         contains greater than `min_gooddata` proportion of good quality
         pixels.
+        
     '''
 
     #########
     # Setup #
     #########
-    extras = deepcopy(extras)
-    query = _dc_query_only(**extras)
+    kwargs = deepcopy(kwargs)
+    query = _dc_query_only(**kwargs)
 
     # We deal with `dask_chunks` separately
-    dask_chunks = extras.pop('dask_chunks', None)
-    requested_measurements = extras.pop('measurements', None)
+    dask_chunks = kwargs.pop('dask_chunks', None)
+    requested_measurements = kwargs.pop('measurements', None)
 
     # Warn user if they combine lazy load with min_gooddata
     if (min_gooddata > 0.0) and dask_chunks is not None:
@@ -193,11 +216,11 @@ def load_ard(dc,
                       "'good pixel' percentage. This can "
                       "slow the return of your dataset.")
     
-    # Verify that products were provided
+    # Verify that products were provided and determine if Sentinel-2
+    # or Landsat data is being loaded
     if not products:
         raise ValueError(f'Please provide a list of product names '
-                         f'to load data from. Valid options include '
-                         f'{c1_products}, {c2_products} and {s2_products}')
+                         f'to load data from.')
         
     elif all(['level2' in product for product in products]):
         product_type = 'c2'
