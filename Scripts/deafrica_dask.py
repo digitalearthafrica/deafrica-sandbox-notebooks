@@ -20,7 +20,7 @@ Github https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues
 Functions included:
     create_local_dask_cluster
     
-Last modified: February 2020
+Last modified: March 2020
 
 '''
 
@@ -30,7 +30,7 @@ from datacube.utils.dask import start_local_dask
 from datacube.utils.rio import configure_s3_access
 
 
-def create_local_dask_cluster(spare_mem='3Gb'):
+def create_local_dask_cluster(spare_mem='3Gb', display_client=True):
     """
     Using the datacube utils function 'start_local_dask', generate
     a local dask cluster.
@@ -48,6 +48,10 @@ def create_local_dask_cluster(spare_mem='3Gb'):
     spare_mem : String, optional
         The amount of memory, in Gb, to leave for the notebook to run.
         This memory will not be used by the cluster. e.g '3Gb'
+    display_client : Bool, optional
+        An optional boolean indicating whether to display a summary of
+        the dask client, including a link to monitor progress of the
+        analysis. Set to False to hide this display.
     
     """
 
@@ -68,5 +72,6 @@ def create_local_dask_cluster(spare_mem='3Gb'):
     configure_s3_access(aws_unsigned=True,  
                         client=client);
 
-    # show the dask cluster settings
-    display(client)
+    # Show the dask cluster settings
+    if display_client:
+        display(client)
