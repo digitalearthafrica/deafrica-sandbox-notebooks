@@ -55,12 +55,6 @@ def create_local_dask_cluster(spare_mem='3Gb', display_client=True):
     
     """
 
-    # close previous client if any
-    client = locals().get('client', None)
-    if client is not None:
-        client.close()
-        del client
-
     # configure dashboard link to go over proxy
     dask.config.set({"distributed.dashboard.link":
                  os.environ.get('JUPYTERHUB_SERVICE_PREFIX', '/')+"proxy/{port}/status"})
