@@ -178,8 +178,8 @@ def load_ard(dc,
              **kwargs):
 
     '''
-    Loads and combines Landsat Collections 1 or 2, and Sentinel 2 for 
-    multiple sensors (i.e. ls5t, ls7e and ls8c for Landsat; s2a and s2b for Sentinel 2), 
+    Loads and combines Landsat Collections 1 or 2, and Sentinel-2 for 
+    multiple sensors (i.e. ls5t, ls7e and ls8c for Landsat; s2a and s2b for Sentinel-2), 
     optionally applies pixel quality masks, and drops time steps that 
     contain greater than a minimum proportion of good quality (e.g. non-
     cloudy or shadowed) pixels. 
@@ -203,7 +203,7 @@ def load_ard(dc,
         A list of product names to load data from. Valid options are
         Landsat C1: ['ls5_usgs_sr_scene', 'ls7_usgs_sr_scene', 'ls8_usgs_sr_scene'],
         Landsat C2: ['usgs_ls8c_level2_2']
-        Sentinel 2: ['s2a_msil2a', 's2b_msil2a']
+        Sentinel-2: ['s2a_msil2a', 's2b_msil2a']
     min_gooddata : float, optional
         An optional float giving the minimum percentage of good quality
         pixels required for a satellite observation to be loaded.
@@ -211,7 +211,7 @@ def load_ard(dc,
         pixel quality (set to e.g. 0.99 to return only observations with
         more than 99% good quality pixels).
     pq_categories_s2 : list, optional
-        An optional list of S2 Scene Classification Layer (SCL) names 
+        An optional list of Sentinel-2 Scene Classification Layer (SCL) names 
         to treat as good quality observations in the above `min_gooddata` 
         calculation. T The default is ['vegetation','snow or ice','water',
         'bare soils','unclassified', 'dark area pixels'] which will return
