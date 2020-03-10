@@ -183,7 +183,7 @@ def load_ard(dc,
     optionally applies pixel quality masks, and drops time steps that 
     contain greater than a minimum proportion of good quality (e.g. non-
     cloudy or shadowed) pixels. 
-    The function supports loading the following DEA products:
+    The function supports loading the following DEA frica products:
     
         ls5_usgs_sr_scene
         ls7_usgs_sr_scene
@@ -213,9 +213,9 @@ def load_ard(dc,
     pq_categories_s2 : list, optional
         An optional list of Sentinel-2 Scene Classification Layer (SCL) names 
         to treat as good quality observations in the above `min_gooddata` 
-        calculation. T The default is ['vegetation','snow or ice','water',
+        calculation. The default is ['vegetation','snow or ice','water',
         'bare soils','unclassified', 'dark area pixels'] which will return
-        non-cloudy or shadowed land, snow, water, veg, and non-veg pixels.
+        non-cloudy or non-shadowed land, snow, water, veg, and non-veg pixels.
     pq_categories_ls : dict, optional
         An optional dictionary that is used to generate a good quality 
         pixel mask from the selected USGS product's pixel quality band (i.e. 
@@ -282,6 +282,7 @@ def load_ard(dc,
     #########
     # Setup #
     #########
+    # prevent function altering original query object
     kwargs = deepcopy(kwargs)
 
     # We deal with `dask_chunks` separately
