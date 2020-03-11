@@ -18,7 +18,6 @@ If you would like to report an issue with this script, you can file one on
 Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new
 
 Functions included:
-    odc-tools helper functions
     load_ard
     load_masked_FC
     array_to_geotiff
@@ -27,7 +26,7 @@ Functions included:
     wofs_fuser
     dilate
 
-Last modified: Feb 2020
+Last modified: March 2020
 
 '''
 
@@ -50,71 +49,6 @@ from random import randint
 import numexpr as ne
 import dask
 import dask.array as da
-
-
-#adding some odc-tools function here until sandbox is updated
-def to_float_np(x, nodata=None, scale=1, offset=0, dtype='float32'):
-    float_type = np.dtype(dtype).type
-
-    _nan = float_type(np.nan)
-    scale = float_type(scale)
-    offset = float_type(offset)
-
-    params = dict(_nan=_nan,
-                  scale=scale,
-                  offset=offset,
-                  x=x,
-                  nodata=nodata)
-    out = np.empty_like(x, dtype=dtype)
-
-    if nodata is None:
-        return ne.evaluate('x*scale + offset',
-                           out=out,
-                           casting='unsafe',
-                           local_dict=params)
-    elif scale == 1 and offset == 0:
-        return ne.evaluate('where(x == nodata, _nan, x)',
-                           out=out,
-                           casting='unsafe',
-                           local_dict=params)
-    else:
-        return ne.evaluate('where(x == nodata, _nan, x*scale + offset)',
-                           out=out,
-                           casting='unsafe',
-                           local_dict=params)
-    
-    
-def to_float(x, scale=1, offset=0, dtype='float32'):
-    if isinstance(x, xr.Dataset):
-        return x.apply(to_float,
-                       scale=scale,
-                       offset=offset,
-                       dtype=dtype,
-                       keep_attrs=True)
-
-    attrs = x.attrs.copy()
-    nodata = attrs.pop('nodata', None)
-
-    if dask.is_dask_collection(x.data):
-        data = da.map_blocks(to_float_np,
-                             x.data, nodata, scale, offset, dtype,
-                             dtype=dtype,
-                             name=randomize('to_float'))
-    else:
-        data = to_float_np(x.data,
-                           nodata=nodata,
-                           scale=scale,
-                           offset=offset,
-                           dtype=dtype)
-
-    return xr.DataArray(data,
-                        dims=x.dims,
-                        coords=x.coords,
-                        name=x.name,
-                        attrs=attrs)
-
-def randomize(prefix: str):
-    return '{}-{:08x}'.format(prefix, randint(0, 0xFFFFFFFF))
 
 
 def _dc_query_only(**kw):
@@ -479,8 +413,7 @@ def load_ard(dc,
     # Set nodata values using odc.algo tools to reduce peak memory
     # use when converting data dtype    
     if dtype != 'native':
-        ds_data = to_float(ds_data, dtype=dtype)
-#         ds_data = odc.algo.to_float(ds_data, dtype=dtype)
+        ds_data = odc.algo.to_float(ds_data, dtype=dtype)
     
      # Put data and mask bands back together
     attrs = ds.attrs
