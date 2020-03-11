@@ -289,31 +289,38 @@ def calculate_indices(ds,
                              "either 'c1', 'c2' or 's2' to ensure the \nfunction "
                              "calculates indices using the correct spectral "
                              "bands")
-
+        
         elif collection == 'c2':
 
-            # Dictionary mapping full data names to simpler 'red' alias names
+            # Dictionary mapping full data names to simpler alias names
             bandnames_dict = {
                 'swir_1': 'swir1',
                 'swir_2': 'swir2',
             }
 
-            # Rename bands in dataset to use simple names (e.g. 'red')
+            # Rename bands in dataset to use simple names (e.g. 'red')            
             bands_to_rename = {
                 a: b for a, b in bandnames_dict.items() if a in ds.variables
             }
-
-        elif collection == 'c1':
-
-            # Pass an empty dict as no bands need renaming
-            bands_to_rename = {}
-
+            
         elif collection == 's2':
-            bands_to_rename = {
+            bandnames_dict = {
                 "nir_1": "nir",
                 "swir_1": "swir1",
                 "swir_2": "swir2",
             }
+          
+            # Rename bands in dataset to use simple names (e.g. 'red')            
+            bands_to_rename = {
+                a: b for a, b in bandnames_dict.items() if a in ds.variables
+            }
+            
+            
+        elif collection == 'c1':
+
+            # Pass an empty dict as no bands need renaming
+            bands_to_rename = {}
+            
         # Raise error if no valid collection name is provided:
         else:
             raise ValueError(f"'{collection}' is not a valid option for "
