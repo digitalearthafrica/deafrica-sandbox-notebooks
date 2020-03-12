@@ -97,7 +97,18 @@ def _common_bands(dc, products):
             common = common.intersection(set(p.measurements))
     return [band for band in bands if band in common]
 
+# def removekey(d, key):
+#     '''
+#     funtion to remove 'measurements' from
+#     the kwargs dictionary so they dont
+#     conflict with loading the correct measurements
+#     for the cloud dataset
+#     '''
+#     r = dict(d)
+#     del r[key]
+#     return r
 
+    
 def load_ard(dc,
              products=None,
              min_gooddata=0.0,
@@ -123,6 +134,7 @@ def load_ard(dc,
         ls7_usgs_sr_scene
         ls8_usgs_sr_scene
         usgs_ls8c_level2_2
+        ga_ls8c_fractional_cover_2
         s2a_msil2a
         s2b_msil2a
 
@@ -243,6 +255,8 @@ def load_ard(dc,
         product_type = 'c1'
     elif all(['s2' in product for product in products]):
         product_type = 's2'
+    elif all(['fractional_cover' in product for product in products]):
+        product_type = 'fc'
                          
     # If `measurements` are specified but do not include pixel quality bands,
     #  add these to `measurements` according to collection
@@ -258,33 +272,50 @@ def load_ard(dc,
         print('Using pixel quality parameters for Sentinel 2')
         fmask_band = 'scl'
     
+    elif product_type == 'fc':
+        print('Using pixel quality parameters for USGS Collection 2')
+        fmask_band = 'quality_l2_aerosol'
+    
     measurements = requested_measurements.copy() if requested_measurements else None
     
     # Deal with "load all" case: pick a set of bands common across 
-    # all products
+    # all products    
     if measurements is None:
-        measurements = _common_bands(dc, products)
-    
+        if product_type == 'fc':
+            measurements = ['pv', 'npv', 'bs', 'ue']
+        else:
+            measurements = _common_bands(dc, products)
+    print(measurements)
     # If `measurements` are specified but do not include pq, add.
     if measurements:
-        if fmask_band not in measurements:
-            measurements.append(fmask_band)
+        #pass if FC
+        if product_type == 'fc':
+            pass
+        else:
+            if fmask_band not in measurements:
+                measurements.append(fmask_band)
     
     # Get list of data and mask bands so that we can later exclude
     # mask bands from being masked themselves
-    data_bands = [band for band in measurements if band not in (fmask_band)]
-    mask_bands = [band for band in measurements if band not in data_bands]
+    if product_type == 'fc':
+        pass
+    else:
+        data_bands = [band for band in measurements if band not in (fmask_band)]
+        mask_bands = [band for band in measurements if band not in data_bands]
     
     #################
     # Find datasets #
-    #################
+    #################l
     
     # Pull out query params only to pass to dc.find_datasets
     query = _dc_query_only(**kwargs)
     
     # Extract datasets for each product using subset of dcload_kwargs
     dataset_list = []
-
+    
+    if product_type == 'fc':
+        dataset_list_fc_pq = []
+     
     # Get list of datasets for each product
     print('Finding datasets')
     for product in products:
@@ -292,7 +323,7 @@ def load_ard(dc,
         # Obtain list of datasets for product
         print(f'    {product}')
         datasets = dc.find_datasets(product=product, **query)
-
+        
         # Remove Landsat 7 SLC-off observations if ls7_slc_off=False
         if not ls7_slc_off and product in ['ls7_usgs_sr_scene', 
                                            'usgs_ls7e_level2_2']:
@@ -301,8 +332,8 @@ def load_ard(dc,
                         datetime.datetime(2003, 5, 31)]
 
         # Add any returned datasets to list
-        dataset_list.extend(datasets)
-
+        dataset_list.extend(datasets)       
+    
     # Raise exception if no datasets are returned
     if len(dataset_list) == 0:
         raise ValueError("No data available for query: ensure that "
@@ -314,41 +345,59 @@ def load_ard(dc,
     if predicate:
         print(f'Filtering datasets using filter function')
         dataset_list = [ds for ds in dataset_list if predicate(ds)]
-
+            
     # Raise exception if filtering removes all datasets
     if len(dataset_list) == 0:
         raise ValueError("No data available after filtering with "
                          "filter function")
+    
+    #load fmask from C2 for masking FC, and filter if required
+    if product_type == 'fc':
+        print('    PQ data from USGS C2')
+        fc_pq_datasets = dc.find_datasets(product='usgs_ls8c_level2_2', **query)
+        dataset_list_fc_pq.extend(fc_pq_datasets)
+        
+        if predicate:
+            dataset_list = [ds for ds in dataset_list_fc_pq if predicate(ds)]
 
     #############
     # Load data #
     #############
-
     # Note we always load using dask here so that
     # we can lazy load data before filtering by good data
     ds = dc.load(datasets=dataset_list,
                  measurements=measurements,
                  dask_chunks={} if dask_chunks is None else dask_chunks,
                  **kwargs)
-    
+#     print(ds)
+    if product_type == 'fc':
+        ds_fc_pq = dc.load(datasets=dataset_list_fc_pq,
+                           dask_chunks={} if dask_chunks is None else dask_chunks,
+                           **kwargs)
+        
     ####################
     # Filter good data #
     ####################
     
     #need to distinguish between products due to different
-    # "fmask" band properties                     
+    # pq band properties                     
     
-    #collection 2 USGS
-    if product_type == 'c2':
+    #collection 2 USGS or FC
+    if (product_type == 'c2') or (product_type == 'fc'):
         if pq_categories_ls is None:
             quality_flags_prod = {'cloud_shadow': 'not_cloud_shadow',
                                   'cloud_or_cirrus': 'not_cloud_or_cirrus',
                                    'nodata': False}
         else:
             quality_flags_prod = pq_categories_ls
-
-        pq_mask = masking.make_mask(ds[fmask_band], 
-                                    **quality_flags_prod)
+        
+        if product_type == 'fc':
+            pq_mask = masking.make_mask(ds_fc_pq[fmask_band], 
+                                        **quality_flags_prod)
+        else:
+            pq_mask = masking.make_mask(ds[fmask_band], 
+                                        **quality_flags_prod)
+            
     # collection 1 USGS                    
     if product_type == 'c1':
         if pq_categories_ls is None:
@@ -397,13 +446,18 @@ def load_ard(dc,
         mask = pq_mask
 
     # Split into data/masks bands, as conversion to float and masking 
-    # should only be applied to data bands
-    ds_data = ds[data_bands]
-    ds_masks = ds[mask_bands]
+    # should only be applied to data bands (unless loading FC, as data and
+    # mask are already a seperate product)
+    if product_type == 'fc':
+        ds_data = odc.algo.keep_good_only(ds, where=mask)
     
-    # Mask data if either of the above masks were generated
-    if mask is not None:
-        ds_data = odc.algo.keep_good_only(ds_data, where=mask)
+    else:    
+        ds_data = ds[data_bands]
+        ds_masks = ds[mask_bands]
+    
+        # Mask data if either of the above masks were generated
+        if mask is not None:
+            ds_data = odc.algo.keep_good_only(ds_data, where=mask)
     
     # Automatically set dtype to either native or float32 depending
     # on whether masking was requested
@@ -415,11 +469,16 @@ def load_ard(dc,
     if dtype != 'native':
         ds_data = odc.algo.to_float(ds_data, dtype=dtype)
     
-     # Put data and mask bands back together
-    attrs = ds.attrs
-    ds = xr.merge([ds_data, ds_masks])
-    ds.attrs.update(attrs)
-    
+    # Put data and mask bands back together
+    if product_type == 'fc':
+        attrs = ds.attrs
+        ds = ds_data
+        ds.attrs.update(attrs)
+    else:
+        attrs = ds.attrs
+        ds = xr.merge([ds_data, ds_masks])
+        ds.attrs.update(attrs)
+
     ###############
     # Return data #
     ###############
