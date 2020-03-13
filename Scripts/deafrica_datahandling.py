@@ -97,17 +97,6 @@ def _common_bands(dc, products):
             common = common.intersection(set(p.measurements))
     return [band for band in bands if band in common]
 
-# def removekey(d, key):
-#     '''
-#     funtion to remove 'measurements' from
-#     the kwargs dictionary so they dont
-#     conflict with loading the correct measurements
-#     for the cloud dataset
-#     '''
-#     r = dict(d)
-#     del r[key]
-#     return r
-
     
 def load_ard(dc,
              products=None,
@@ -260,7 +249,7 @@ def load_ard(dc,
                          
     # If `measurements` are specified but do not include pixel quality bands,
     #  add these to `measurements` according to collection
-    if product_type == 'c2':
+    if (product_type == 'c2') or (product_type == 'fc'):
         print('Using pixel quality parameters for USGS Collection 2')
         fmask_band = 'quality_l2_aerosol'
                         
@@ -272,10 +261,6 @@ def load_ard(dc,
         print('Using pixel quality parameters for Sentinel 2')
         fmask_band = 'scl'
     
-    elif product_type == 'fc':
-        print('Using pixel quality parameters for USGS Collection 2')
-        fmask_band = 'quality_l2_aerosol'
-    
     measurements = requested_measurements.copy() if requested_measurements else None
     
     # Deal with "load all" case: pick a set of bands common across 
@@ -285,7 +270,7 @@ def load_ard(dc,
             measurements = ['pv', 'npv', 'bs', 'ue']
         else:
             measurements = _common_bands(dc, products)
-    print(measurements)
+    
     # If `measurements` are specified but do not include pq, add.
     if measurements:
         #pass if FC
@@ -351,7 +336,10 @@ def load_ard(dc,
         raise ValueError("No data available after filtering with "
                          "filter function")
     
-    #load fmask from C2 for masking FC, and filter if required
+    # load fmask from C2 for masking FC, and filter if required
+    # NOTE: This works because only one sensor (ls8) has FC, if/when
+    # FC is calculated for LS7, LS5, will need to move this section
+    # into the for loop above.
     if product_type == 'fc':
         print('    PQ data from USGS C2')
         fc_pq_datasets = dc.find_datasets(product='usgs_ls8c_level2_2', **query)
@@ -369,7 +357,7 @@ def load_ard(dc,
                  measurements=measurements,
                  dask_chunks={} if dask_chunks is None else dask_chunks,
                  **kwargs)
-#     print(ds)
+   
     if product_type == 'fc':
         ds_fc_pq = dc.load(datasets=dataset_list_fc_pq,
                            dask_chunks={} if dask_chunks is None else dask_chunks,
