@@ -297,8 +297,8 @@ def get_training_data_for_shp(polygons,
                               zonal_stats=None,
                               collection='c1'):
     """
-    Function to extract data for training classifier using a shapefile 
-    of labelled polygons. Currently works for single time steps.
+    Function to extract data for training a classifier using a shapefile 
+    of labelled polygons.
 
     Parameters
     ----------
@@ -306,6 +306,9 @@ def get_training_data_for_shp(polygons,
         polygon data in the form of a geopandas geodataframe
     out : list
         Empty list to contain output data.
+    products : list
+        a list of products ot load from the datacube. 
+        e.g. ['ls8_usgs_sr_scene', 'ls7_usgs_sr_scene']
     dc_query : dictionary
         Datacube query object, should not contain lat and long (x or y)
         variables as these are supplied by the 'polygons' variable
@@ -315,13 +318,10 @@ def get_training_data_for_shp(polygons,
     calc_indices: list, optional
         An optional list giving the names of any remote sensing indices 
         to be calculated on the loaded data (e.g. `['NDWI', 'NDVI']`. 
-        If indices are provided, then the spectral bands will be dropped
-        in favour of the band indices.
     reduce_func : string, optional 
         Function to reduce the data from multiple time steps to
-        a single timestep, this will only apply if calc_indices is not None.
-        Options are 'mean', 'median', or 'geomedian'
-    drop : booleam, optional 
+        a single timestep. Options are 'mean'
+    drop : booleam, optional , 'median', or 'geomedian'
         If this variable is set to True, and 'calc_indices' are supplied, the
         spectral bands will be dropped from the dataset leaving only the
         band indices as data variables in the dataset. Default is False.
@@ -331,8 +331,8 @@ def get_training_data_for_shp(polygons,
         values are 'mean' or 'median' 
     collection: string, optional
         to calculate band indices, the satellite collection is required.
-        Options include 'c1' for Landsat C1, 'c2', for Landsat C2, and 
-        's2', for Sentinel 2.
+        Options include 'c1' for Landsat C1, 'c2' for Landsat C2, and 
+        's2' for Sentinel 2.
 
     Returns
     --------
@@ -340,14 +340,14 @@ def get_training_data_for_shp(polygons,
     each pixel or polygon.
 
     """
-    # hide print statements
+    #prevent function altering dictionary kwargs
     dc_query = deepcopy(dc_query)
     dc = datacube.Datacube(app='training_data')
 
     # loop through polys and extract training data
     for index, row in polygons.iterrows():
 
-        # set up query based on polygon
+        # set up query based on polygon (convert to WGS84)
         geom = geometry.Geometry(
             polygons.geometry.values[0].__geo_interface__, geometry.CRS(
                 'epsg:4326'))
@@ -418,6 +418,10 @@ def get_training_data_for_shp(polygons,
         # when band indices are not required, reduce the
         # dataset to a 2d array through means or (geo)medians
         if calc_indices is None:
+            if (len(ds.time.values) > 1) and (reduce_func==None):
+                raise ValueError("You're dataset has "+ str(len(ds.time.values)) + 
+                                 "time-steps, please provide a reduction function, e.g. reduce_func='mean'")
+                
             if len(ds.time.values) > 1:
                 if reduce_func == 'geomedian':
                     print('Taking geomedian of measurements')
@@ -443,11 +447,13 @@ def get_training_data_for_shp(polygons,
             # Make a labelled array of identical size
             flat_val = np.repeat(row[field], flat_train.shape[0])
             stacked = np.hstack((np.expand_dims(flat_val, axis=1), flat_train))
+        
         elif zonal_stats == 'mean':
             print('Taking zonal mean of polygon')
             flat_train = data.mean(axis=None, skipna=True)
             flat_train = flat_train.to_array()
             stacked = np.hstack((row[field], flat_train))
+        
         elif zonal_stats == 'median':
             print('Taking zonal median of indices')
             flat_train = data.median(axis=None, skipna=True)
