@@ -432,21 +432,19 @@ def load_ard(dc,
     if mask_pixel_quality:
         print('Applying pixel quality/cloud mask')
         mask = pq_mask
-
-    # Split into data/masks bands, as conversion to float and masking 
-    # should only be applied to data bands (unless loading FC, as data and
-    # mask are already a seperate product)
-    if product_type == 'fc':
-        ds_data = odc.algo.keep_good_only(ds, where=mask)
     
-    else:    
+    # Split into data/masks bands, as conversion to float and masking 
+    # should only be applied to data bands    
+    if product_type == 'fc':
+        ds_data=ds
+    else:
         ds_data = ds[data_bands]
         ds_masks = ds[mask_bands]
-    
-        # Mask data if either of the above masks were generated
-        if mask is not None:
+
+    # Mask data if either of the above masks were generated
+    if mask is not None:  
             ds_data = odc.algo.keep_good_only(ds_data, where=mask)
-    
+
     # Automatically set dtype to either native or float32 depending
     # on whether masking was requested
     if dtype == 'auto':
@@ -465,6 +463,7 @@ def load_ard(dc,
     else:
         attrs = ds.attrs
         ds = xr.merge([ds_data, ds_masks])
+        ds = ds_data
         ds.attrs.update(attrs)
 
     ###############
