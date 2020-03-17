@@ -813,7 +813,18 @@ def mostcommon_crs(dc, product, query):
     
     """
     
+    # remove dask_chunks & align to prevent func failing
+    #prevent function altering dictionary kwargs
+    query = deepcopy(query)
+    if 'dask_chunks' in query:
+        query.pop('dask_chunks', None)
+    
+    if 'align' in query:
+        query.pop('align', None)
+    
     # List of matching products
+    dask_chunks = query.pop('dask_chunks', None)
+    
     matching_datasets = dc.find_datasets(product=product, **query)
     
     # Extract all CRSs
