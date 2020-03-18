@@ -297,9 +297,6 @@ def load_ard(dc,
     
     # Extract datasets for each product using subset of dcload_kwargs
     dataset_list = []
-    
-    if product_type == 'fc':
-        dataset_list_fc_pq = []
      
     # Get list of datasets for each product
     print('Finding datasets')
@@ -341,12 +338,13 @@ def load_ard(dc,
     # FC is calculated for LS7, LS5, will need to move this section
     # into the for loop above.
     if product_type == 'fc':
+              
         print('    PQ data from USGS C2')
-        fc_pq_datasets = dc.find_datasets(product='usgs_ls8c_level2_2', **query)
-        dataset_list_fc_pq.extend(fc_pq_datasets)
+        dataset_list_fc_pq = dc.find_datasets(product='usgs_ls8c_level2_2', **query)
         
         if predicate:
-            dataset_list = [ds for ds in dataset_list_fc_pq if predicate(ds)]
+            print(f'Filtering datasets using filter function')
+            dataset_list_fc_pq = [ds for ds in dataset_list_fc_pq if predicate(ds)]
 
     #############
     # Load data #
@@ -367,10 +365,10 @@ def load_ard(dc,
     # Filter good data #
     ####################
     
-    #need to distinguish between products due to different
+    # need to distinguish between products due to different
     # pq band properties                     
     
-    #collection 2 USGS or FC
+    # collection 2 USGS or FC
     if (product_type == 'c2') or (product_type == 'fc'):
         if pq_categories_ls is None:
             quality_flags_prod = {'cloud_shadow': 'not_cloud_shadow',
