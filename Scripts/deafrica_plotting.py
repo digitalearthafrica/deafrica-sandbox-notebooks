@@ -31,12 +31,11 @@ Last modified: March 2020
 
 # Import required packages
 import calendar
-import folium  
+import folium
 import math
 import numpy as np
 import ipywidgets
 import geopandas as gpd
-import matplotlib as mpl
 import matplotlib.patheffects as PathEffects
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -44,9 +43,7 @@ from datetime import datetime
 from pyproj import Proj, transform
 from IPython.display import display
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from matplotlib.colors import ListedColormap
-from ipyleaflet import Map, Marker, Popup, GeoJSON, basemaps, Choropleth
+from ipyleaflet import Map, Popup, GeoJSON, basemaps, Choropleth
 from skimage import exposure
 from branca.colormap import linear
 from odc.ui import image_aspect
@@ -294,8 +291,8 @@ def display_map(x, y, crs='EPSG:4326', margin=-0.5, zoom_bias=0):
     # Convert each corner coordinates to lat-lon
     all_x = (x[0], x[1], x[0], x[1])
     all_y = (y[0], y[0], y[1], y[1])
-    all_longitude, all_latitude = transform(Proj(init=crs),
-                                            Proj(init='EPSG:4326'), 
+    all_longitude, all_latitude = transform(Proj(crs),
+                                            Proj('EPSG:4326'), 
                                             all_x, all_y)
 
     # Calculate zoom level based on coordinates
