@@ -575,16 +575,14 @@ def mostcommon_crs(dc, product, query):
     if 'align' in query:
         query.pop('align', None)
     
-    # List of matching products
-    dask_chunks = query.pop('dask_chunks', None)
-    
+    # List of matching products    
     matching_datasets = dc.find_datasets(product=product, **query)
     
     # Extract all CRSs
     crs_list = [str(i.crs) for i in matching_datasets]    
    
     # Identify most common CRS
-    crs_counts = Counter(crs_list)    
+    crs_counts = Counter(crs_list)
     crs_mostcommon = crs_counts.most_common(1)[0][0]
 
     # Warn user if multiple CRSs are encountered

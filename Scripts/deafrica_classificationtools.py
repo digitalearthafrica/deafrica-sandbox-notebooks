@@ -24,7 +24,6 @@ Last modified: Feb 2020
 '''
 
 
-
 import numpy as np
 import xarray as xr
 import geopandas as gpd
@@ -286,6 +285,19 @@ def predict_xr(model, input_xr, progress=True):
     return output_xr
 
 
+class HiddenPrints:
+    """
+    For concealing unwanted print statements called by other functions
+    """
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, 'w')
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout
+
+
 def get_training_data_for_shp(polygons,
                               out,
                               products,
@@ -344,8 +356,19 @@ def get_training_data_for_shp(polygons,
     dc_query = deepcopy(dc_query)
     dc = datacube.Datacube(app='training_data')
 
+    #set up some print statements
+    i = 0
+    if calc_indices is not None:
+            print("Calculating indices: " + str(calc_indices))
+    if reduce_func is not None:
+            print("Reducing data using: " + reduce_func)
+    if zonal_stats is not None:
+            print("Taking zonal statistic: "+ zonal_stats)
+    
     # loop through polys and extract training data
     for index, row in polygons.iterrows():
+        print(" Feature {:04}/{:04}\r".format(i + 1, len(polygons)), 
+              end='')
 
         # set up query based on polygon (convert to WGS84)
         geom = geometry.Geometry(
@@ -356,20 +379,22 @@ def get_training_data_for_shp(polygons,
 
         # merge polygon query with user supplied query params
         dc_query.update(q)
-
+        
         # Identify the most common projection system in the input query
         output_crs = mostcommon_crs(dc=dc, product=products, query=dc_query)
         
+        #load_ard doesn't handle geomedians
         if 'ga_ls8c_gm_2_annual' in products:
             ds = dc.load(product='ga_ls8c_gm_2_annual', **dc_query)
             
         else:
             # load data
-            ds = load_ard(dc=dc,
-                          products=products,
-                          output_crs=output_crs,
-                          **dc_query)
-
+            with HiddenPrints():
+                ds = load_ard(dc=dc,
+                              products=products,
+                              output_crs=output_crs,
+                              **dc_query)
+            
         # create polygon mask
         mask = rasterio.features.geometry_mask(
             [geom.to_crs(ds.geobox.crs) for geoms in [geom]],
@@ -383,37 +408,48 @@ def get_training_data_for_shp(polygons,
 
         # Check if band indices are wanted
         if calc_indices is not None:
-            print("Calculating indices: " + str(calc_indices))
 
             if len(ds.time.values) > 1:
                 
                 if reduce_func == 'geomedian':
                     data = GeoMedian().compute(ds)
-                    data = calculate_indices(data,
-                                             index=calc_indices,
-                                             drop=drop,
-                                             collection=collection)
-                
-                if reduce_func == 'mean':
-                    data = calculate_indices(ds,
-                                             index=calc_indices,
-                                             drop=drop,
-                                             collection=collection)
+                    with HiddenPrints():
+                        data = calculate_indices(data,
+                                                 index=calc_indices,
+                                                 drop=drop,
+                                                 collection=collection)
+
+                elif reduce_func == 'std':
+                    with HiddenPrints():
+                        data = calculate_indices(ds,
+                                                 index=calc_indices,
+                                                 drop=drop,
+                                                 collection=collection)
+                    data = data.std('time')
+                    
+                elif reduce_func == 'mean':
+                    with HiddenPrints():
+                        data = calculate_indices(ds,
+                                                 index=calc_indices,
+                                                 drop=drop,
+                                                 collection=collection)
 
                     data = data.mean('time')
 
-                if reduce_func == 'median':
+                elif reduce_func == 'median':
+                    with HiddenPrints():
+                        data = calculate_indices(ds,
+                                                 index=calc_indices,
+                                                 drop=drop,
+                                                 collection=collection)
+
+                    data = data.median('time')
+            else:
+                with HiddenPrints():
                     data = calculate_indices(ds,
                                              index=calc_indices,
                                              drop=drop,
                                              collection=collection)
-
-                    data = data.median('time')
-            else:
-                data = calculate_indices(ds,
-                                         index=calc_indices,
-                                         drop=drop,
-                                         collection=collection)
 
         # when band indices are not required, reduce the
         # dataset to a 2d array through means or (geo)medians
@@ -424,15 +460,15 @@ def get_training_data_for_shp(polygons,
                 
             if len(ds.time.values) > 1:
                 if reduce_func == 'geomedian':
-                    print('Taking geomedian of measurements')
                     data = GeoMedian().compute(ds)
                 
                 if reduce_func == 'mean':
-                    print('Taking temporal mean of measurements')
                     data = ds.mean('time')
+                
+                if reduce_func == 'std':
+                    data = ds.std('time')
 
                 if reduce_func == 'median':
-                    print('Taking temporal median of measurements')
                     data = ds.median('time')
 
             else:
@@ -440,7 +476,7 @@ def get_training_data_for_shp(polygons,
 
         # compute in case we have dask arrays
         data = data.compute()
-
+        
         if zonal_stats is None:
             # If no summary stats were requested then extract all pixel values
             flat_train = sklearn_flatten(data)
@@ -449,21 +485,20 @@ def get_training_data_for_shp(polygons,
             stacked = np.hstack((np.expand_dims(flat_val, axis=1), flat_train))
         
         elif zonal_stats == 'mean':
-            print('Taking zonal mean of polygon')
             flat_train = data.mean(axis=None, skipna=True)
             flat_train = flat_train.to_array()
             stacked = np.hstack((row[field], flat_train))
         
         elif zonal_stats == 'median':
-            print('Taking zonal median of indices')
             flat_train = data.median(axis=None, skipna=True)
             flat_train = flat_train.to_array()
             stacked = np.hstack((row[field], flat_train))
 
         # Append training data and label to list
         out.append(stacked)
-
+        i+=1
     # Return a list of labels for columns in output array
+    
     return [field] + list(data.data_vars)
 
 
