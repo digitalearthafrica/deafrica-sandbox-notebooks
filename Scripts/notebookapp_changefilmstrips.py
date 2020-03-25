@@ -6,7 +6,7 @@ change filmstrips notebook, inside the Real_world_examples folder.
 Available functions:
     run_filmstrip_app
 
-Last modified: January 2020
+Last modified: March 2020
 '''
 
 # Load modules
@@ -28,9 +28,9 @@ from datacube.utils.dask import start_local_dask
 
 # Load utility functions
 sys.path.append('../Scripts')
-from dea_datahandling import load_ard
-from dea_coastaltools import tidal_tag
-from dea_datahandling import mostcommon_crs
+from deafrica_datahandling import load_ard
+from deafrica_coastaltools import tidal_tag
+from deafrica_datahandling import mostcommon_crs
 
 
 def run_filmstrip_app(output_name,
@@ -43,7 +43,7 @@ def run_filmstrip_app(output_name,
                       size_limit=100):
     '''
     An interactive app that allows the user to select a region from a
-    map, then load Digital Earth Australia Landsat data and combine it
+    map, then load Digital Earth Africa Landsat data and combine it
     using the geometric median ("geomedian") statistic to reveal the 
     median or 'typical' appearance of the landscape for a series of 
     time periods.
@@ -57,7 +57,7 @@ def run_filmstrip_app(output_name,
     only satellite images obtained during a specific tidal range 
     (e.g. low, average or high tide).
     
-    Last modified: January 2020
+    Last modified: March 2020
 
     Parameters
     ----------  
@@ -150,7 +150,7 @@ def run_filmstrip_app(output_name,
     # Test if centre_coords is in the global namespace;
     # use default value if it isn't
     if 'centre_coords' not in globals():
-        centre_coords = (-33.9719, 151.1934)
+        centre_coords = (6.604482, 1.556594)
     
     # Plot interactive map to select area
     geopolygon = select_on_a_map(height='600px', 
@@ -161,7 +161,7 @@ def run_filmstrip_app(output_name,
     centre_coords = geopolygon.centroid.points[0][::-1]
 
     # Test size of selected area
-    area = (geopolygon.to_crs(crs = CRS('epsg:3577')).area / 
+    area = (geopolygon.to_crs(crs = CRS('epsg:6933')).area / 
             (size_limit * 1000000))
     radius = np.round(np.sqrt(size_limit), 1)
     if area > size_limit: 
@@ -177,7 +177,7 @@ def run_filmstrip_app(output_name,
         
         # Obtain native CRS 
         crs = mostcommon_crs(dc=dc, 
-                             product='ga_ls5t_ard_3', 
+                             product='ls5_usgs_sr_scene', 
                              query={'time': '1990', 
                                     'geopolygon': geopolygon})
         
@@ -185,20 +185,20 @@ def run_filmstrip_app(output_name,
         query = {'time': time_range,
                  'geopolygon': geopolygon,
                  'output_crs': crs,
-                 'gqa_iterative_mean_xy': [0, 1],
-                 'cloud_cover': [0, max_cloud],
+                 #'gqa_iterative_mean_xy': [0, 1],
+                 #'cloud_cover': [0, max_cloud],
                  'resolution': resolution,
-                 'dask_chunks': {'x': 500, 'y': 500},
+                 'dask_chunks': {'x': 3000, 'y': 3000},
                  'align': (resolution[1] / 2.0, resolution[1] / 2.0)}
 
         # Load data from all three Landsats
         ds = load_ard(dc=dc, 
-                      measurements=['nbart_red', 
-                                    'nbart_green', 
-                                    'nbart_blue'],  
-                      products=['ga_ls5t_ard_3', 
-                                'ga_ls7e_ard_3', 
-                                'ga_ls8c_ard_3'], 
+                      measurements=['red', 
+                                    'green', 
+                                    'blue'],  
+                      products=['ls5_usgs_sr_scene', 
+                                'ls7_usgs_sr_scene', 
+                                'ls8_usgs_sr_scene'], 
                       min_gooddata=0.0,
                       ls7_slc_off=ls7_slc_off,
                       **query)
@@ -249,8 +249,8 @@ def run_filmstrip_app(output_name,
         ############
         
         # Convert to array and extract vmin/vmax
-        output_array = ds_geomedian[['nbart_red', 'nbart_green',
-                                    'nbart_blue']].to_array()
+        output_array = ds_geomedian[['red', 'green',
+                                    'blue']].to_array()
         percentiles = output_array.quantile(q=(0.02, 0.98)).values
 
         # Create the plot with one subplot more than timesteps in the 
