@@ -30,9 +30,9 @@ import warnings
 import ipywidgets as widgets
 
 # Load utility functions
-from dea_datahandling import load_ard
-from dea_spatialtools import transform_geojson_wgs_to_epsg
-from dea_bandindices import calculate_indices
+from deafrica_datahandling import load_ard
+from deafrica_spatialtools import transform_geojson_wgs_to_epsg
+from deafrica_bandindices import calculate_indices
 
 
 def load_crophealth_data():
@@ -53,8 +53,8 @@ def load_crophealth_data():
     dc = datacube.Datacube(app='Crophealth-app')
 
     # Specify latitude and longitude ranges
-    latitude = (-24.974997, -24.995971)
-    longitude = (152.429994, 152.395805)
+    latitude = (6.408277867516571, 6.414674907508778)
+    longitude = (-0.0953364372253418, -0.08649587631225586)
 
     # Specify the date range
     # Calculated as today's date, subtract 90 days to match NRT availability
@@ -65,21 +65,20 @@ def load_crophealth_data():
     time = (start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
 
     # Construct the data cube query
-    products = ["s2a_ard_granule", "s2b_ard_granule"]
+    products = ["s2a_msil2a", "s2b_msil2a"]
     
     query = {
         'x': longitude,
         'y': latitude,
         'time': time,
         'measurements': [
-            'nbar_red',
-            'nbar_green',
-            'nbar_blue',
-            'nbar_nir_1',
-            'nbar_swir_2',
-            'nbar_swir_3'
+            'red',
+            'green',
+            'blue',
+            'nir_1',
+            'swir_2'
         ],
-        'output_crs': 'EPSG:3577',
+        'output_crs': 'EPSG:6933',
         'resolution': (-10, 10)
     }
 
@@ -89,7 +88,7 @@ def load_crophealth_data():
     # Calculate the normalised difference vegetation index (NDVI) across
     # all pixels for each image.
     # This is stored as an attribute of the data
-    ds_s2 = calculate_indices(ds_s2, index='NDVI', collection='ga_s2_1')
+    ds_s2 = calculate_indices(ds_s2, index='NDVI', collection='s2')
 
     # Return the data
     return(ds_s2)
@@ -134,16 +133,31 @@ def run_crophealth_app(ds):
             "type": "Polygon",
             "coordinates": [
                 [
-                    [152.395805, -24.995971],
-                    [152.395805, -24.974997],
-                    [152.429994, -24.974997],
-                    [152.429994, -24.995971],
-                    [152.395805, -24.995971]
+                    [
+                        -0.0953364372253418,
+                        6.408277867516571
+                    ],
+                    [
+                        -0.08649587631225586,
+                        6.408277867516571
+                    ],
+                    [
+                        -0.08649587631225586,
+                        6.414674907508778
+                    ],
+                    [
+                        -0.0953364372253418,
+                        6.414674907508778
+                    ],
+                    [
+                        -0.0953364372253418,
+                        6.408277867516571
+                    ]
                 ]
             ]
         }
     }
-
+    
     # Create a map geometry from the geom_obj dictionary
     # center specifies where the background map view should focus on
     # zoom specifies how zoomed in the background map should be
@@ -206,13 +220,13 @@ def run_crophealth_app(ds):
         if geo_json['geometry']['type'] == 'Polygon':
 
             info.clear_output(wait=True)  # wait=True reduces flicker effect
-            with info:
-                print("Plot status: polygon sucessfully added to plot.")
+#             with info:
+#                 print("Plot status: polygon sucessfully added to plot.")
 
             # Convert the drawn geometry to pixel coordinates
             geom_selectedarea = transform_geojson_wgs_to_epsg(
                 geo_json,
-                EPSG=3577  # hard-coded to be same as case-study data
+                EPSG=6933  # hard-coded to be same as case-study data
             )
 
             # Construct a mask to only select pixels within the drawn polygon
@@ -227,6 +241,9 @@ def run_crophealth_app(ds):
             masked_ds = ds.NDVI.where(mask)
             masked_ds_mean = masked_ds.mean(dim=['x', 'y'], skipna=True)
             colour = colour_list[polygon_number % len(colour_list)]
+            
+            with info:
+                print(masked_ds_mean)
 
             # Add a layer to the map to make the most recently drawn polygon
             # the same colour as the line on the plot
