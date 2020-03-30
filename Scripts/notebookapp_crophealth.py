@@ -28,10 +28,12 @@ import xarray as xr
 from IPython.display import display
 import warnings
 import ipywidgets as widgets
+import geojson
+import geopandas as gpd
 
 # Load utility functions
 from deafrica_datahandling import load_ard
-from deafrica_spatialtools import transform_geojson_wgs_to_epsg
+from deafrica_spatialtools import xr_rasterize
 from deafrica_bandindices import calculate_indices
 
 
@@ -220,30 +222,24 @@ def run_crophealth_app(ds):
         if geo_json['geometry']['type'] == 'Polygon':
 
             info.clear_output(wait=True)  # wait=True reduces flicker effect
-#             with info:
-#                 print("Plot status: polygon sucessfully added to plot.")
+            
+            # Save geojson to file to be rasterized later
+            polyfile = '../Supplementary_data/Crop_health/polygon.geojson'
+            with open(polyfile, 'w') as f:
+                geojson.dump(geo_json, f)
+                
+            # Read the polygon as a geopandas dataframe
+            gdf = gpd.read_file(polyfile)
+            gdf.crs = "EPSG:4326"
 
             # Convert the drawn geometry to pixel coordinates
-            geom_selectedarea = transform_geojson_wgs_to_epsg(
-                geo_json,
-                EPSG=6933  # hard-coded to be same as case-study data
-            )
+            xr_poly = xr_rasterize(gdf, ds.NDVI.isel(time=0), crs='EPSG:6933')
 
             # Construct a mask to only select pixels within the drawn polygon
-            mask = geometry_mask(
-                [geom_selectedarea for geoms in [geom_selectedarea]],
-                out_shape=ds.geobox.shape,
-                transform=ds.geobox.affine,
-                all_touched=False,
-                invert=True
-            )
-
-            masked_ds = ds.NDVI.where(mask)
+            masked_ds = ds.NDVI.where(xr_poly)
+            
             masked_ds_mean = masked_ds.mean(dim=['x', 'y'], skipna=True)
             colour = colour_list[polygon_number % len(colour_list)]
-            
-            with info:
-                print(masked_ds_mean)
 
             # Add a layer to the map to make the most recently drawn polygon
             # the same colour as the line on the plot
@@ -276,6 +272,9 @@ def run_crophealth_app(ds):
             fig_display.clear_output(wait=True)  # wait=True reduces flicker effect
             with fig_display:
                 display(fig)
+                
+            with info:
+                print("Plot status: polygon sucessfully added to plot.")
 
             # Iterate the polygon number before drawing another polygon
             polygon_number = polygon_number + 1
