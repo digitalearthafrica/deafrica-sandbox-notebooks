@@ -372,7 +372,7 @@ def get_training_data_for_shp(polygons,
 
         # set up query based on polygon (convert to WGS84)
         geom = geometry.Geometry(
-            polygons.geometry.values[0].__geo_interface__, geometry.CRS(
+            polygons.geometry.values[index].__geo_interface__, geometry.CRS(
                 'epsg:4326'))
 
         q = {"geopolygon": geom}
