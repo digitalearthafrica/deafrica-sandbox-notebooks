@@ -304,10 +304,10 @@ def get_training_data_for_shp(polygons,
                               dc_query,
                               field=None,
                               calc_indices=None,
-                              reduce_func='median',
+                              reduce_func=None,
                               drop=True,
                               zonal_stats=None,
-                              collection='c1'):
+                              collection=None):
     """
     Function to extract data for training a classifier using a shapefile 
     of labelled polygons.
@@ -374,7 +374,7 @@ def get_training_data_for_shp(polygons,
         geom = geometry.Geometry(
             polygons.geometry.values[index].__geo_interface__, geometry.CRS(
                 'epsg:4326'))
-
+        #print(geom)    
         q = {"geopolygon": geom}
 
         # merge polygon query with user supplied query params
@@ -386,6 +386,7 @@ def get_training_data_for_shp(polygons,
         #load_ard doesn't handle geomedians
         if 'ga_ls8c_gm_2_annual' in products:
             ds = dc.load(product='ga_ls8c_gm_2_annual', **dc_query)
+            ds = ds.where(ds!=0, np.nan)
             
         else:
             # load data
@@ -394,7 +395,7 @@ def get_training_data_for_shp(polygons,
                               products=products,
                               output_crs=output_crs,
                               **dc_query)
-            
+
         # create polygon mask
         mask = rasterio.features.geometry_mask(
             [geom.to_crs(ds.geobox.crs) for geoms in [geom]],
@@ -411,39 +412,26 @@ def get_training_data_for_shp(polygons,
 
             if len(ds.time.values) > 1:
                 
-                if reduce_func == 'geomedian':
+                if reduce_func in ['mean', 'median', 'std']:
+                    with HiddenPrints():
+                        data = calculate_indices(ds,
+                                                 index=calc_indices,
+                                                 drop=drop,
+                                                 collection=collection)
+                        method_to_call = getattr(data, reduce_func)
+                        data = method_to_call(dim='time')
+
+                elif reduce_func == 'geomedian':
                     data = GeoMedian().compute(ds)
                     with HiddenPrints():
                         data = calculate_indices(data,
                                                  index=calc_indices,
                                                  drop=drop,
                                                  collection=collection)
+                
+                else:
+                    raise Exception(f'{zonal_stats} is not one of the supported reduce functions ("std", "mean", "median")')
 
-                elif reduce_func == 'std':
-                    with HiddenPrints():
-                        data = calculate_indices(ds,
-                                                 index=calc_indices,
-                                                 drop=drop,
-                                                 collection=collection)
-                    data = data.std('time')
-                    
-                elif reduce_func == 'mean':
-                    with HiddenPrints():
-                        data = calculate_indices(ds,
-                                                 index=calc_indices,
-                                                 drop=drop,
-                                                 collection=collection)
-
-                    data = data.mean('time')
-
-                elif reduce_func == 'median':
-                    with HiddenPrints():
-                        data = calculate_indices(ds,
-                                                 index=calc_indices,
-                                                 drop=drop,
-                                                 collection=collection)
-
-                    data = data.median('time')
             else:
                 with HiddenPrints():
                     data = calculate_indices(ds,
@@ -459,18 +447,13 @@ def get_training_data_for_shp(polygons,
                                  "time-steps, please provide a reduction function, e.g. reduce_func='mean'")
                 
             if len(ds.time.values) > 1:
+                
                 if reduce_func == 'geomedian':
                     data = GeoMedian().compute(ds)
                 
-                if reduce_func == 'mean':
-                    data = ds.mean('time')
-                
-                if reduce_func == 'std':
-                    data = ds.std('time')
-
-                if reduce_func == 'median':
-                    data = ds.median('time')
-
+                elif reduce_func in ['mean', 'median', 'std']:
+                    method_to_call = getattr(ds, reduce_func)
+                    data = method_to_call('time')
             else:
                 data = ds.squeeze()
 
@@ -484,23 +467,21 @@ def get_training_data_for_shp(polygons,
             flat_val = np.repeat(row[field], flat_train.shape[0])
             stacked = np.hstack((np.expand_dims(flat_val, axis=1), flat_train))
         
-        elif zonal_stats == 'mean':
-            flat_train = data.mean(axis=None, skipna=True)
+        elif zonal_stats in ['mean', 'median', 'std']:
+            method_to_call = getattr(data, zonal_stats)
+            flat_train = method_to_call()
             flat_train = flat_train.to_array()
             stacked = np.hstack((row[field], flat_train))
         
-        elif zonal_stats == 'median':
-            flat_train = data.median(axis=None, skipna=True)
-            flat_train = flat_train.to_array()
-            stacked = np.hstack((row[field], flat_train))
-
+        else:
+            raise Exception(f'{zonal_stats} is not one of the supported reduce functions ("std", "mean", "median")')
+       
         # Append training data and label to list
         out.append(stacked)
         i+=1
     # Return a list of labels for columns in output array
     
     return [field] + list(data.data_vars)
-
 
 class KMeans_tree(ClusterMixin):
     """
