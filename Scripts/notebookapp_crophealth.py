@@ -168,7 +168,7 @@ def run_crophealth_app(ds):
         loadeddata_geometry.Centroid().GetY(),
         loadeddata_geometry.Centroid().GetX()
     ]
-    loadeddata_zoom = 14
+    loadeddata_zoom = 16
 
     # define the study area map
     studyarea_map = Map(
