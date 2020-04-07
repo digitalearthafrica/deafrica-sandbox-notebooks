@@ -28,8 +28,9 @@ import xarray as xr
 from IPython.display import display
 import warnings
 import ipywidgets as widgets
-import geojson
+import json
 import geopandas as gpd
+from io import BytesIO
 
 # Load utility functions
 from deafrica_datahandling import load_ard
@@ -59,7 +60,7 @@ def load_crophealth_data():
     longitude = (-0.0953364372253418, -0.08649587631225586)
 
     # Specify the date range
-    # Calculated as today's date, subtract 90 days to match NRT availability
+    # Calculated as today's date, subtract 365 days to collect a year of data
     # Dates are converted to strings as required by loading function below
     end_date = dt.date.today()
     start_date = end_date - dt.timedelta(days=365)
@@ -223,13 +224,14 @@ def run_crophealth_app(ds):
 
             info.clear_output(wait=True)  # wait=True reduces flicker effect
             
-            # Save geojson to file to be rasterized later
-            polyfile = '../Supplementary_data/Crop_health/polygon.geojson'
-            with open(polyfile, 'w') as f:
-                geojson.dump(geo_json, f)
-                
+            # Save geojson polygon to io temporary file to be rasterized later
+            jsonData = json.dumps(geo_json)
+            binaryData = jsonData.encode()
+            io = BytesIO(binaryData)
+            io.seek(0)
+            
             # Read the polygon as a geopandas dataframe
-            gdf = gpd.read_file(polyfile)
+            gdf = gpd.read_file(io)
             gdf.crs = "EPSG:4326"
 
             # Convert the drawn geometry to pixel coordinates
