@@ -6,7 +6,7 @@ change filmstrips notebook, inside the Real_world_examples folder.
 Available functions:
     run_filmstrip_app
 
-Last modified: March 2020
+Last modified: April 2020
 '''
 
 # Load modules
@@ -24,6 +24,7 @@ from dask.utils import parse_bytes
 from datacube.utils.geometry import CRS
 from datacube.utils.rio import configure_s3_access
 from datacube.utils.dask import start_local_dask
+from ipyleaflet import basemaps, basemap_to_tiles
 
 
 # Load utility functions
@@ -31,6 +32,7 @@ sys.path.append('../Scripts')
 from deafrica_datahandling import load_ard
 from deafrica_coastaltools import tidal_tag
 from deafrica_datahandling import mostcommon_crs
+from deafrica_dask import create_local_dask_cluster
 
 
 def run_filmstrip_app(output_name,
@@ -57,7 +59,7 @@ def run_filmstrip_app(output_name,
     only satellite images obtained during a specific tidal range 
     (e.g. low, average or high tide).
     
-    Last modified: March 2020
+    Last modified: April 2020
 
     Parameters
     ----------  
@@ -103,43 +105,6 @@ def run_filmstrip_app(output_name,
         
     '''    
     
-    #########
-    # Setup #
-    #########
-    
-    # Connect to datacube database
-    dc = datacube.Datacube(app='DEA_notebooks_template')    
-    
-    # Configure dashboard link to go over proxy
-    dask.config.set({"distributed.dashboard.link":
-                     os.environ.get('JUPYTERHUB_SERVICE_PREFIX', '/')+"proxy/{port}/status"});
-
-    # Figure out how much memory/cpu we really have (those are set by jupyterhub)
-    mem_limit = int(os.environ.get('MEM_LIMIT', '0'))
-    cpu_limit = float(os.environ.get('CPU_LIMIT', '0'))
-    cpu_limit = int(cpu_limit) if cpu_limit > 0 else 4
-    mem_limit = mem_limit if mem_limit > 0 else parse_bytes('8Gb')
-
-    # Leave 4Gb for notebook itself
-    mem_limit -= parse_bytes('4Gb')
-
-    # Close previous client if any, so that one can re-run this cell
-    client = locals().get('client', None)
-    if client is not None:
-        client.close()
-        del client
-
-    # Start dask client
-    client = start_local_dask(n_workers=1,
-                              threads_per_worker=cpu_limit, 
-                              memory_limit=mem_limit)
-    display(client)
-
-    # Configure GDAL for s3 access 
-    configure_s3_access(aws_unsigned=True,  
-                        client=client);
-
-    
     ########################
     # Select and load data #
     ########################
@@ -153,7 +118,9 @@ def run_filmstrip_app(output_name,
         centre_coords = (6.604482, 1.556594)
     
     # Plot interactive map to select area
-    geopolygon = select_on_a_map(height='600px', 
+    basemap = basemap_to_tiles(basemaps.Esri.WorldImagery)
+    geopolygon = select_on_a_map(height='600px',
+                                 layers=(basemap,), 
                                  center=centre_coords , zoom=12)
         
     # Set centre coords based on most recent selection to re-focus
@@ -174,6 +141,12 @@ def run_filmstrip_app(output_name,
     else:
         
         print('Starting analysis...')
+        
+        # Connect to datacube database
+        dc = datacube.Datacube(app='Change_filmstrips')   
+        
+        # Configure local dask cluster
+        create_local_dask_cluster()
         
         # Obtain native CRS 
         crs = mostcommon_crs(dc=dc, 
