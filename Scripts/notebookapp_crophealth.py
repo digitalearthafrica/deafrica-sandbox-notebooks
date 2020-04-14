@@ -56,14 +56,18 @@ def load_crophealth_data():
     dc = datacube.Datacube(app='Crophealth-app')
 
     # Specify latitude and longitude ranges
-    latitude = (6.408277867516571, 6.414674907508778)
-    longitude = (-0.0953364372253418, -0.08649587631225586)
+    lat = 5.841783 #5.447664 #6.408277867516571, 6.414674907508778
+    lon = -0.329838 #-2.155724 #-0.0953364372253418, -0.08649587631225586
+    buffer = 0.005
+    
+    latitude = (lat - buffer, lat + buffer)
+    longitude = (lon - buffer, lon + buffer)
 
     # Specify the date range
     # Calculated as today's date, subtract 365 days to collect a year of data
     # Dates are converted to strings as required by loading function below
     end_date = dt.date.today()
-    start_date = end_date - dt.timedelta(days=365)
+    start_date = end_date - dt.timedelta(days=730)
 
     time = (start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
 
@@ -114,6 +118,14 @@ def run_crophealth_app(ds):
 
     # Update plotting functionality through rcParams
     mpl.rcParams.update({'figure.autolayout': True})
+    
+    # Define polygon bounds   
+    lat = 5.841783 #5.447664 #6.408277867516571, 6.414674907508778
+    lon = -0.329838 #-2.155724 #-0.0953364372253418, -0.08649587631225586
+    buffer = 0.005
+    
+    latitude = (lat - buffer, lat + buffer)
+    longitude = (lon - buffer, lon + buffer)
 
     # Define the bounding box that will be overlayed on the interactive map
     # The bounds are hard-coded to match those from the loaded data
@@ -137,24 +149,24 @@ def run_crophealth_app(ds):
             "coordinates": [
                 [
                     [
-                        -0.0953364372253418,
-                        6.408277867516571
+                        longitude[0],
+                        latitude[0]
                     ],
                     [
-                        -0.08649587631225586,
-                        6.408277867516571
+                        longitude[1],
+                        latitude[0]
                     ],
                     [
-                        -0.08649587631225586,
-                        6.414674907508778
+                        longitude[1],
+                        latitude[1]
                     ],
                     [
-                        -0.0953364372253418,
-                        6.414674907508778
+                        longitude[0],
+                        latitude[1]
                     ],
                     [
-                        -0.0953364372253418,
-                        6.408277867516571
+                        longitude[0],
+                        latitude[0]
                     ]
                 ]
             ]
