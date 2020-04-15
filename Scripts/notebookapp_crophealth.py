@@ -56,8 +56,8 @@ def load_crophealth_data():
     dc = datacube.Datacube(app='Crophealth-app')
 
     # Specify latitude and longitude ranges
-    lat = 5.841783 #5.447664 #6.408277867516571, 6.414674907508778
-    lon = -0.329838 #-2.155724 #-0.0953364372253418, -0.08649587631225586
+    lat = 14.789064
+    lon = -17.065202
     buffer = 0.005
     
     latitude = (lat - buffer, lat + buffer)
@@ -72,33 +72,33 @@ def load_crophealth_data():
     time = (start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
 
     # Construct the data cube query
-    products = ["s2a_msil2a", "s2b_msil2a"]
+    products = ["ls8_usgs_sr_scene"]
     
     query = {
         'x': longitude,
         'y': latitude,
         'time': time,
-        'measurements': [
+                'measurements': [
             'red',
             'green',
             'blue',
-            'nir_1',
-            'swir_2'
+            'nir',
+            'swir2'
         ],
         'output_crs': 'EPSG:6933',
         'resolution': (-10, 10)
     }
 
     # Load the data and mask out bad quality pixels
-    ds_s2 = load_ard(dc, products=products, min_gooddata=0.5, **query)
+    ds = load_ard(dc, products=products, min_gooddata=0.5, **query)
 
     # Calculate the normalised difference vegetation index (NDVI) across
     # all pixels for each image.
     # This is stored as an attribute of the data
-    ds_s2 = calculate_indices(ds_s2, index='NDVI', collection='s2')
+    ds = calculate_indices(ds, index='NDVI', collection='s2')
 
     # Return the data
-    return(ds_s2)
+    return(ds)
 
 
 def run_crophealth_app(ds):
@@ -120,8 +120,8 @@ def run_crophealth_app(ds):
     mpl.rcParams.update({'figure.autolayout': True})
     
     # Define polygon bounds   
-    lat = 5.841783 #5.447664 #6.408277867516571, 6.414674907508778
-    lon = -0.329838 #-2.155724 #-0.0953364372253418, -0.08649587631225586
+    lat = 14.789064
+    lon = -17.065202
     buffer = 0.005
     
     latitude = (lat - buffer, lat + buffer)
