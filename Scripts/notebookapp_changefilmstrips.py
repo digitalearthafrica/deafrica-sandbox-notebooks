@@ -115,13 +115,13 @@ def run_filmstrip_app(output_name,
     # Test if centre_coords is in the global namespace;
     # use default value if it isn't
     if 'centre_coords' not in globals():
-        centre_coords = (6.604482, 1.556594)
+        centre_coords = (6.587292, 1.532833)
     
     # Plot interactive map to select area
     basemap = basemap_to_tiles(basemaps.Esri.WorldImagery)
     geopolygon = select_on_a_map(height='600px',
                                  layers=(basemap,), 
-                                 center=centre_coords , zoom=12)
+                                 center=centre_coords , zoom=14)
         
     # Set centre coords based on most recent selection to re-focus
     # subsequent data selections
