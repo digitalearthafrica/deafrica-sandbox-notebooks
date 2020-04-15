@@ -66,6 +66,7 @@ def get_era5_daily(var,date_from_arg,date_to_arg=None,reduce_func=None,cache_dir
     '''
     # Massage input data
     assert var in ERA5_VARS, "var must be one of [{}] (got {})".format(','.join(ERA5_VARS), var)
+    if not os.path.exists(cache_dir): os.mkdir(cache_dir)
     if reduce_func is None:
         reduce_func = np.mean
     if type(date_from_arg)==str: date_from_arg = parse(date_from_arg)
