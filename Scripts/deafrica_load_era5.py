@@ -2,6 +2,8 @@
 '''
 Description: A set of python functions to retrieve ERA5 gridded climiate data.
 
+Adpated from scripts by Andrew Cherry and Brian Killough.
+
 License: The code in this notebook is licensed under the Apache License,
 Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth 
 Africa data is licensed under the Creative Commons by Attribution 4.0 
@@ -17,7 +19,11 @@ If you would like to report an issue with this script, you can file one on
 Github https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues
 
 Functions included:
+    get_era5_daily
+    era5_area_crop
+    era5_area_nearest
     load_era5
+    
     
 Last modified: April 2020
 
@@ -116,7 +122,17 @@ def era5_area_crop(ds,lat,lon):
     return ds.sel(lat=lats,lon=lons)
 
 
-def load_era5(var, lat, lon, time, **kwargs):
+def era5_area_nearest(ds, lat, lon):
+    # alternative to the above crop method
+    # snap to nearest data grid
+    test = ds.sel(lat=lat, lon=lon, method='nearest')
+    lat_range = slice(test.lat.values[0], test.lat.values[1])
+    lon_range = slice(test.lon.values[0], test.lon.values[1])
+    return ds.sel(lat=lat_range, lon=lon_range)
+
+    
+def load_era5(var, lat, lon, time, grid='nearest', **kwargs):
     ds = get_era5_daily(var,time[0],time[1], **kwargs)
-    return era5_area_crop(ds, lat, lon).compute()
+    if grid == 'nearest': return era5_area_nearest(ds, lat, lon).compute()
+    else: return era5_area_crop(ds, lat, lon).compute()
 
