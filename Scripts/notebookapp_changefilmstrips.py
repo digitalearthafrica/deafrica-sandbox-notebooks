@@ -14,6 +14,7 @@ import os
 import sys
 import dask
 import datacube
+import warnings
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -88,14 +89,20 @@ def run_filmstrip_app(output_name,
         `resolution = (-30, 30)`, which will load data at 30 m pixel 
         resolution. Increasing this (e.g. to `resolution = (-100, 100)`) 
         can be useful for loading large spatial extents.
-    max_cloud : int, optional
+    max_cloud : float, optional
         This parameter can be used to exclude satellite images with 
-        excessive cloud. The default is `50`, which will keep all images 
+        excessive cloud. The default is `0.5`, which will keep all images 
         with less than 50% cloud.
     ls7_slc_off : bool, optional
         An optional boolean indicating whether to include data from 
         after the Landsat 7 SLC failure (i.e. SLC-off). Defaults to 
-        False, which removes all Landsat 7 observations > May 31 2003.    
+        False, which removes all Landsat 7 observations > May 31 2003.
+    size_limit : int, optional
+        An optional integer (in hectares) specifying the size limit 
+        for the data query. Queries larger than this size will receive
+        a warning that he data query is too large (and may
+        therefore result in memory errors).
+        
         
     Returns
     -------
@@ -128,8 +135,7 @@ def run_filmstrip_app(output_name,
     centre_coords = geopolygon.centroid.points[0][::-1]
 
     # Test size of selected area
-    area = (geopolygon.to_crs(crs = CRS('epsg:6933')).area / 
-            (size_limit * 1000000))
+    area = (geopolygon.to_crs(crs = CRS('epsg:6933')).area / 1000000)
     radius = np.round(np.sqrt(size_limit), 1)
     if area > size_limit: 
         print(f'Warning: Your selected area is {area:.00f} square '
@@ -158,13 +164,12 @@ def run_filmstrip_app(output_name,
         query = {'time': time_range,
                  'geopolygon': geopolygon,
                  'output_crs': crs,
-                 #'gqa_iterative_mean_xy': [0, 1],
-                 #'cloud_cover': [0, max_cloud],
                  'resolution': resolution,
                  'dask_chunks': {'x': 3000, 'y': 3000},
                  'align': (resolution[1] / 2.0, resolution[1] / 2.0)}
 
         # Load data from all three Landsats
+        warnings.filterwarnings("ignore")
         ds = load_ard(dc=dc, 
                       measurements=['red', 
                                     'green', 
@@ -172,7 +177,7 @@ def run_filmstrip_app(output_name,
                       products=['ls5_usgs_sr_scene', 
                                 'ls7_usgs_sr_scene', 
                                 'ls8_usgs_sr_scene'], 
-                      min_gooddata=0.0,
+                      min_gooddata=max_cloud,
                       ls7_slc_off=ls7_slc_off,
                       **query)
         
