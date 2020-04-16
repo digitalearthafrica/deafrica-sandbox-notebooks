@@ -86,7 +86,7 @@ def load_crophealth_data():
             'swir2'
         ],
         'output_crs': 'EPSG:6933',
-        'resolution': (-10, 10)
+        'resolution': (-30, 30)
     }
 
     # Load the data and mask out bad quality pixels
@@ -223,7 +223,7 @@ def run_crophealth_app(ds):
     with fig_display:
         plt.ioff()
         fig, ax = plt.subplots(figsize=(8, 6))
-        ax.set_ylim([-1, 1])
+        ax.set_ylim([0, 1])
 
     colour_list = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
@@ -278,7 +278,7 @@ def run_crophealth_app(ds):
             )
 
             # reset titles back to custom
-            ax.set_title("Average NDVI from Sentinel-2")
+            ax.set_title("Average NDVI from Landsat 8")
             ax.set_xlabel("Date")
             ax.set_ylabel("NDVI")
 
