@@ -567,7 +567,7 @@ def collect_training_data(gdf, products, dc_query, ncpus=1,
     This function executes the training data functions and tidies the results
     into a 'model_input' object containing stacked training data arrays
     with all NaNs removed. In the instance where ncpus > 1, a parallel version of the
-    function (functions are passed to mp.Pool())
+    function will be run (functions are passed to a mp.Pool())
     
     Parameters
     ----------
