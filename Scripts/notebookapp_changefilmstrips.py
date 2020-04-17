@@ -41,9 +41,9 @@ def run_filmstrip_app(output_name,
                       time_step,
                       tide_range=(0.0, 1.0),
                       resolution=(-30, 30),
-                      max_cloud=50,
+                      max_cloud=0.5,
                       ls7_slc_off=False,
-                      size_limit=100):
+                      size_limit=10000):
     '''
     An interactive app that allows the user to select a region from a
     map, then load Digital Earth Africa Landsat data and combine it
@@ -135,13 +135,13 @@ def run_filmstrip_app(output_name,
     centre_coords = geopolygon.centroid.points[0][::-1]
 
     # Test size of selected area
-    area = (geopolygon.to_crs(crs = CRS('epsg:6933')).area / 1000000)
+    msq_per_hectare = 10000
+    area = (geopolygon.to_crs(crs = CRS('epsg:6933')).area / msq_per_hectare)
     radius = np.round(np.sqrt(size_limit), 1)
     if area > size_limit: 
-        print(f'Warning: Your selected area is {area:.00f} square '
-              f'kilometers. \nPlease select an area of less than '
-              f'{size_limit} square kilometers (e.g. {radius} x {radius}'
-              f' km) . \nTo select a smaller area, re-run the cell '
+        print(f'Warning: Your selected area is {area:.00f} hectares. '
+              f'Please select an area of less than {size_limit} hectares.'
+              f'\nTo select a smaller area, re-run the cell '
               f'above and draw a new polygon.')
         
     else:
