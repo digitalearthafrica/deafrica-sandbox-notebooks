@@ -39,6 +39,7 @@ import warnings
 import numpy as np
 import xarray as xr
 import datetime
+import pytz
 
 from collections import Counter
 from datacube.storage import masking
@@ -311,7 +312,7 @@ def load_ard(dc,
                                            'usgs_ls7e_level2_2']:
             print('    Ignoring SLC-off observations for ls7')
             datasets = [i for i in datasets if i.time.begin <
-                        datetime.datetime(2003, 5, 31)]
+                        datetime.datetime(2003, 5, 31, tzinfo=pytz.UTC)]
 
         # Add any returned datasets to list
         dataset_list.extend(datasets)       
