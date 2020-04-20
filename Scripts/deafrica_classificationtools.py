@@ -1,8 +1,8 @@
 # deafrica_classificationtools.py
 '''
-Description: This file contains a set of python functions for applying 
-machine learning classifiying remote sensing data from Digital Earth 
-Africa
+Description: This file contains a set of python functions for conducting
+machine learning classification on remote sensing data from Digital Earth 
+Africa's Open Data Cube
 
 License: The code in this notebook is licensed under the Apache License, 
 Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth 
@@ -18,7 +18,7 @@ here: https://gis.stackexchange.com/questions/tagged/open-data-cube).
 If you would like to report an issue with this script, you can file one on 
 Github https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues
 
-Last modified: Feb 2020
+Last modified: April 2020
 
 
 '''
@@ -316,8 +316,8 @@ def get_training_data_for_shp(gdf,
                               zonal_stats=None):
     
     """
-    Function to extract data from the ODC for training a machine learning classifier using a geopandas 
-    geodataframe of labelled geometries. 
+    Function to extract data from the ODC for training a machine learning classifier 
+    using a geopandas geodataframe of labelled geometries. 
     This function provides a number of pre-defined methods for producing training data, 
     including calcuating band indices, reducing time series using several summary statistics, 
     and/or generating zonal statistics across polygons.  The 'custom_func' parameter provides 
@@ -338,11 +338,9 @@ def get_training_data_for_shp(gdf,
         A string containing the name of column with class labels. 
         Field must contain numeric values.
     out_arrs : list 
-        An empty Manage.list into which the training data arrays are stored.
-        This is handled by the 'get_training_data_parallel' function.
+        An empty list into which the training data arrays are stored.
     out_vars : list 
         An empty list into which the data varaible names are stored.
-        This is handled by the 'get_training_data_parallel' function.
     custom_func : function, optional 
         A custom function for generating feature layers. If this parameter
         is set, all other options (excluding 'zonal_stats'), will be ignored.
@@ -379,8 +377,8 @@ def get_training_data_for_shp(gdf,
     #prevent function altering dictionary kwargs
     dc_query = deepcopy(dc_query)
     
-    # remove dask chunks if supplied as using mulitprocessing
-    # for parallization  
+    # remove dask chunks if supplied as using 
+    # mulitprocessing for parallization  
     if 'dask_chunks' in dc_query.keys():
         dc_query.pop('dask_chunks', None)
     
@@ -441,7 +439,7 @@ def get_training_data_for_shp(gdf,
                 collection = 'c2'
             elif 'sr' in products[0]:
                 collection = 'c1'
-            elif 's2' in products:
+            elif 's2' in products[0]:
                 collection = 's2'
 
             if len(ds.time.values) > 1:
@@ -488,10 +486,6 @@ def get_training_data_for_shp(gdf,
                     data = method_to_call('time')
             else:
                 data = ds.squeeze()
-
-    # compute in case we have dask arrays
-    if 'dask_chunks' in dc_query.keys():
-        data = data.compute()
     
     if zonal_stats is None:
         # If no zonal stats were requested then extract all pixel values
@@ -600,9 +594,11 @@ def collect_training_data(gdf, products, dc_query, ncpus=1,
         #progress indicator
         print('Collecting training data in serial mode')
         i = 0
+        
         # list to store results
         results = []
         column_names = []
+        
         # loop through polys and extract training data
         for index, row in gdf.iterrows():
             print(" Feature {:04}/{:04}\r".format(i + 1, len(gdf)), 
