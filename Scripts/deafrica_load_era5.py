@@ -52,13 +52,12 @@ ERA5_VARS = [
         "sea_surface_temperature",
         "sea_surface_wave_from_direction",
         "sea_surface_wave_mean_period",
-        "sea_surface_wind_wave_from_direction",
         "significant_height_of_wind_and_swell_waves",
         "snow_density",
         "surface_air_pressure",        
     ]
 
-def get_era5_daily(var,date_from_arg,date_to_arg=None,reduce_func=None,cache_dir='era5'):
+def get_era5_daily(var,date_from_arg,date_to_arg=None,reduce_func=None,cache_dir='era5',resample='1D'):
     ''' 
     Return daily values from one of the ERA5 data vars 
     NOTE: The optional reduce_func arg lets you specify a function to apply to each day's worth of data.  
@@ -96,7 +95,12 @@ def get_era5_daily(var,date_from_arg,date_to_arg=None,reduce_func=None,cache_dir
     def prepro(ds):
         if 'time0' in ds.dims: ds=ds.rename({"time0":"time"})
         if 'time1' in ds.dims: ds=ds.rename({"time1":"time"}) # This should INTENTIONALLY error if both times are defined
-        return ds[[var]].sel(time=date_slice).resample(time='1D').reduce(reduce_func)
+        ds = ds[[var]]
+        output = ds.sel(time=date_slice).resample(time=resample).reduce(reduce_func)
+        output.attrs = ds.attrs
+        for v in output.data_vars:
+            output[v].attrs = ds[v].attrs
+        return output
     return xr.open_mfdataset(local_files,combine='by_coords',compat='equals',preprocess=prepro,parallel=True)
 
 def era5_area_crop(ds,lat,lon):
@@ -120,17 +124,24 @@ def era5_area_crop(ds,lat,lon):
     lons = ds.lon[np.logical_and(ds.lon>=min(lon),ds.lon<=max(lon))].values
     if len(lons)==0: 
         lons = np.unique(ds.lon.sel(lon=np.array(lon), method="nearest"))        
-    return ds.sel(lat=lats,lon=lons)
+    output = ds.sel(lat=lats,lon=lons)
+    output.attrs = ds.attrs
+    for var in output.data_vars:
+        output[var].attrs = ds[var].attrs
+    return output
 
 
 def era5_area_nearest(ds, lat, lon):
     # alternative to the above crop method
     # snap to nearest data grid
     test = ds.sel(lat=lat, lon=lon, method='nearest')
-    lat_range = slice(test.lat.values[0], test.lat.values[1])
-    lon_range = slice(test.lon.values[0], test.lon.values[1])
-    return ds.sel(lat=lat_range, lon=lon_range)
-
+    lat_range = slice(test.lat.max().values, test.lat.min().values)
+    lon_range = slice(test.lon.min().values, test.lon.max().values)
+    output = ds.sel(lat=lat_range, lon=lon_range)
+    output.attrs = ds.attrs
+    for var in output.data_vars:
+        output[var].attrs = ds[var].attrs
+    return output
     
 def load_era5(var, lat, lon, time, grid='nearest', **kwargs):
     ds = get_era5_daily(var,time[0],time[1], **kwargs)
