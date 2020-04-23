@@ -229,7 +229,7 @@ def xarray_plot_ndvi_boxplot_wofs_lineplot_over_time(dataset, resolution=None, c
     bp = ax.boxplot(filtered_formatted_data, widths=[box_width] * len(filtered_formatted_data),
                     positions=x_locs, patch_artist=True, boxprops=dict(facecolor=ndvi_box_color),
                     flierprops=dict(marker='o', markersize=0.25),
-                    manage_xticks=False)  # `manage_xticks=False` to avoid excessive padding on the x-axis.
+                    manage_ticks=False)  # `manage_ticks=False` to avoid excessive padding on the x-axis.
 
     # WOFS line
     wofs_formatted_data = xr.DataArray(np.full_like(plotting_data.wofs.values, np.nan))
@@ -733,11 +733,11 @@ def xarray_time_series_plot(dataset, plot_descs, x_coord='longitude',
                                         filtered_formatted_data.append(d[m])
                                 box_width = 0.5 * np.min(np.diff(x_locs)) \
                                     if len(x_locs) > 1 else 0.5
-                                # `manage_xticks=False` to avoid excessive padding on x-axis.
+                                # `manage_ticks=False` to avoid excessive padding on x-axis.
                                 bp = ax.boxplot(filtered_formatted_data,
                                                 widths=[box_width] * len(filtered_formatted_data),
                                                 positions=x_locs, patch_artist=True,
-                                                manage_xticks=False, **plot_kwargs)
+                                                manage_ticks=False, **plot_kwargs)
                                 plot_obj = bp['boxes'][0]
                             return plot_obj
 
