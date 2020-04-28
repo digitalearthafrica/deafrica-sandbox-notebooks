@@ -38,15 +38,27 @@ from deafrica_spatialtools import xr_rasterize
 from deafrica_bandindices import calculate_indices
 
 
-def load_crophealth_data():
+def load_crophealth_data(lat, lon, buffer):
     """
-    Loads Sentinel-2 analysis-ready data (ARD) product for the crop health
-    case-study area. The ARD product is provided for the last year.
-    Last modified: January 2020
+    Loads Landsat 8 analysis-ready data (ARD) product for the crop health
+    case-study area over the last two years.
+    Last modified: April 2020
+    
+    Parameters
+    ----------
+    lat: float
+        The central latitude to analyse
+    lon: float
+        The central longitude to analyse
+    buffer:
+         The number of square degrees to load around the central latitude and longitude. 
+         For reasonable loading times, set this as `0.1` or lower.
 
-    outputs
-    ds - data set containing combined, masked data from Sentinel-2a and -2b.
-    Masked values are set to 'nan'
+    Returns
+    ----------
+    ds: xarray.Dataset 
+        data set containing combined, masked data
+        Masked values are set to 'nan'
     """
     
     # Suppress warnings
@@ -54,17 +66,13 @@ def load_crophealth_data():
 
     # Initialise the data cube. 'app' argument is used to identify this app
     dc = datacube.Datacube(app='Crophealth-app')
-
-    # Specify latitude and longitude ranges
-    lat = 14.789064
-    lon = -17.065202
-    buffer = 0.005
     
+    # Define area to load
     latitude = (lat - buffer, lat + buffer)
     longitude = (lon - buffer, lon + buffer)
 
     # Specify the date range
-    # Calculated as today's date, subtract 365 days to collect a year of data
+    # Calculated as today's date, subtract 730 days to collect two years of data
     # Dates are converted to strings as required by loading function below
     end_date = dt.date.today()
     start_date = end_date - dt.timedelta(days=730)
@@ -101,16 +109,25 @@ def load_crophealth_data():
     return(ds)
 
 
-def run_crophealth_app(ds):
+def run_crophealth_app(ds, lat, lon, buffer):
     """
     Plots an interactive map of the crop health case-study area and allows
     the user to draw polygons. This returns a plot of the average NDVI value
     in the polygon area.
     Last modified: January 2020
     
-    inputs
-    ds - data set containing combined, masked data from Sentinel-2a and -2b.
-    Must also have an attribute containing the NDVI value for each pixel
+    Parameters
+    ----------
+    ds: xarray.Dataset 
+        data set containing combined, masked data
+        Masked values are set to 'nan'
+    lat: float
+        The central latitude corresponding to the area of loaded ds
+    lon: float
+        The central longitude corresponding to the area of loaded ds
+    buffer:
+         The number of square degrees to load around the central latitude and longitude. 
+         For reasonable loading times, set this as `0.1` or lower.
     """
     
     # Suppress warnings
@@ -120,10 +137,6 @@ def run_crophealth_app(ds):
     mpl.rcParams.update({'figure.autolayout': True})
     
     # Define polygon bounds   
-    lat = 14.789064
-    lon = -17.065202
-    buffer = 0.005
-    
     latitude = (lat - buffer, lat + buffer)
     longitude = (lon - buffer, lon + buffer)
 
