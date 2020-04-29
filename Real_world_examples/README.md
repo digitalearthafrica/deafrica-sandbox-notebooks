@@ -1,4 +1,4 @@
-# Case_studies
+# Real_world_examples
 
 These notebooks feature demonstrations of how Digital Earth Africa datasets can be used to address various problems.
 
