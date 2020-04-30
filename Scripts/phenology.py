@@ -53,7 +53,7 @@ def TIMESAT_stats(dataarray, time_dim='time'):
         else: # everything else
             pos_to_neg_fst_deriv[i] = False
     idxmos_potential_inds = data_inds[pos_to_neg_fst_deriv]
-    idxmos_subset_ind = np.argmax(data_np_arr[pos_to_neg_fst_deriv])
+    idxmos_subset_ind = np.nanargmax(data_np_arr[pos_to_neg_fst_deriv])
     idxmos = idxmos_potential_inds[idxmos_subset_ind]
     stats['Middle of Season'] = idxmos
     
@@ -62,13 +62,13 @@ def TIMESAT_stats(dataarray, time_dim='time'):
     # Determine BOS.
     # BOS is the first negative inflection point of the positive values 
     # of the first derivative starting after and ending at the MOS.
-    idxbos = data_inds_after_mos[np.argmax((pos_fst_deriv & neg_snd_deriv)[data_inds_after_mos])]
+    idxbos = data_inds_after_mos[np.nanargmax((pos_fst_deriv & neg_snd_deriv)[data_inds_after_mos])]
     stats['Beginning of Season'] = idxbos
     
     # Determine EOS.
     # EOS is the last positive inflection point of the negative values 
     # of the first derivative starting after and ending at the MOS.
-    idxeos = data_inds_after_mos[np.argmax((neg_fst_deriv & pos_snd_deriv)[data_inds_after_mos][::-1])]
+    idxeos = data_inds_after_mos[np.nanargmax((neg_fst_deriv & pos_snd_deriv)[data_inds_after_mos][::-1])]
     stats['End of Season'] = idxeos
     
     # Determine EOS-BOS.
