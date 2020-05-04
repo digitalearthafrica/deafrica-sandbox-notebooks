@@ -16,11 +16,11 @@ The Digital Earth Africa Notebooks repository (`deafrica-sandbox-notebooks`) hos
 
 The repository is based around the following directory structure (from simple to increasingly complex applications):
 
-1. [Beginners_guide](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Beginners_guide): *Introductory notebooks aimed at introducing Jupyter Notebooks and how to load, plot and interact with DEA data*
+1. [Beginners_guide](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Beginners_guide): *Introductory notebooks aimed at introducing Jupyter Notebooks and how to load, plot and interact with DE Africa data*
 
-2. [Datasets](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/update-readme/DCAL): *The notebooks in this folder have been transitioned from the ARDC to work on the DE Africa platform. They retain all the functionality of the ARDC implementations of these notebooks.*
+2. [DCAL](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/update-readme/DCAL): *The notebooks in this folder have been transitioned from the Africa Regional Data Cube (ARDC) to work on the DE Africa platform. They retain all the functionality of the ARDC implementations of these notebooks.*
 
-3. [Datasets](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Datasets): *Notebooks introducing DEA's satellite datasets and derived products, including how to load each dataset and any special features of the data*
+3. [Datasets](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Datasets): *Notebooks introducing DE Africa's satellite datasets and derived products, including how to load each dataset and any special features of the data*
 
 4. [Frequently_used_code](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Frequently_used_code): *A recipe book of simple code examples demonstrating how to perform common geospatial analysis tasks using DE Africa and open-source software*
 
@@ -63,8 +63,7 @@ The `deafrica-sandbox-notebooks` repository uses 'branches' to manage individual
 
 Once you have a notebook that is ready to be published on the ``master`` branch, you can submit a 'pull request' in the [Pull requests tab at the top of the repository](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/pulls). The default pull request template contains a check-list to ensure that all ``master`` branch Jupyter notebooks are consistent and well-documented so they can be understood by future users, and rendered correctly_ Please ensure that as many of these checklist items are complete as possible, or leave a comment in the pull request asking for help with any remaining checklist items.
 
-Draft pull requests
-^^^^^^^^^^^^^^^^^^^
+#### Draft pull requests
 
 For pull requests you would like help with or that are a work in progress, consider using Github's [draft pull request](https://github.blog/2019-02-14-introducing-draft-pull-requests/) feature. This indicates that your work is still a draft, allowing you to get feedback from other DE Africa users before it is published on the `master` branch.
 
