@@ -20,7 +20,7 @@ The repository is based around the following directory structure (from simple to
 
 2. [DCAL](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/update-readme/DCAL): *The notebooks in this folder have been transitioned from the Africa Regional Data Cube (ARDC) to work on the DE Africa platform. They retain all the functionality of the ARDC implementations of these notebooks.*
 
-3. [Datasets](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Datasets): *Notebooks introducing DE Africa's satellite datasets and derived products, including how to load each dataset and any special features of the data*
+3. [Datasets](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Datasets): *Notebooks introducing DE Africa's satellite datasets and derived products, including how to load each dataset and any special features of the data. Some external datasets that are useful for analysing and interpreting DE Africa products are also covered.*
 
 4. [Frequently_used_code](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Frequently_used_code): *A recipe book of simple code examples demonstrating how to perform common geospatial analysis tasks using DE Africa and open-source software*
 
@@ -28,7 +28,7 @@ The repository is based around the following directory structure (from simple to
 
 The supporting scripts and data for the notebooks are kept in the following directories:
 
-- [Scripts](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Scripts): *Python functions and algorithms for developed to assist in analysing DE Africa data (e.g. loading data, plotting, spatial analysis, machine learning)* 
+- [Scripts](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Scripts): *Python functions and algorithms developed to assist in analysing DE Africa data (e.g. loading data, plotting, spatial analysis, machine learning)* 
 
 - [Supplementary_data](https://github.com/GeoscienceAustralia/dea-notebooks/tree/master/Supplementary_data): *Supplementary files required for the analyses above (e.g. images, rasters, shapefiles, training data)*
 
@@ -61,7 +61,7 @@ The `deafrica-sandbox-notebooks` repository uses 'branches' to manage individual
 ### Publishing notebooks to the master branch
 
 
-Once you have a notebook that is ready to be published on the ``master`` branch, you can submit a 'pull request' in the [Pull requests tab at the top of the repository](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/pulls). The default pull request template contains a check-list to ensure that all ``master`` branch Jupyter notebooks are consistent and well-documented so they can be understood by future users, and rendered correctly_ Please ensure that as many of these checklist items are complete as possible, or leave a comment in the pull request asking for help with any remaining checklist items.
+Once you have a notebook that is ready to be published on the ``master`` branch, you can submit a 'pull request' in the [Pull requests tab at the top of the repository](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/pulls). The default pull request template contains a check-list to ensure that all ``master`` branch Jupyter notebooks are consistent and well-documented so they can be understood by future users, and rendered correctly. Please ensure that as many of these checklist items are complete as possible, or leave a comment in the pull request asking for help with any remaining checklist items.
 
 #### Draft pull requests
 
