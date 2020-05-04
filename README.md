@@ -1,11 +1,10 @@
 
-<img align="centre" src="Supplementary_data/PP-2702_DE_Africa_Logo_Inline_RGB.jpg">
+<img align="centre" src="Supplementary_data/PP-2702_DE_Africa_Logo_Inline_RGB.jpg" width="75%">
 
 # Digital Earth Africa Notebooks
-#################################
 
-<img align="left" src="https://img.shields.io/badge/License-Apache%202.0-blue.svg">
-<img align="left" src="https://opensource.org/licenses/Apache-2.0">
+<img align="left" src="https://img.shields.io/badge/License-Apache%202.0-blue.svg">.
+
 
 **License:** The code in this repository is licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0). Digital Earth Africa data is licensed under the [Creative Commons by Attribution 4.0 license](https://creativecommons.org/licenses/by/4.0/).
 
@@ -19,11 +18,13 @@ The repository is based around the following directory structure (from simple to
 
 1. [Beginners_guide](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Beginners_guide): *Introductory notebooks aimed at introducing Jupyter Notebooks and how to load, plot and interact with DEA data*
 
-2. [Datasets](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Datasets): *Notebooks introducing DEA's satellite datasets and derived products, including how to load each dataset and any special features of the data*
+2. [Datasets](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/update-readme/DCAL): *The notebooks in this folder have been transitioned from the ARDC to work on the DE Africa platform. They retain all the functionality of the ARDC implementations of these notebooks.*
 
-3. [Frequently_used_code](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Frequently_used_code): *A recipe book of simple code examples demonstrating how to perform common geospatial analysis tasks using DE Africa and open-source software*
+3. [Datasets](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Datasets): *Notebooks introducing DEA's satellite datasets and derived products, including how to load each dataset and any special features of the data*
 
-4. [Real_world_examples](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Real_world_examples): *More complex workflows demonstrating how DE Africa can be used to address real-world problems*
+4. [Frequently_used_code](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Frequently_used_code): *A recipe book of simple code examples demonstrating how to perform common geospatial analysis tasks using DE Africa and open-source software*
+
+5. [Real_world_examples](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Real_world_examples): *More complex workflows demonstrating how DE Africa can be used to address real-world problems*
 
 The supporting scripts and data for the notebooks are kept in the following directories:
 
@@ -34,24 +35,22 @@ The supporting scripts and data for the notebooks are kept in the following dire
 
 ---
 
-Getting started with DE Africa Notebooks
-==================================
+## Getting started with DE Africa Notebooks
+
 
 To get started with using `deafrica-sandbox-notebooks`, visit the DE Africa Notebooks [Wiki page](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/wiki). This page includes guides for getting started on the [DE Africa Sandbox](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/wiki#getting-started-on-the-de-africa-sandbox).
 
 Once you're set up, the main option for interacting with `deafrica-sandbox-notebooks` and contributing back to the repository is through:
 
-* **DE Africa notebooks using git**: Git is a version-control software designed to help track changes to files and collaborate with multiple users on a project. Using ``git`` is the recommended workflow for working with ``deafrica-sadbox-notebooks`` as it makes it easy to stay up to date with the latest versions of functions and code, and makes it impossible to lose your work. 
+* **DE Africa notebooks using git**: Git is a version-control software designed to help track changes to files and collaborate with multiple users on a project. Using ``git`` is the recommended workflow for working with ``deafrica-sandbox-notebooks`` as it makes it easy to stay up to date with the latest versions of functions and code, and makes it impossible to lose your work. 
 
   * Refer to the repository's [Guide to using DE Africa Notebooks with git](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/wiki/Guide-to-using-DE-Africa-Notebooks-with-git) wiki article.
 
-----------
+---
 
 ## Contributing to DE Africa Notebooks
-=============================
 
 ### Master and working branches
-
 
 The `deafrica-sandbox-notebooks` repository uses 'branches' to manage individuals' notebooks, and to allow easy publishing of notebooks ready to be shared. There are two main types of branches:
 
