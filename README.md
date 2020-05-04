@@ -1,7 +1,7 @@
 .. Notebook Gallery Instructions:
 
 
-.. image:: Supplementary_data/PP-2702 DE Africa Logo_Inline_RGB.jpg
+.. image:: Supplementary_data/PP-2702_DE_Africa_Logo_Inline_RGB.jpg
   :width: 900
   :alt: Digital Earth Australia logo
 
