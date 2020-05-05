@@ -1,5 +1,5 @@
 
-<img align="centre" src="Supplementary_data/PP-2702_DE_Africa_Logo_Inline_RGB.jpg" width="75%">
+<img align="centre" src="Supplementary_data/Github_banner.jpg" width="100%">
 
 # Digital Earth Africa Notebooks
 
