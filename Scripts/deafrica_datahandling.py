@@ -713,7 +713,7 @@ def _select_along_axis(values, idx, axis):
     return values[sl]
 
 
-def first(array: xr.DataArray, dim: str) -> xr.DataArray:
+def first(array: xr.DataArray, dim: str, index_name: str = None) -> xr.DataArray:
     """
     Finds the first occuring non-null value along the given dimension.
     
@@ -736,10 +736,12 @@ def first(array: xr.DataArray, dim: str) -> xr.DataArray:
     idx_first = np.argmax(~pd.isnull(array), axis=axis)
     reduced = array.reduce(_select_along_axis, idx=idx_first, axis=axis)
     reduced[dim] = array[dim].isel({dim: xr.DataArray(idx_first, dims=reduced.dims)})
+    if index_name is not None:
+        reduced[index_name] = xr.DataArray(idx_first, dims=reduced.dims)
     return reduced
 
 
-def last(array: xr.DataArray, dim: str) -> xr.DataArray:
+def last(array: xr.DataArray, dim: str, index_name: str = None) -> xr.DataArray:
     """
     Finds the last occuring non-null value along the given dimension.
     
@@ -749,6 +751,9 @@ def last(array: xr.DataArray, dim: str) -> xr.DataArray:
          The array to search.
     dim : str
         The name of the dimension to reduce by finding the last non-null value.
+    index_name : str, optional
+        If given, the name of a coordinate to be added containing the index
+        of where on the dimension the nearest value was found.
     
     Returns
     -------
@@ -763,10 +768,12 @@ def last(array: xr.DataArray, dim: str) -> xr.DataArray:
     idx_last = -1 - np.argmax(~pd.isnull(array)[rev], axis=axis)
     reduced = array.reduce(_select_along_axis, idx=idx_last, axis=axis)
     reduced[dim] = array[dim].isel({dim: xr.DataArray(idx_last, dims=reduced.dims)})
+    if index_name is not None:
+        reduced[index_name] = xr.DataArray(idx_last, dims=reduced.dims)
     return reduced
 
 
-def nearest(da: xr.DataArray, dim: str, target):
+def nearest(array: xr.DataArray, dim: str, target, index_name: str = None) -> xr.DataArray:
     """
     Finds the nearest values to a target label along the given dimension, for
     all other dimensions.
@@ -790,6 +797,9 @@ def nearest(da: xr.DataArray, dim: str, target):
         The name of the dimension to look for the target label.
     target : same type as array[dim]
         The value to look up along the given dimension.
+    index_name : str, optional
+        If given, the name of a coordinate to be added containing the index
+        of where on the dimension the nearest value was found.
     
     Returns
     -------
@@ -799,15 +809,14 @@ def nearest(da: xr.DataArray, dim: str, target):
         same name, containing the value of that dimension closest to the
         given target label.
     """
-def nearest(array: xr.DataArray, dim, target):
     before_target = slice(None, target)
     after_target = slice(target, None)
     
     da_before = array.sel({dim: before_target})
     da_after = array.sel({dim: after_target})
         
-    da_before = last(da_before, dim) if da_before[dim].shape[0] else None
-    da_after = first(da_after, dim) if da_after[dim].shape[0] else None
+    da_before = last(da_before, dim, index_name) if da_before[dim].shape[0] else None
+    da_after = first(da_after, dim, index_name) if da_after[dim].shape[0] else None
     
     if da_before is None and da_after is not None:
         return da_after
@@ -818,4 +827,8 @@ def nearest(array: xr.DataArray, dim, target):
     is_before_closer = abs(target - da_before[dim]) < abs(target - da_after[dim])
     nearest_array = xr.where(is_before_closer, da_before, da_after)
     nearest_array[dim] = xr.where(is_before_closer, da_before[dim], da_after[dim])
+    if index_name is not None:
+        nearest_array[index_name] = xr.where(is_before_closer, 
+                                             da_before[index_name], 
+                                             da_after[index_name])
     return nearest_array
