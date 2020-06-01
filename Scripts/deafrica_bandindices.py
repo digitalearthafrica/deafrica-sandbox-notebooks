@@ -81,7 +81,7 @@ def calculate_indices(ds,
         being used to calculate the index. This is necessary because 
         different collections use different names for bands covering 
         a similar spectra. Valid options are 'c1' (for USGS Collection
-        1) and 'c2' (for USGS Collection 2).
+        1),  'c2' (for USGS Collection 2) and 's2' (for Sentinel-2).
     custom_varname : str, optional
         By default, the original dataset will be returned with 
         a new index variable named after `index` (e.g. 'NDVI'). To 
