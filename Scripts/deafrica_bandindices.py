@@ -211,7 +211,7 @@ def calculate_indices(ds,
                   # Automated Water Extraction Index (shadows), Feyisa 2014
                   'AWEI_sh': lambda ds: (ds.blue + 2.5 * ds.green -
                                          1.5 * (ds.nir + ds.swir_1) -
-                                         0.25 * ds.swir2),
+                                         0.25 * ds.swir_2),
 
                   # Water Index, Fisher 2016
                   'WI': lambda ds: (1.7204 + 171 * ds.green + 3 * ds.red -
@@ -310,7 +310,16 @@ def calculate_indices(ds,
         elif collection == 's2':
             # Dictionary mapping full data names to simpler alias names
             bandnames_dict = {
-                'nir_1': 'nir'
+                'nir_1': 'nir',
+                'B02': 'blue',
+                'B03': 'green',
+                'B04': 'red',
+                'B05': 'red_edge_1',
+                'B06': 'red_edge_2',
+                'B07': 'red_edge_3',
+                'B08': 'nir',
+                'B11': 'swir_1',
+                'B12': 'swir_2',
             }
 
             # Rename bands in dataset to use simple names (e.g. 'red')            
