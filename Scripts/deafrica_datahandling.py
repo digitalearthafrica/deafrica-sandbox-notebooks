@@ -283,7 +283,7 @@ def load_ard(dc,
         else:
             if fmask_band not in measurements:
                 measurements.append(fmask_band)
-    
+   
     # Get list of data and mask bands so that we can later exclude
     # mask bands from being masked themselves
     if product_type == 'fc':
@@ -403,7 +403,7 @@ def load_ard(dc,
     if product_type == 's2':
         pq_mask = odc.algo.fmask_to_bool(ds[fmask_band],
                                      categories=pq_categories_s2)
-
+    
     # The good data percentage calculation has to load in all `fmask`
     # data, which can be slow. If the user has chosen no filtering
     # by using the default `min_gooddata = 0`, we can skip this step
@@ -446,7 +446,7 @@ def load_ard(dc,
     # Mask data if either of the above masks were generated
     if mask is not None:  
             ds_data = odc.algo.keep_good_only(ds_data, where=mask)
-
+    
     # Automatically set dtype to either native or float32 depending
     # on whether masking was requested
     if dtype == 'auto':
@@ -465,7 +465,6 @@ def load_ard(dc,
     else:
         attrs = ds.attrs
         ds = xr.merge([ds_data, ds_masks])
-        ds = ds_data
         ds.attrs.update(attrs)
 
     ###############
