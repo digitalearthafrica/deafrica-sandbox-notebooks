@@ -122,15 +122,14 @@ def load_ard(dc,
     optionally applies pixel quality masks, and drops time steps that 
     contain greater than a minimum proportion of good quality (e.g. non-
     cloudy or shadowed) pixels. 
-    The function supports loading the following DEA frica products:
+    The function supports loading the following DE Africa products:
     
         ls5_usgs_sr_scene
         ls7_usgs_sr_scene
         ls8_usgs_sr_scene
         usgs_ls8c_level2_2
         ga_ls8c_fractional_cover_2
-        s2a_msil2a
-        s2b_msil2a
+        s2_l2a
 
     Last modified: March 2020
     
@@ -143,7 +142,7 @@ def load_ard(dc,
         A list of product names to load data from. Valid options are
         Landsat C1: ['ls5_usgs_sr_scene', 'ls7_usgs_sr_scene', 'ls8_usgs_sr_scene'],
         Landsat C2: ['usgs_ls8c_level2_2']
-        Sentinel-2: ['s2a_msil2a', 's2b_msil2a']
+        Sentinel-2: ['s2_l2a']
     min_gooddata : float, optional
         An optional float giving the minimum percentage of good quality
         pixels required for a satellite observation to be loaded.
@@ -264,7 +263,7 @@ def load_ard(dc,
     
     elif product_type == 's2':
         print('Using pixel quality parameters for Sentinel 2')
-        fmask_band = 'scl'
+        fmask_band = 'SCL'
     
     measurements = requested_measurements.copy() if requested_measurements else None
     
