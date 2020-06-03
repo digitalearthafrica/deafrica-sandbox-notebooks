@@ -122,15 +122,14 @@ def load_ard(dc,
     optionally applies pixel quality masks, and drops time steps that 
     contain greater than a minimum proportion of good quality (e.g. non-
     cloudy or shadowed) pixels. 
-    The function supports loading the following DEA frica products:
+    The function supports loading the following DE Africa products:
     
         ls5_usgs_sr_scene
         ls7_usgs_sr_scene
         ls8_usgs_sr_scene
         usgs_ls8c_level2_2
         ga_ls8c_fractional_cover_2
-        s2a_msil2a
-        s2b_msil2a
+        s2_l2a
 
     Last modified: March 2020
     
@@ -143,7 +142,7 @@ def load_ard(dc,
         A list of product names to load data from. Valid options are
         Landsat C1: ['ls5_usgs_sr_scene', 'ls7_usgs_sr_scene', 'ls8_usgs_sr_scene'],
         Landsat C2: ['usgs_ls8c_level2_2']
-        Sentinel-2: ['s2a_msil2a', 's2b_msil2a']
+        Sentinel-2: ['s2_l2a']
     min_gooddata : float, optional
         An optional float giving the minimum percentage of good quality
         pixels required for a satellite observation to be loaded.
@@ -264,7 +263,7 @@ def load_ard(dc,
     
     elif product_type == 's2':
         print('Using pixel quality parameters for Sentinel 2')
-        fmask_band = 'scl'
+        fmask_band = 'SCL'
     
     measurements = requested_measurements.copy() if requested_measurements else None
     
@@ -284,7 +283,7 @@ def load_ard(dc,
         else:
             if fmask_band not in measurements:
                 measurements.append(fmask_band)
-    
+   
     # Get list of data and mask bands so that we can later exclude
     # mask bands from being masked themselves
     if product_type == 'fc':
@@ -402,9 +401,12 @@ def load_ard(dc,
                                     **quality_flags_prod)
     # sentinel 2                     
     if product_type == 's2':
-        pq_mask = odc.algo.fmask_to_bool(ds[fmask_band],
-                                     categories=pq_categories_s2)
-
+        #currently broken for mask band values >=8
+        #pq_mask = odc.algo.fmask_to_bool(ds[fmask_band],
+        #                             categories=pq_categories_s2)
+        flags_s2 = dc.list_measurements().loc[products[0]].loc[fmask_band]['flags_definition']['qa']['values']
+        pq_mask = ds[fmask_band].isin([int(k) for k,v in flags_s2.items() if v in pq_categories_s2])
+    
     # The good data percentage calculation has to load in all `fmask`
     # data, which can be slow. If the user has chosen no filtering
     # by using the default `min_gooddata = 0`, we can skip this step
@@ -447,7 +449,7 @@ def load_ard(dc,
     # Mask data if either of the above masks were generated
     if mask is not None:  
             ds_data = odc.algo.keep_good_only(ds_data, where=mask)
-
+    
     # Automatically set dtype to either native or float32 depending
     # on whether masking was requested
     if dtype == 'auto':
@@ -466,7 +468,6 @@ def load_ard(dc,
     else:
         attrs = ds.attrs
         ds = xr.merge([ds_data, ds_masks])
-        ds = ds_data
         ds.attrs.update(attrs)
 
     ###############
