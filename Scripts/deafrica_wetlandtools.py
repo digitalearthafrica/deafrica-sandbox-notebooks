@@ -72,7 +72,7 @@ import sys
 import xarray as xr
 from multiprocessing import Pool
 from datacube.storage.masking import make_mask
-from datacube.storage import masking
+from datacube.utils import masking
 from datacube.utils import geometry
 import datacube.utils.rio
 
