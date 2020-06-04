@@ -124,10 +124,9 @@ def _vsos(da, pos, method_sos='first'):
         # distance of values from median
         distance = pos_greenup - median
         # find index (argmin) where distance is smallest (ie this
-        # is where the median is for each pixel)
-        idx = allNaN_arg(distance, 'time', 'min').astype('int16')
+        # is where the median is for each pixel), use absolute values
+        idx = allNaN_arg(xr.ufuncs.fabs(distance), 'time', 'min').astype('int16')
         return pos_greenup.isel(time=idx)
-
 
 def _sos(vsos):
     """
@@ -170,7 +169,7 @@ def _veos(da, pos, method_eos='last'):
         # distance to the median
         distance = neg_senesce - median
         # index where median occurs
-        idx = allNaN_arg(distance, 'time', 'min').astype('int16')
+        idx = allNaN_arg(xr.ufuncs.fabs(distance), 'time', 'min').astype('int16')
         return neg_senesce.isel(time=idx)
 
 
@@ -327,7 +326,7 @@ def xr_phenology(da,
         
     if rolling_mean is not None:
         print('     Calculating rolling mean using '+str(rolling_mean)+ " time-steps" )
-        da = da.rolling(time=rolling_mean).mean()
+        da = da.rolling(time=rolling_mean, min_periods=1).mean()
 
     vpos = _vpos(da)
     pos = _pos(da)
