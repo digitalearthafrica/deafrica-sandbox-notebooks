@@ -39,8 +39,7 @@ from rasterio.features import geometry_mask
 from rasterio.features import rasterize
 from sklearn.cluster import KMeans
 from sklearn.base import ClusterMixin
-from datacube.storage.masking import make_mask
-from datacube.storage import masking
+from datacube.utils import masking
 from datacube.utils import geometry
 from datacube_stats.statistics import GeoMedian
 import rasterio
