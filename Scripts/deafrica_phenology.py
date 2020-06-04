@@ -4,11 +4,17 @@ This script contains functions for calculating land-surface
 phenology metrics on a time series of a vegetations index
 stored within an xarray.DataArray.
 
+----------  
+TO DO:
+- implement xr.polyfit once xarray releases version 0.16
+- Handle dask arrays once xarray releases version 0.16
+- Implement intergal-of-season statistic
 
 """
 
 from deafrica_datahandling import first, last
 import sys
+import dask
 import numpy as np
 import xarray as xr
 from scipy.stats import skew
@@ -204,15 +210,17 @@ def _ros(veos, vpos, eos, pos):
 
 def xr_phenology(da,
                  stats=[
-                     'SOS', 'POS', 'EOS', 'Trough', 'vSOS', 'vPOS', 'vEOS',
-                     'LOS', 'AOS', 'ROG', 'ROS'
+                     'SOS', 'POS', 'EOS', 'Trough', 'vSOS', 
+                     'vPOS', 'vEOS', 'LOS', 'AOS', 'ROG', 'ROS'
                  ],
                  method_sos='median',
                  method_eos='median',
+                 interpolate_na = False,
                  interpolate=False,
-                 interpolate_na=False,
-                 interp_method="linear",
-                 interp_interval='2W'):
+                 interp_method='linear',
+                 interp_interval='2W',
+                 rolling_mean = None):
+    
     """
     Obtain land surface phenology metrics from an
     xarray.DataArray containing a timeseries of a 
@@ -269,45 +277,57 @@ def xr_phenology(da,
         parameters. Options include 'linear' or 'nearest'.
     interp_interval : str
         The time interval to interpolate too. e.g '1D', '1W', 1M, '1Y'
+    rolling_mean : int
+        Whether to calulate a rolling average across the timeseries in order
+        to smooth out the timeseries. 'rolling_mean' should be set
+        to an integer that represents the length of the rolling window,
+        e.g. rolling_mean = 4 will calculate a rolling mean over a window
+        4 time-steps long.
 
     Outputs
     -------
         xarray.Dataset containing variables for the selected 
         phenology statistics 
-
+    
     """
-    # Check parameters before running calculations
-    if interp_method not in ('linear', 'nearest'):
-        raise ValueError(
-            "Currently only interp_methods 'nearest' and 'linear' are supported"
-        )
+    # Check inputs before running calculations
+    if dask.is_dask_collection(da):
+        raise TypeError(
+            " Dask arrays are not currently supported by this function, "+
+            "run da.compute() before passing dataArray."
+        ) 
 
     if method_sos != 'median':
         raise ValueError("Currently only method_sos 'median' is supported")
 
     if method_eos != 'median':
         raise ValueError("Currently only method_eos 'median' is supported")
-
+    
+    if interp_method not in ('linear', 'nearest'):
+            raise ValueError(
+                "Currently only interp_methods 'nearest' and 'linear' are supported"
+            )
+    
+    if interpolate == True and rolling_mean is not None:
+        raise ValueError("Cannot run both 'rolling_mean' and 'interpolate', "+
+                        "set one of these options to False or None")
+    
     # If stats supplied is not a list, convert to list.
     stats = stats if isinstance(stats, list) else [stats]
-
-    # Interpolate and/or fill NaNs
-    if (interpolate_na == True) & (interpolate == True):
+    
+    # Interpolate, fill NaNs, and/or caulctae rolling mean
+    if interpolate_na:
         print('removing NaNs')
         da = da.interpolate_na(dim='time', method=interp_method)
-
-        # resample time dim and interpolate values
+    
+    if interpolate:
         da = da.resample(time=interp_interval).interpolate(interp_method)
         print("    Interpolated dataset to " + str(len(da.time)) +
               " time-steps")
-
-    if (interpolate_na == False) & (interpolate == True):
-        da = da.resample(time=interp_interval).interpolate(interp_method)
-        print("Interpolated dataset to " + str(len(da.time)) + " time-steps")
-
-    if (interpolate_na == True) & (interpolate == False):
-        print('removing NaNs')
-        da = da.interpolate_na(dim='time', method=interp_method)
+        
+    if rolling_mean is not None:
+        print('     Calculating rolling mean using '+str(rolling_mean)+ " time-steps" )
+        da = da.rolling(time=rolling_mean).mean()
 
     vpos = _vpos(da)
     pos = _pos(da)
