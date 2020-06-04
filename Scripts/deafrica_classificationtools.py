@@ -172,7 +172,7 @@ def sklearn_unflatten(output_np, input_xr):
     # use the mask to put the data in all the right places
     output_ma = np.ma.empty((len(stacked.z), *output_px_shape))
     output_ma[~mask] = output_np
-    output_ma.mask = mask
+    output_ma[mask] = np.ma.masked
 
     # set the stacked coordinate to match the input
     output_xr = xr.DataArray(output_ma, coords={'z': stacked['z']},
