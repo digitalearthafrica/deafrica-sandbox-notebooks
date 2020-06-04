@@ -216,9 +216,10 @@ def xr_phenology(da,
                  method_eos='median',
                  interpolate_na = False,
                  interpolate=False,
+                 rolling_mean = None,
                  interp_method='linear',
-                 interp_interval='2W',
-                 rolling_mean = None):
+                 interp_interval='2W'
+                 ):
     
     """
     Obtain land surface phenology metrics from an
@@ -306,10 +307,6 @@ def xr_phenology(da,
             raise ValueError(
                 "Currently only interp_methods 'nearest' and 'linear' are supported"
             )
-    
-    if interpolate == True and rolling_mean is not None:
-        raise ValueError("Cannot run both 'rolling_mean' and 'interpolate', "+
-                        "set one of these options to False or None")
     
     # If stats supplied is not a list, convert to list.
     stats = stats if isinstance(stats, list) else [stats]
