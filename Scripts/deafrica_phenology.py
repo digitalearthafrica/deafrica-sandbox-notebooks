@@ -12,14 +12,13 @@ TO DO:
 
 """
 
-from deafrica_datahandling import first, last
+
 import sys
 import dask
 import numpy as np
 import xarray as xr
-from scipy.stats import skew
 sys.path.append('../Scripts')
-
+from deafrica_datahandling import first, last
 
 def allNaN_arg(xarr, dim, stat):
     """
@@ -187,7 +186,9 @@ def _los(da, eos, sos):
     los = eos - sos
     # handle negative values
     los = xr.where(
-        los >= 0, los, da.time.dt.dayofyear.values[-1] +
+        los >= 0,
+        los, 
+        da.time.dt.dayofyear.values[-1] +
         (eos.where(los < 0) - sos.where(los < 0)))
 
     return los
