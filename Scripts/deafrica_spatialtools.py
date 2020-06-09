@@ -813,6 +813,7 @@ def random_sampling(da,
                              "'equal_stratified_random', 'random', or 'manual'") 
     
     #open the dataset as a pandas dataframe
+    da = da.squeeze()
     df = da.to_dataframe(name='class')
     
     #list to store points
