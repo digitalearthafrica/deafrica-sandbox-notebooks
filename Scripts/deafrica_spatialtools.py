@@ -827,7 +827,7 @@ def random_sampling(da,
         
         for _class in class_ratio['class']:
             #use relative proportions of classes to sample df
-            no_of_points = total_points * class_ratio[class_ratio['class']==_class]['proportion'].values[0]
+            no_of_points = n * class_ratio[class_ratio['class']==_class]['proportion'].values[0]
             #random sample each class
             print('Class '+ str(_class)+ ': sampling at '+ str(round(no_of_points)) + ' coordinates')
             sample_loc = df[df['class'] == _class].sample(n=int(round(no_of_points)))
@@ -838,7 +838,7 @@ def random_sampling(da,
         
         for _class in classes:
             #use relative proportions of classes to sample df
-            no_of_points = total_points / len(classes)
+            no_of_points = n / len(classes)
             #random sample each classes
             try:
                 sample_loc = df[df['class'] == _class].sample(n=int(round(no_of_points)))
@@ -850,7 +850,7 @@ def random_sampling(da,
                         pass
     
     if sampling == 'random':
-        no_of_points = total_points
+        no_of_points = n
         #random sample entire df
         print('Randomly sampling dataAraay at '+ str(round(no_of_points)) + ' coordinates')
         sample_loc = df.sample(n=int(round(no_of_points)))
