@@ -822,7 +822,7 @@ def random_sampling(da,
     if sampling == 'stratified_random':
         #determine class ratios in image
         class_ratio = pd.DataFrame({'proportion': df['class'].value_counts(normalize=True),
-                            'class':pd.unique(df['class'])
+                            'class':df['class'].dropna().unique()
                                  })
         
         for _class in class_ratio['class']:
@@ -834,7 +834,7 @@ def random_sampling(da,
             samples.append(sample_loc)
 
     if sampling == 'equal_stratified_random':
-        classes = pd.unique(df['class'])
+        classes = df['class'].dropna().unique()
         
         for _class in classes:
             #use relative proportions of classes to sample df
@@ -853,13 +853,13 @@ def random_sampling(da,
         no_of_points = n
         #random sample entire df
         print('Randomly sampling dataAraay at '+ str(round(no_of_points)) + ' coordinates')
-        sample_loc = df.sample(n=int(round(no_of_points)))
+        sample_loc = df.dropna().sample(n=int(round(no_of_points)))
         samples.append(sample_loc)
     
     if sampling == 'manual':
         if isinstance(manual_class_ratios, dict):
             #check classes in dict match classes in data
-            classes = pd.unique(df['class'])
+            classes = df['class'].dropna().unique()
             dict_classes = list(manual_class_ratios.keys())
             
             if set(dict_classes).issubset([str(i) for i in classes]):
@@ -907,3 +907,5 @@ def random_sampling(da,
     
     if out_fname is not None:
         gdf.to_file(out_fname)
+    
+    return gdf
