@@ -46,7 +46,7 @@ import datetime
 import pytz
 
 from collections import Counter
-from datacube.storage import masking
+from datacube.utils import masking
 from scipy.ndimage import binary_dilation
 from copy import deepcopy
 import odc.algo
