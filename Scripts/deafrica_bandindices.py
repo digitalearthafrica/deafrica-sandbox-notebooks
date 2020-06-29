@@ -81,7 +81,7 @@ def calculate_indices(ds,
         being used to calculate the index. This is necessary because 
         different collections use different names for bands covering 
         a similar spectra. Valid options are 'c1' (for USGS Collection
-        1) and 'c2' (for USGS Collection 2).
+        1),  'c2' (for USGS Collection 2) and 's2' (for Sentinel-2).
     custom_varname : str, optional
         By default, the original dataset will be returned with 
         a new index variable named after `index` (e.g. 'NDVI'). To 
@@ -153,12 +153,12 @@ def calculate_indices(ds,
                                        8 * (ds.nir - ds.red))**0.5) / 2),    
 
                   # Normalised Difference Moisture Index, Gao 1996
-                  'NDMI': lambda ds: (ds.nir - ds.swir1) /
-                                     (ds.nir + ds.swir1),
+                  'NDMI': lambda ds: (ds.nir - ds.swir_1) /
+                                     (ds.nir + ds.swir_1),
 
                   # Normalised Burn Ratio, Lopez Garcia 1991
-                  'NBR': lambda ds: (ds.nir - ds.swir2) /
-                                    (ds.nir + ds.swir2),
+                  'NBR': lambda ds: (ds.nir - ds.swir_2) /
+                                    (ds.nir + ds.swir_2),
 
                   # Burn Area Index, Martin 1998
                   'BAI': lambda ds: (1.0 / ((0.10 - ds.red) ** 2 +
@@ -170,74 +170,74 @@ def calculate_indices(ds,
                                      (ds.red_edge_1 + ds.red),
 
                   # Normalised Difference Snow Index, Hall 1995
-                  'NDSI': lambda ds: (ds.green - ds.swir1) /
-                                     (ds.green + ds.swir1),
+                  'NDSI': lambda ds: (ds.green - ds.swir_1) /
+                                     (ds.green + ds.swir_1),
 
                   # Normalised Difference Water Index, McFeeters 1996
                   'NDWI': lambda ds: (ds.green - ds.nir) /
                                      (ds.green + ds.nir),
 
                   # Modified Normalised Difference Water Index, Xu 2006
-                  'MNDWI': lambda ds: (ds.green - ds.swir1) /
-                                      (ds.green + ds.swir1),
+                  'MNDWI': lambda ds: (ds.green - ds.swir_1) /
+                                      (ds.green + ds.swir_1),
       
                   # Normalised Difference Built-Up Index, Zha 2003
-                  'NDBI': lambda ds: (ds.swir1 - ds.nir) /
-                                     (ds.swir1 + ds.nir),
+                  'NDBI': lambda ds: (ds.swir_1 - ds.nir) /
+                                     (ds.swir_1 + ds.nir),
       
                   # Built-Up Index, He et al. 2010
-                  'BUI': lambda ds:  ((ds.swir1 - ds.nir) /
-                                      (ds.swir1 + ds.nir)) -
+                  'BUI': lambda ds:  ((ds.swir_1 - ds.nir) /
+                                      (ds.swir_1 + ds.nir)) -
                                      ((ds.nir - ds.red) /
                                       (ds.nir + ds.red)),
       
                   # Built-up Area Extraction Index, Bouzekri et al. 2015
                   'BAEI': lambda ds: (ds.red + 0.3) /
-                                     (ds.green + ds.swir1),
+                                     (ds.green + ds.swir_1),
       
                   # New Built-up Index, Jieli et al. 2010
-                  'NBI': lambda ds: (ds.swir1 + ds.red) / ds.nir,
+                  'NBI': lambda ds: (ds.swir_1 + ds.red) / ds.nir,
       
                   # Bare Soil Index, Rikimaru et al. 2002
-                  'BSI': lambda ds: ((ds.swir1 + ds.red) - 
+                  'BSI': lambda ds: ((ds.swir_1 + ds.red) - 
                                      (ds.nir + ds.blue)) / 
-                                    ((ds.swir1 + ds.red) + 
+                                    ((ds.swir_1 + ds.red) + 
                                      (ds.nir + ds.blue)),
 
                   # Automated Water Extraction Index (no shadows), Feyisa 2014
-                  'AWEI_ns': lambda ds: (4 * (ds.green - ds.swir1) -
-                                        (0.25 * ds.nir * + 2.75 * ds.swir2)),
+                  'AWEI_ns': lambda ds: (4 * (ds.green - ds.swir_1) -
+                                        (0.25 * ds.nir * + 2.75 * ds.swir_2)),
 
                   # Automated Water Extraction Index (shadows), Feyisa 2014
                   'AWEI_sh': lambda ds: (ds.blue + 2.5 * ds.green -
-                                         1.5 * (ds.nir + ds.swir1) -
-                                         0.25 * ds.swir2),
+                                         1.5 * (ds.nir + ds.swir_1) -
+                                         0.25 * ds.swir_2),
 
                   # Water Index, Fisher 2016
                   'WI': lambda ds: (1.7204 + 171 * ds.green + 3 * ds.red -
-                                    70 * ds.nir - 45 * ds.swir1 -
-                                    71 * ds.swir2),
+                                    70 * ds.nir - 45 * ds.swir_1 -
+                                    71 * ds.swir_2),
 
                   # Tasseled Cap Wetness, Crist 1985
                   'TCW': lambda ds: (0.0315 * ds.blue + 0.2021 * ds.green +
                                      0.3102 * ds.red + 0.1594 * ds.nir +
-                                    -0.6806 * ds.swir1 + -0.6109 * ds.swir2),
+                                    -0.6806 * ds.swir_1 + -0.6109 * ds.swir_2),
 
                   # Tasseled Cap Greeness, Crist 1985
                   'TCG': lambda ds: (-0.1603 * ds.blue + -0.2819 * ds.green +
                                      -0.4934 * ds.red + 0.7940 * ds.nir +
-                                     -0.0002 * ds.swir1 + -0.1446 * ds.swir2),
+                                     -0.0002 * ds.swir_1 + -0.1446 * ds.swir_2),
 
                   # Tasseled Cap Brightness, Crist 1985
                   'TCB': lambda ds: (0.2043 * ds.blue + 0.4158 * ds.green +
                                      0.5524 * ds.red + 0.5741 * ds.nir +
-                                     0.3124 * ds.swir1 + -0.2303 * ds.swir2),
+                                     0.3124 * ds.swir_1 + -0.2303 * ds.swir_2),
 
                   # Clay Minerals Ratio, Drury 1987
-                  'CMR': lambda ds: (ds.swir1 / ds.swir2),
+                  'CMR': lambda ds: (ds.swir_1 / ds.swir_2),
 
                   # Ferrous Minerals Ratio, Segal 1982
-                  'FMR': lambda ds: (ds.swir1 / ds.nir),
+                  'FMR': lambda ds: (ds.swir_1 / ds.nir),
 
                   # Iron Oxide Ratio, Segal 1982
                   'IOR': lambda ds: (ds.red / ds.blue)
@@ -290,37 +290,43 @@ def calculate_indices(ds,
                              "calculates indices using the correct spectral "
                              "bands")
         
-        elif collection == 'c2':
+        elif collection == 'c1':
 
             # Dictionary mapping full data names to simpler alias names
             bandnames_dict = {
-                'swir_1': 'swir1',
-                'swir_2': 'swir2',
+                'swir1': 'swir_1',
+                'swir2': 'swir_2',
             }
 
             # Rename bands in dataset to use simple names (e.g. 'red')            
             bands_to_rename = {
                 a: b for a, b in bandnames_dict.items() if a in ds.variables
             }
-            
-        elif collection == 's2':
-            bandnames_dict = {
-                "nir_1": "nir",
-                "swir_1": "swir1",
-                "swir_2": "swir2",
-            }
-          
-            # Rename bands in dataset to use simple names (e.g. 'red')            
-            bands_to_rename = {
-                a: b for a, b in bandnames_dict.items() if a in ds.variables
-            }
-            
-            
-        elif collection == 'c1':
-
+        
+        elif collection == 'c2':
             # Pass an empty dict as no bands need renaming
             bands_to_rename = {}
-            
+        
+        elif collection == 's2':
+            # Dictionary mapping full data names to simpler alias names
+            bandnames_dict = {
+                'nir_1': 'nir',
+                'B02': 'blue',
+                'B03': 'green',
+                'B04': 'red',
+                'B05': 'red_edge_1',
+                'B06': 'red_edge_2',
+                'B07': 'red_edge_3',
+                'B08': 'nir',
+                'B11': 'swir_1',
+                'B12': 'swir_2',
+            }
+
+            # Rename bands in dataset to use simple names (e.g. 'red')            
+            bands_to_rename = {
+                a: b for a, b in bandnames_dict.items() if a in ds.variables
+            }
+        
         # Raise error if no valid collection name is provided:
         else:
             raise ValueError(f"'{collection}' is not a valid option for "
