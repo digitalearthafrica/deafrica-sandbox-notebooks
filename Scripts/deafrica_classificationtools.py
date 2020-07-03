@@ -39,8 +39,7 @@ from rasterio.features import geometry_mask
 from rasterio.features import rasterize
 from sklearn.cluster import KMeans
 from sklearn.base import ClusterMixin
-from datacube.storage.masking import make_mask
-from datacube.storage import masking
+from datacube.utils import masking
 from datacube.utils import geometry
 from datacube_stats.statistics import GeoMedian
 import rasterio
@@ -173,7 +172,7 @@ def sklearn_unflatten(output_np, input_xr):
     # use the mask to put the data in all the right places
     output_ma = np.ma.empty((len(stacked.z), *output_px_shape))
     output_ma[~mask] = output_np
-    output_ma.mask = mask
+    output_ma[mask] = np.ma.masked
 
     # set the stacked coordinate to match the input
     output_xr = xr.DataArray(output_ma, coords={'z': stacked['z']},
