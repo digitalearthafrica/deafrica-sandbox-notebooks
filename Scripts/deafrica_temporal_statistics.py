@@ -289,8 +289,8 @@ def xr_phenology(
     ],
     method_sos="first",
     method_eos="last",
-    complete_method=None,
-    smooth_method=None,
+    complete=None,
+    smoothing=None,
 ):
     """
     Obtain land surface phenology metrics from an
@@ -361,9 +361,9 @@ def xr_phenology(
     stats = stats if isinstance(stats, list) else [stats]
 
     # complete timeseries
-    if complete_method is not None:
+    if complete is not None:
         
-        if complete_method=='fast_complete':
+        if complete=='fast_complete':
             
             if len(da.shape) == 1:
                 print("fast_complete does not operate on 1D timeseries, using 'linear' instead")
@@ -373,13 +373,13 @@ def xr_phenology(
                 print("Completing using fast_complete...")
                 da = fast_completion(da)
             
-        if complete_method=='linear':
+        if complete=='linear':
             print("Completing using linear interp...")
             da = da.interpolate_na(dim='time', method='linear')
 
-    if smooth_method is not None:
+    if smoothing is not None:
         
-        if smooth_method == "wiener":
+        if smoothing == "wiener":
             if len(da.shape) == 1:
                 print("wiener method does not operate on 1D timeseries, using 'rolling_mean' instead")
                 da = da.rolling(time=3, min_periods=1).mean()
@@ -388,11 +388,11 @@ def xr_phenology(
                 print("   Smoothing with wiener filter...")
                 da = smooth(da)
             
-        if smooth_method == "rolling_mean":
+        if smoothing == "rolling_mean":
             print("   Smoothing with rolling mean...")
             da = da.rolling(time=3, min_periods=1).mean()
             
-        if smooth_method == 'linear':
+        if smoothing == 'linear':
             print("    Smoothing using linear interpolation...")
             da = da.resample(time='1W').interpolate('linear')
             
