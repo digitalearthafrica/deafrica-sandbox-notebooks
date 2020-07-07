@@ -219,7 +219,7 @@ def run_filmstrip_app(output_name,
         ds_geomedian = ds_geomedian.compute()
 
         # Reset CRS that is lost during geomedian compositing
-        ds_geomedian = assign_crs(ds_geomedian)
+        ds_geomedian = assign_crs(ds_geomedian, crs=ds.geobox.crs)
 
         ############
         # Plotting #
