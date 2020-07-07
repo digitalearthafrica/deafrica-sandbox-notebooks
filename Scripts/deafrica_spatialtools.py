@@ -44,6 +44,7 @@ from skimage.measure import label
 from skimage.measure import find_contours
 from shapely.geometry import LineString, MultiLineString, shape
 from datacube.helpers import write_geotiff
+from datacube.utils.geometry import assign_crs
 
 def xr_vectorize(da, 
                  attribute_col='attribute', 
@@ -91,16 +92,16 @@ def xr_vectorize(da,
     gdf : Geopandas GeoDataFrame
     
     """
-
-    
-    # Check for a crs object
     try:
-        crs = da.crs
+        crs = da.geobox.crs
     except:
-        if crs is None:
-            raise Exception("Please add a `crs` attribute to the "
+        try:
+            crs = da.crs
+        except:
+            if crs is None:
+                raise Exception("Please add a `crs` attribute to the "
                             "xarray.DataArray, or provide a CRS using the "
-                            "function's `crs` parameter (e.g. 'EPSG:102022')")
+                            "function's `crs` parameter (e.g. 'EPSG:6933')")
             
     # Check if transform is provided as a xarray.DataArray method.
     # If not, require supplied Affine
@@ -296,8 +297,8 @@ def xr_rasterize(gdf,
                         name=name if name else None)
     
     # Add back crs if xarr.attrs doesn't have it
-    if 'crs' not in xarr.attrs:
-        xarr.attrs['crs'] = str(crs)
+    if xarr.geobox is None:
+        xarr = assign_crs(xarr, str(crs))
     
     if export_tiff:        
         print(f"Exporting GeoTIFF to {export_tiff}")
