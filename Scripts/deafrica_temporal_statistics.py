@@ -289,7 +289,7 @@ def xr_phenology(
     ],
     method_sos="first",
     method_eos="last",
-    complete=None,
+    complete='fast_complete',
     smoothing=None,
 ):
     """
@@ -330,13 +330,15 @@ def xr_phenology(
         on the senescing side of the curve. If 'median', then vEOS is
         estimated as the 'median' value of the negative slopes on the
         senescing side of the curve.
-    complete : bool
-        If True, the timeseries will be completed (gap filled) using
-        hdstats.fast_completion()
-    smooth_method : str
+    complete : str
+        If 'fast_complete', the timeseries will be completed (gap filled) using
+        fast_completion(da), if 'linear', time series with be completed using 
+        da.interpolate_na(method='linear')
+    smoothing : str
         If 'wiener', the timeseries will be smoothed using the
         scipy.signal.wiener filter with a window size of 3.  If 'rolling_mean', 
-        then timeseries is smoothed using a rolling mean with a window size of 3
+        then timeseries is smoothed using a rolling mean with a window size of 3.
+        If set to 'linear', will be smoothed using da.resample(time='1W').interpolate('linear')
 
 
     Outputs
