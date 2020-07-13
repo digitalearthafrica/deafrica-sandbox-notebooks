@@ -301,9 +301,9 @@ def xr_rasterize(gdf,
     
     if export_tiff:        
         print(f"Exporting GeoTIFF to {export_tiff}")
-        ds = xarr.to_dataset(name=name if name else 'data')      
-        ds.attrs = xarr.attrs  # xarray bug removes metadata, add it back
-        write_geotiff(export_tiff, ds) 
+        write_cog(ds,
+                  export_tiff,
+                  overwrite=True)
                 
     return xarr
 
