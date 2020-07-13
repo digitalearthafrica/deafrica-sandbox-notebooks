@@ -29,13 +29,13 @@ TO DO:
 
 """
 
-from deafrica_datahandling import first, last
 import sys
 import dask
 import numpy as np
 import xarray as xr
 import hdstats
 from scipy.signal import wiener
+from datacube.utils.geometry import assign_crs
 
 sys.path.append("../Scripts")
 
@@ -361,7 +361,13 @@ def xr_phenology(
 
     # If stats supplied is not a list, convert to list.
     stats = stats if isinstance(stats, list) else [stats]
-
+    
+    #try to grab the crs info
+    try:
+        crs = da.geobox.crs
+    except:
+        pass
+    
     # complete timeseries
     if complete is not None:
         
@@ -440,6 +446,11 @@ def xr_phenology(
         print("         " + stat)
         stats_keep = stats_dict.get(stat)
         ds[stat] = stats_dict[stat]
+    
+    try:
+        ds = assign_crs(ds, str(crs))
+    except:
+        pass
 
     return ds
 
@@ -482,9 +493,15 @@ def temporal_statistics(da, stats):
     # If stats supplied is not a list, convert to list.
     stats = stats if isinstance(stats, list) else [stats]
     
+    #try to grab the crs info
+    try:
+        crs = da.geobox.crs
+    except:
+        pass
+    
     # grab all the attributes of the xarray
     x, y, time, attrs = da.x, da.y, da.time, da.attrs
-
+    
     # deal with any all-NaN pixels by filling with 0's
     mask = da.isnull().all("time")
     da = da.where(~mask, other=0)
@@ -586,5 +603,11 @@ def temporal_statistics(da, stats):
                                         "y": y
                                     },
                                     dims=["y", "x"])
+    
+    #try to add back the geobox
+    try:
+        ds = assign_crs(ds, str(crs))
+    except:
+        pass
 
     return ds
