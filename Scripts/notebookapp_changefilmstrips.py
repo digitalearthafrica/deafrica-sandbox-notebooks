@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 from odc.algo import xr_geomedian 
 from odc.ui import select_on_a_map
 from dask.utils import parse_bytes
-from datacube.utils.geometry import CRS
+from datacube.utils.geometry import CRS, assign_crs
 from datacube.utils.rio import configure_s3_access
 from datacube.utils.dask import start_local_dask
 from ipyleaflet import basemaps, basemap_to_tiles
@@ -219,8 +219,7 @@ def run_filmstrip_app(output_name,
         ds_geomedian = ds_geomedian.compute()
 
         # Reset CRS that is lost during geomedian compositing
-        ds_geomedian.attrs['crs'] = ds.crs
-        
+        ds_geomedian = assign_crs(ds_geomedian, crs=ds.geobox.crs)
 
         ############
         # Plotting #
