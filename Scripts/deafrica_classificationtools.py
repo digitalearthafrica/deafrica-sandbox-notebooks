@@ -395,9 +395,6 @@ def get_training_data_for_shp(gdf,
     # merge polygon query with user supplied query params
     dc_query.update(q)
 
-    # Identify the most common projection system in the input query
-    output_crs = mostcommon_crs(dc=dc, product=products, query=dc_query)
-
     # load_ard doesn't handle geomedians
     # TODO: Add support for other sensors
     if 'ga_ls8c_gm_2_annual' in products:
@@ -409,7 +406,6 @@ def get_training_data_for_shp(gdf,
         with HiddenPrints():
             ds = load_ard(dc=dc,
                           products=products,
-                          output_crs=output_crs,
                           **dc_query)
 
     # create polygon mask
@@ -420,7 +416,6 @@ def get_training_data_for_shp(gdf,
     if custom_func is not None:
         with HiddenPrints():
             data = custom_func(ds)
-            # mask dataset
             data = data.where(mask)
             
     else:
