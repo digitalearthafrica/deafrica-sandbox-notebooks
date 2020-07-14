@@ -44,6 +44,7 @@ from skimage.measure import label
 from skimage.measure import find_contours
 from shapely.geometry import LineString, MultiLineString, shape
 from datacube.helpers import write_geotiff
+from datacube.utils.geometry import assign_crs
 
 def xr_vectorize(da, 
                  attribute_col='attribute', 
@@ -91,16 +92,16 @@ def xr_vectorize(da,
     gdf : Geopandas GeoDataFrame
     
     """
-
-    
-    # Check for a crs object
     try:
-        crs = da.crs
+        crs = da.geobox.crs
     except:
-        if crs is None:
-            raise Exception("Please add a `crs` attribute to the "
+        try:
+            crs = da.crs
+        except:
+            if crs is None:
+                raise Exception("Please add a `crs` attribute to the "
                             "xarray.DataArray, or provide a CRS using the "
-                            "function's `crs` parameter (e.g. 'EPSG:102022')")
+                            "function's `crs` parameter (e.g. 'EPSG:6933')")
             
     # Check if transform is provided as a xarray.DataArray method.
     # If not, require supplied Affine
@@ -146,7 +147,7 @@ def xr_vectorize(da,
     # Create a geopandas dataframe populated with the polygon shapes
     gdf = gpd.GeoDataFrame(data={attribute_col: values},
                            geometry=polygons,
-                           crs={'init': str(crs)})
+                           crs=crs)
     
     # If a file path is supplied, export a shapefile
     if export_shp:
@@ -263,8 +264,7 @@ def xr_rasterize(gdf,
         y, x = len(xy_coords[0]), len(xy_coords[1])
     
     # Reproject shapefile to match CRS of raster
-    print(f'Rasterizing to match xarray.DataArray dimensions ({y}, {x}) '
-          f'and projection system/CRS (e.g. {crs})')
+    print(f'Rasterizing to match xarray.DataArray dimensions ({y}, {x})')
     
     try:
         gdf_reproj = gdf.to_crs(crs=crs)
@@ -296,14 +296,14 @@ def xr_rasterize(gdf,
                         name=name if name else None)
     
     # Add back crs if xarr.attrs doesn't have it
-    if 'crs' not in xarr.attrs:
-        xarr.attrs['crs'] = str(crs)
+    if xarr.geobox is None:
+        xarr = assign_crs(xarr, str(crs))
     
     if export_tiff:        
         print(f"Exporting GeoTIFF to {export_tiff}")
-        ds = xarr.to_dataset(name=name if name else 'data')      
-        ds.attrs = xarr.attrs  # xarray bug removes metadata, add it back
-        write_geotiff(export_tiff, ds) 
+        write_cog(ds,
+                  export_tiff,
+                  overwrite=True)
                 
     return xarr
 
