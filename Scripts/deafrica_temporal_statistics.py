@@ -35,6 +35,7 @@ import numpy as np
 import xarray as xr
 import hdstats
 from scipy.signal import wiener
+from packaging import version
 from datacube.utils.geometry import assign_crs
 
 sys.path.append("../Scripts")
@@ -291,6 +292,7 @@ def xr_phenology(
     method_eos="last",
     complete='fast_complete',
     smoothing=None,
+    show_progress=True,
 ):
     """
     Obtain land surface phenology metrics from an
@@ -340,7 +342,6 @@ def xr_phenology(
         then timeseries is smoothed using a rolling mean with a window size of 3.
         If set to 'linear', will be smoothed using da.resample(time='1W').interpolate('linear')
 
-
     Outputs
     -------
         xarray.Dataset containing variables for the selected 
@@ -349,9 +350,48 @@ def xr_phenology(
     """
     # Check inputs before running calculations
     if dask.is_dask_collection(da):
-        raise TypeError(
-            "Dask arrays are not currently supported by this function, " +
-            "run da.compute() before passing dataArray.")
+        if version.parse(xr.__version__) < version.parse('0.16.0'):
+            raise TypeError(
+                "Dask arrays are not currently supported by this function, " +
+                "run da.compute() before passing dataArray.")
+        stats_dtype={
+            "SOS": np.int16,
+            "POS": np.int16,
+            "EOS": np.int16,
+            "Trough": np.float32,
+            "vSOS": np.float32,
+            "vPOS": np.float32,
+            "vEOS": np.float32,
+            "LOS": np.int16,
+            "AOS": np.float32,
+            "ROG": np.float32,
+            "ROS": np.float32,
+        }
+        da_template = da.isel(time=0).drop('time')
+        template = xr.Dataset(
+            {var_name: da_template.astype(var_dtype) for var_name, var_dtype in stats_dtype.items() if var_name in stats}
+        )
+        da_all_time = da.chunk({'time':-1})
+        
+        lazy_phenology = da.map_blocks(
+            xr_phenology,
+            kwargs=dict(
+                stats=stats,
+                method_sos=method_sos,
+                method_eos=method_eos,
+                complete=complete,
+                smoothing=smoothing,
+            ),
+            template=xr.Dataset(template)
+        )
+        
+        try:
+            crs = da.geobox.crs
+            lazy_phenology = assign_crs(lazy_phenology, str(crs))
+        except:
+            pass
+        
+        return lazy_phenology
 
     if method_sos not in ("median", "first"):
         raise ValueError("method_sos should be either 'median' or 'first'")
@@ -452,7 +492,7 @@ def xr_phenology(
     except:
         pass
 
-    return ds
+    return ds.drop('time')
 
 
 def temporal_statistics(da, stats):
