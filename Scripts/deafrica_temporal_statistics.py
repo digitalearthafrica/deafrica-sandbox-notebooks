@@ -373,7 +373,7 @@ def xr_phenology(
         )
         da_all_time = da.chunk({'time':-1})
         
-        lazy_phenology = da.map_blocks(
+        lazy_phenology = da_all_time.map_blocks(
             xr_phenology,
             kwargs=dict(
                 stats=stats,
