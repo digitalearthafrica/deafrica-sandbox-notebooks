@@ -195,7 +195,7 @@ def rgb(ds,
                 'the arguments e.g. `col="time", col_wrap=4` to the function ' 
                 'call'
             )
-
+        da = da.compute()
         img = da.plot.imshow(robust=robust,
                              col_wrap=col_wrap,
                              **aspect_size_kwarg,
@@ -224,7 +224,7 @@ def rgb(ds,
         index = index if isinstance(index, list) else [index]
 
         # Select bands and observations and convert to DataArray
-        da = ds[bands].isel(**{index_dim: index}).to_array()
+        da = ds[bands].isel(**{index_dim: index}).to_array().compute()
 
         # If percentile_stretch == True, clip plotting to percentile vmin, vmax
         if percentile_stretch:
