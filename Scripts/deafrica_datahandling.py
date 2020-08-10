@@ -205,7 +205,6 @@ def load_ard(dc,
         in its native scaling. WARNING: USGS Landsat Collection 2
         surface reflectance values have an offset so normliaed band indices 
         will return non-sensical results if setting scaling='raw'. 
-    
     **kwargs :
         A set of keyword arguments to `dc.load` that define the
         spatiotemporal query used to extract data. This typically
@@ -493,10 +492,20 @@ def load_ard(dc,
         if product_type == 's2':
             ds = ds / 10000   
     
+    # Collection 2 Landsat raw values aren't useful so rescale
     if product_type == 'c2':
-        ds = ds * 2.75e-5 - 0.2
         print("Scaling Landsat C2 using ds = ds * 2.75e-5 - 0.2")
-    
+        
+        if 'quality_l2_aerosol' in ds.data_vars:
+            ds_data = ds[data_bands]
+            ds_masks = ds[mask_bands]
+            ds_data = ds_data * 2.75e-5 - 0.2
+            ds = xr.merge([ds_data, ds_masks])
+            ds.attrs.update(attrs)
+        
+        else:
+            ds = ds * 2.75e-5 - 0.2
+            
     # If user supplied dask_chunks, return data as a dask array without
     # actually loading it in
     if dask_chunks is not None:
