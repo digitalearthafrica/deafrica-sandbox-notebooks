@@ -114,7 +114,7 @@ def load_ard(dc,
              ls7_slc_off=True,
              predicate=None,
              dtype='auto',
-             scaling='normalised',
+             scaling='raw',
              **kwargs):
 
     '''
@@ -488,19 +488,14 @@ def load_ard(dc,
     
     # Scale data 0-1 if requested
     if scaling=='normalised':
-        if product_type == 'c2':
-            ds = ds * 2.75e-5 - 0.2
         if product_type == 'c1':
             ds = ds / 10000
         if product_type == 's2':
             ds = ds / 10000   
     
-    if (product_type =='c2') & (scaling == 'raw'):
-        warnings.warn("Collection 2 Landsat data in its raw surface "
-                      "reflectance format has an offset; "
-                      "calculating band ratios such as NDVI, NDWI etc. "
-                      "will return non-sensical values. Use ds=ds * 2.75e-5 - 0.2 "
-                      "to correctly scale the SR values.")
+    if product_type == 'c2':
+        ds = ds * 2.75e-5 - 0.2
+        print("Scaling Landsat C2 using ds = ds * 2.75e-5 - 0.2")
     
     # If user supplied dask_chunks, return data as a dask array without
     # actually loading it in
