@@ -114,6 +114,7 @@ def load_ard(dc,
              ls7_slc_off=True,
              predicate=None,
              dtype='auto',
+             scaling='normalised',
              **kwargs):
 
     '''
@@ -198,6 +199,13 @@ def load_ard(dc,
         if data is loaded in its native dtype, nodata and masked 
         pixels will be returned with the data's native nodata value 
         (typically -999), not NaN. 
+    scaling : str, optional
+        If 'normalised', then surface reflectance values are scaled from
+        their original values to 0-1.  If 'raw' then dataset is returned
+        in its native scaling. WARNING: USGS Landsat Collection 2
+        surface reflectance values have an offset so normliaed band indices 
+        will return non-sensical results if setting scaling='raw'. 
+    
     **kwargs :
         A set of keyword arguments to `dc.load` that define the
         spatiotemporal query used to extract data. This typically
@@ -477,6 +485,22 @@ def load_ard(dc,
      # Drop bands not originally requested by user
     if requested_measurements:
         ds = ds[requested_measurements]
+    
+    # Scale data 0-1 if requested
+    if scaling=='normalised':
+        if product_type == 'c2':
+            ds = ds * 2.75e-5 - 0.2
+        if product_type == 'c1':
+            ds = ds / 10000
+        if product_type == 's2':
+            ds = ds / 10000   
+    
+    if (product_type =='c2') & (scaling == 'raw'):
+        warnings.warn("Collection 2 Landsat data in its raw surface "
+                      "reflectance format has an offset; "
+                      "calculating band ratios such as NDVI, NDWI etc. "
+                      "will return non-sensical values. Use ds=ds * 2.75e-5 - 0.2 "
+                      "to correctly scale the SR values.")
     
     # If user supplied dask_chunks, return data as a dask array without
     # actually loading it in
