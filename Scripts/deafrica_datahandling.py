@@ -505,7 +505,7 @@ def load_ard(dc,
                   'atmospheric_transmittance','emissivity', 'emissivity_stdev',
                   'cloud_distance', 'quality_l2_surface_temperature',
                   'quality_l1_pixel','quality_l1_radiometric_saturation']
-        # first check if have any extra bands
+        # first check if we have any extra bands
         if any(i in data_bands for i in extras):
             extra_bands = ds[list(set(extras) & set(data_bands))]
             ds = ds.drop(list(set(extras) & set(data_bands)))
