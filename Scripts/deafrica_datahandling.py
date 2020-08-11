@@ -512,8 +512,8 @@ def load_ard(dc,
             data_bands=[i for i in ds.data_vars]
             
         if ('surface_temperature' in data_bands) & (fmask_band not in data_bands):
-            # convert temp to celsius
             temp = ds['surface_temperature']
+            # convert temp to celsius
             temp = temp*0.00341802 + 149.0 - 273.15
             
             if len(data_bands) > 1:
@@ -528,12 +528,10 @@ def load_ard(dc,
             ds_masks = ds[mask_bands]
             data_bands.remove(fmask_band)
             if 'surface_temperature' in data_bands:
-                # convert temp to celsius
                 temp = ds['surface_temperature']
                 temp = temp*0.00341802 + 149.0 - 273.15
                 
                 if len(data_bands) > 1:
-                    # deal with other data
                     ds_data = ds[data_bands].drop('surface_temperature')
                     ds_data = ds_data * 2.75e-5 - 0.2
                     ds = xr.merge([ds_data, ds_masks, temp])
@@ -542,7 +540,6 @@ def load_ard(dc,
             else:
                 ds_data = ds[data_bands]
                 ds_data = ds_data * 2.75e-5 - 0.2
-                # merge back together
                 ds = xr.merge([ds_data, ds_masks])
                 
         elif ('surface_temperature' not in data_bands) & (fmask_band not in data_bands):
