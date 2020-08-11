@@ -487,10 +487,22 @@ def load_ard(dc,
     
     # Scale data 0-1 if requested
     if scaling=='normalised':
+        
         if product_type == 'c1':
-            ds = ds / 10000
+            not_sr_bands = ['pixel_qa','sr_aerosol','radsat_qa']
+        
+            for band in ds.data_vars:
+                if band not in not_sr_bands:
+                    print(band)
+                    ds[band]=ds[band]/10000
+
         if product_type == 's2':
-            ds = ds / 10000   
+            not_sr_bands = ['scl','qa','mask','water_vapour','aerosol_optical_thickness']
+        
+            for band in ds.data_vars:
+                if band not in not_sr_bands:
+                    print(band)
+                    ds[band]=ds[band]/10000   
     
     # Collection 2 Landsat raw values aren't useful so rescale,
     # need different factors for surface-temp and SR
