@@ -399,6 +399,7 @@ def get_training_data_for_shp(gdf,
     # TODO: Add support for other sensors
     if 'ga_ls8c_gm_2_annual' in products:
         ds = dc.load(product='ga_ls8c_gm_2_annual', **dc_query)
+        ds = ds * 2.75e-5 - 0.2
         ds = ds.where(ds != 0, np.nan)
 
     else:
