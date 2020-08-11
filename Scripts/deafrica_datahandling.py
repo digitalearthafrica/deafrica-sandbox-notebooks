@@ -492,19 +492,67 @@ def load_ard(dc,
         if product_type == 's2':
             ds = ds / 10000   
     
-    # Collection 2 Landsat raw values aren't useful so rescale
+    # Collection 2 Landsat raw values aren't useful so rescale,
+    # need different factors for surface-temp and SR
     if product_type == 'c2':
-        print("Scaling Landsat C2 using ds = ds * 2.75e-5 - 0.2")
+        print("Re-scaling Landsat C2 data")
         
-        if 'quality_l2_aerosol' in ds.data_vars:
-            ds_data = ds[data_bands]
+        #reset the data_bands variable
+        data_bands=[i for i in ds.data_vars]
+        
+        # Deal with the bands that aren't SR, temperature, or QA
+        extras = ['thermal_radiance','upwell_radiance','downwell_radiance',
+                  'atmospheric_transmittance','emissivity', 'emissivity_stdev',
+                  'cloud_distance', 'quality_l2_surface_temperature',
+                  'quality_l1_pixel','quality_l1_radiometric_saturation']
+        # first check if have any extra bands
+        if any(i in data_bands for i in extras):
+            extra_bands = ds[list(set(extras) & set(data_bands))]
+            ds = ds.drop(list(set(extras) & set(data_bands)))
+            data_bands=[i for i in ds.data_vars]
+            
+        if ('surface_temperature' in data_bands) & (fmask_band not in data_bands):
+            # convert temp to celsius
+            temp = ds['surface_temperature']
+            temp = temp*0.00341802 + 149.0 - 273.15
+            
+            if len(data_bands) > 1:
+                # deal with other data
+                ds_data = ds[data_bands].drop('surface_temperature')
+                ds_data = ds_data * 2.75e-5 - 0.2
+                ds = xr.merge([ds_data, temp])
+            else:
+                ds = temp.to_dataset(name='surface_temperature')
+            
+        elif fmask_band in data_bands:
             ds_masks = ds[mask_bands]
-            ds_data = ds_data * 2.75e-5 - 0.2
-            ds = xr.merge([ds_data, ds_masks])
-            ds.attrs.update(attrs)
-        
-        else:
+            data_bands.remove(fmask_band)
+            if 'surface_temperature' in data_bands:
+                # convert temp to celsius
+                temp = ds['surface_temperature']
+                temp = temp*0.00341802 + 149.0 - 273.15
+                
+                if len(data_bands) > 1:
+                    # deal with other data
+                    ds_data = ds[data_bands].drop('surface_temperature')
+                    ds_data = ds_data * 2.75e-5 - 0.2
+                    ds = xr.merge([ds_data, ds_masks, temp])
+                else:
+                    ds = xr.merge([ds_masks, temp])
+            else:
+                ds_data = ds[data_bands]
+                ds_data = ds_data * 2.75e-5 - 0.2
+                # merge back together
+                ds = xr.merge([ds_data, ds_masks])
+                
+        elif ('surface_temperature' not in data_bands) & (fmask_band not in data_bands):
             ds = ds * 2.75e-5 - 0.2
+         
+        if 'extra_bands' in locals():
+            #add back the extra bands
+            ds = xr.merge([ds, extra_bands])
+        
+        ds.attrs.update(attrs)
             
     # If user supplied dask_chunks, return data as a dask array without
     # actually loading it in
