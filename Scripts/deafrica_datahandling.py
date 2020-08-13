@@ -489,33 +489,36 @@ def load_ard(dc,
     if scaling=='normalised':
         
         if product_type == 'c1':
+            print("Re-scaling Landsat C1 data")
             not_sr_bands = ['pixel_qa','sr_aerosol','radsat_qa']
         
             for band in ds.data_vars:
                 if band not in not_sr_bands:
-                    print(band)
                     ds[band]=ds[band]/10000
 
         if product_type == 's2':
+            print("Re-scaling Sentinel-2 data")
             not_sr_bands = ['scl','qa','mask','water_vapour','aerosol_optical_thickness']
         
             for band in ds.data_vars:
                 if band not in not_sr_bands:
-                    print(band)
                     ds[band]=ds[band]/10000   
     
     # Collection 2 Landsat raw values aren't useful so rescale,
     # need different factors for surface-temp and SR
     if product_type == 'c2':
         print("Re-scaling Landsat C2 data")
-        sr_bands = ['coastal_aerosol','blue','red','green','nir','swir_1','swir_2']
+        not_sr_bands = ['thermal_radiance','upwell_radiance','upwell_radiance',
+                        'atmospheric_transmittance','emissivity','emissivity_stdev',
+                        'cloud_distance', 'quality_l2_aerosol','quality_l2_surface_temperature',
+                        'quality_l1_pixel','quality_l1_radiometric_saturation','surface_temperature']
         
         for band in ds.data_vars:
         
             if band == 'surface_temperature':
                 ds[band]=ds[band]*0.00341802 + 149.0 - 273.15
         
-            if band in sr_bands:
+            if band not in not_sr_bands:
                 ds[band]=ds[band]* 2.75e-5 - 0.2
             
     # If user supplied dask_chunks, return data as a dask array without
