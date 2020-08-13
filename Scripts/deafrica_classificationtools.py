@@ -315,55 +315,19 @@ def get_training_data_for_shp(gdf,
                               drop=True,
                               zonal_stats=None):
     """
-    Function to extract data from the ODC for training a machine learning classifier 
-    using a geopandas geodataframe of labelled geometries. 
-    This function provides a number of pre-defined methods for producing training data, 
-    including calcuating band indices, reducing time series using several summary statistics, 
-    and/or generating zonal statistics across polygons.  The 'custom_func' parameter provides 
-    a method for the user to supply a custom function for generating features rather than using the
-    pre-defined methods.
+    This is the core function that is triggered by `collect_training_data`.
+    The `collect_training_data` function loops through geometries in a geopandas
+    geodataframe and runs the code within `get_training_data_for_shp`. 
+    Parameters are inherited from `collect_training_data`.  
+    See that function for information on the other params not listed below.
 
     Parameters
     ----------
-    gdf : geopandas geodataframe
-        geometry data in the form of a geopandas geodataframe
-    products : list
-        a list of products to load from the datacube. 
-        e.g. ['ls8_usgs_sr_scene', 'ls7_usgs_sr_scene']
-    dc_query : dictionary
-        Datacube query object, should not contain lat and long (x or y)
-        variables as these are supplied by the 'gdf' variable
-    field : string 
-        A string containing the name of column with class labels. 
-        Field must contain numeric values.
+    index, row : iterables inherited from geopandas object
     out_arrs : list 
         An empty list into which the training data arrays are stored.
     out_vars : list 
         An empty list into which the data varaible names are stored.
-    custom_func : function, optional 
-        A custom function for generating feature layers. If this parameter
-        is set, all other options (excluding 'zonal_stats'), will be ignored.
-        The result of the 'custom_func' must be a single xarray dataset 
-        containing 2D coordinates (i.e x, y - no time dimension). The custom function
-        has access to the datacube dataset extracted using the 'dc_query' params,
-        along with access to the 'dc_query' dictionary itself, which could be used
-        to load other products besides those specified under 'products'.
-    calc_indices: list, optional
-        If not using a custom func, then this parameter provides a method for
-        calculating a number of remote sensing indices (e.g. `['NDWI', 'NDVI']`).
-    reduce_func : string, optional 
-        Function to reduce the data from multiple time steps to
-        a single timestep. Options are 'mean', 'median', 'std',
-        'max', 'min', 'geomedian'.  Ignored if 'custom_func' is provided.
-    drop : boolean, optional , 
-        If this variable is set to True, and 'calc_indices' are supplied, the
-        spectral bands will be dropped from the dataset leaving only the
-        band indices as data variables in the dataset. Default is True.
-    zonal_stats : string, optional
-        An optional string giving the names of zonal statistics to calculate 
-        for each polygon. Default is None (all pixel values are returned). Supported 
-        values are 'mean', 'median', 'max', 'min', and 'std'. Will work in 
-        conjuction with a 'custom_func'.
 
 
     Returns
@@ -559,22 +523,56 @@ def collect_training_data(gdf, products, dc_query, ncpus=1,
     into a 'model_input' object containing stacked training data arrays
     with all NaNs removed. In the instance where ncpus > 1, a parallel version of the
     function will be run (functions are passed to a mp.Pool())
+    
+    This function provides a number of pre-defined methods for producing training data, 
+    including calculating band indices, reducing time series using several summary statistics, 
+    and/or generating zonal statistics across polygons.  The 'custom_func' parameter provides 
+    a method for the user to supply a custom function for generating features rather than using the
+    pre-defined methods.
 
     Parameters
     ----------
+    
+    gdf : geopandas geodataframe
+        geometry data in the form of a geopandas geodataframe
+    products : list
+        a list of products to load from the datacube. 
+        e.g. ['ls8_usgs_sr_scene', 'ls7_usgs_sr_scene']
+    dc_query : dictionary
+        Datacube query object, should not contain lat and long (x or y)
+        variables as these are supplied by the 'gdf' variable
     ncpus : int
         The number of cpus/processes over which to parallelize the gathering
         of training data (only if ncpus is > 1). Use 'mp.cpu_count()' to determine the number of
         cpus available on a machine. Defaults to 1.
-
-    See function 'get_training_data_for_shp' for descriptions of other input
-    parameters.
+    custom_func : function, optional 
+        A custom function for generating feature layers. If this parameter
+        is set, all other options (excluding 'zonal_stats'), will be ignored.
+        The result of the 'custom_func' must be a single xarray dataset 
+        containing 2D coordinates (i.e x, y - no time dimension). The custom function
+        has access to the datacube dataset extracted using the 'dc_query' params. To load
+        other datasets, you can use the 'like=ds.geobox' parameter in dc.load
+    calc_indices: list, optional
+        If not using a custom func, then this parameter provides a method for
+        calculating a number of remote sensing indices (e.g. `['NDWI', 'NDVI']`).
+    reduce_func : string, optional 
+        Function to reduce the data from multiple time steps to
+        a single timestep. Options are 'mean', 'median', 'std',
+        'max', 'min', 'geomedian'.  Ignored if 'custom_func' is provided.
+    drop : boolean, optional , 
+        If this variable is set to True, and 'calc_indices' are supplied, the
+        spectral bands will be dropped from the dataset leaving only the
+        band indices as data variables in the dataset. Default is True.
+    zonal_stats : string, optional
+        An optional string giving the names of zonal statistics to calculate 
+        for each polygon. Default is None (all pixel values are returned). Supported 
+        values are 'mean', 'median', 'max', 'min', and 'std'. Will work in 
+        conjuction with a 'custom_func'.
 
     Returns
     --------
-    Two lists, one contains a list of numpy.arrays with classes and extracted data for 
+    Two lists, a list of numpy.arrays containing classes and extracted data for 
     each pixel or polygon, and another containing the data variable names.
-
 
     """
     # set up some print statements
