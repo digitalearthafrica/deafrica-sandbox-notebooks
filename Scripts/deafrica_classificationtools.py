@@ -311,7 +311,6 @@ def get_training_data_for_shp(gdf,
                               custom_func=None,
                               field=None,
                               calc_indices=None,
-                              normalise=True,
                               reduce_func=None,
                               drop=True,
                               zonal_stats=None):
@@ -411,7 +410,6 @@ def get_training_data_for_shp(gdf,
                         data = calculate_indices(ds,
                                                  index=calc_indices,
                                                  drop=drop,
-                                                 normalise=normalise,
                                                  collection=collection)
                         # getattr is equivalent to calling data.reduce_func
                         method_to_call = getattr(data, reduce_func)
@@ -422,7 +420,6 @@ def get_training_data_for_shp(gdf,
                     with HiddenPrints():
                         data = calculate_indices(data,
                                                  index=calc_indices,
-                                                 normalise=normalise,
                                                  drop=drop,
                                                  collection=collection)
 
@@ -431,12 +428,10 @@ def get_training_data_for_shp(gdf,
                                     " reduce functions ('mean','median','std','max','min', 'geomedian')")
 
             else:
-#                 with HiddenPrints():
-                    print('here')
+                with HiddenPrints():
                     data = calculate_indices(ds,
                                              index=calc_indices,
                                              drop=drop,
-                                             normalise=normalise,
                                              collection=collection)
 
         # when band indices are not required, reduce the
@@ -476,7 +471,7 @@ def get_training_data_for_shp(gdf,
     out_vars.append([field] + list(data.data_vars))
 
 
-def get_training_data_parallel(gdf, products, dc_query, ncpus, normalise=True,
+def get_training_data_parallel(gdf, products, dc_query, ncpus,
                                custom_func=None, field=None, calc_indices=None,
                                reduce_func=None, drop=True, zonal_stats=None):
     """
@@ -509,7 +504,6 @@ def get_training_data_parallel(gdf, products, dc_query, ncpus, normalise=True,
                               custom_func,
                               field,
                               calc_indices,
-                              normalise,
                               reduce_func,
                               drop,
                               zonal_stats], callback=update)
@@ -521,7 +515,7 @@ def get_training_data_parallel(gdf, products, dc_query, ncpus, normalise=True,
     return column_names, results
 
 
-def collect_training_data(gdf, products, dc_query, ncpus=1, normalise=True,
+def collect_training_data(gdf, products, dc_query, ncpus=1,
                           custom_func=None, field=None, calc_indices=None,
                           reduce_func=None, drop=True, zonal_stats=None):
     """
@@ -569,9 +563,6 @@ def collect_training_data(gdf, products, dc_query, ncpus=1, normalise=True,
         If this variable is set to True, and 'calc_indices' are supplied, the
         spectral bands will be dropped from the dataset leaving only the
         band indices as data variables in the dataset. Default is True.
-    normalise : boolean, optional 
-        If this variable is set to True, and 'calc_indices' are supplied, then
-        the dataset will be normalised to 0-1 before the band indices are calculated.
     zonal_stats : string, optional
         An optional string giving the names of zonal statistics to calculate 
         for each polygon. Default is None (all pixel values are returned). Supported 
@@ -618,7 +609,6 @@ def collect_training_data(gdf, products, dc_query, ncpus=1, normalise=True,
                 dc_query,
                 custom_func,
                 field,
-                normalise,
                 calc_indices,
                 reduce_func,
                 drop,
@@ -634,7 +624,6 @@ def collect_training_data(gdf, products, dc_query, ncpus=1, normalise=True,
             ncpus=ncpus,
             custom_func=custom_func,
             field=field,
-            normalise=normalise,
             calc_indices=calc_indices,
             reduce_func=reduce_func,
             drop=drop,
