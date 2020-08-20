@@ -382,7 +382,7 @@ def get_training_data_for_shp(gdf,
         with HiddenPrints():
             data = custom_func(ds)
             data = data.where(mask)
-            
+        
     else:
         # mask dataset
         ds = ds.where(mask)
