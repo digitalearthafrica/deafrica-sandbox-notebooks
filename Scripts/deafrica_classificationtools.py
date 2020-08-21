@@ -286,6 +286,88 @@ def predict_xr(model, input_xr, progress=True):
 
     return output_xr
 
+def predict_proba_xr(model, input_xr, progress=True):
+    """
+    Utilise our wrappers to return the prediction probabilities
+    of classes predicted using sklearn's random forest classifier. 
+    The predicted class probabilities of an input sample are computed as
+    the mean predicted class probabilities of the trees in the forest. 
+
+    Last modified: August 2020
+
+    Parameters
+    ----------
+    model : a scikit-learn RandomForestClassifier model.
+        Must have a predict_proba() method that takes numpy arrays.
+    input_xr : xarray.DataArray or xarray.Dataset
+        Must have dimensions 'x' and 'y', may have dimension 'time'.
+
+    Returns
+    ----------
+    output_xr : xarray.DataArray 
+        An xarray.DataArray containing the prediction output from model 
+        with input_xr as input. Has the same spatiotemporal structure 
+        as input_xr.
+
+    """
+
+    def _get_class_ufunc(*args):
+        """
+        ufunc to apply classification to chunks of data
+        """
+        input_data_flattened = []
+        for data in args:
+            input_data_flattened.append(data.flatten())
+
+        # Flatten array
+        input_data_flattened = np.array(input_data_flattened).transpose()
+
+        # Mask out no-data in input (not all classifiers can cope with
+        # Inf or NaN values)
+        input_data_flattened = np.where(np.isfinite(input_data_flattened),
+                                        input_data_flattened, 0)
+
+        # Actually apply the classification
+        out_class = model.predict_proba(input_data_flattened)
+
+        # Mask out NaN or Inf values in results
+        out_class = np.where(np.isfinite(out_class), out_class, 0)
+
+        # Reshape when writing out
+        return out_class.reshape(args[0].shape)
+
+    def _get_class(*args):
+        """
+        Apply classification to xarray DataArrays.
+
+        Uses dask to run chunks at a time in parallel
+
+        """
+        out = xr.apply_ufunc(_get_class_ufunc, *args,
+                             dask='parallelized', output_dtypes=[np.uint8])
+
+        return out
+
+    # Set up a list of input data using variables passed in
+    input_data = []
+
+    for var_name in input_xr.data_vars:
+        input_data.append(input_xr[var_name])
+
+    # Run through classification. Need to expand and have a separate
+    # dataframe for each variable so chunking in dask works.
+    if progress:
+        with ProgressBar():
+            out_class = _get_class(*input_data).compute()
+    else:
+        out_class = _get_class(*input_data).compute()
+
+    # Set the stacked coordinate to match the input
+    output_xr = xr.DataArray(out_class, coords=input_xr.coords)
+
+    return output_xr
+
+
 
 class HiddenPrints:
     """
@@ -363,8 +445,9 @@ def get_training_data_for_shp(gdf,
     # TODO: Add support for other sensors
     if 'ga_ls8c_gm_2_annual' in products:
         ds = dc.load(product='ga_ls8c_gm_2_annual', **dc_query)
-        ds = ds * 2.75e-5 - 0.2
         ds = ds.where(ds != 0, np.nan)
+        ds = ds * 2.75e-5 - 0.2
+        
 
     else:
         # load data
