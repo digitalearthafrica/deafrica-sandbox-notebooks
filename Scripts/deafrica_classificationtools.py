@@ -172,7 +172,7 @@ def sklearn_unflatten(output_np, input_xr):
     # use the mask to put the data in all the right places
     output_ma = np.ma.empty((len(stacked.z), *output_px_shape))
     output_ma[~mask] = output_np
-    output_ma.mask = mask
+    output_ma[mask] = np.ma.masked
 
     # set the stacked coordinate to match the input
     output_xr = xr.DataArray(output_ma, coords={'z': stacked['z']},
@@ -395,13 +395,11 @@ def get_training_data_for_shp(gdf,
     # merge polygon query with user supplied query params
     dc_query.update(q)
 
-    # Identify the most common projection system in the input query
-    output_crs = mostcommon_crs(dc=dc, product=products, query=dc_query)
-
     # load_ard doesn't handle geomedians
     # TODO: Add support for other sensors
     if 'ga_ls8c_gm_2_annual' in products:
         ds = dc.load(product='ga_ls8c_gm_2_annual', **dc_query)
+        ds = ds * 2.75e-5 - 0.2
         ds = ds.where(ds != 0, np.nan)
 
     else:
@@ -409,22 +407,21 @@ def get_training_data_for_shp(gdf,
         with HiddenPrints():
             ds = load_ard(dc=dc,
                           products=products,
-                          output_crs=output_crs,
                           **dc_query)
 
     # create polygon mask
     with HiddenPrints():
         mask = xr_rasterize(gdf.iloc[[index]], ds)
 
-    # mask dataset
-    ds = ds.where(mask)
-
     # Use custom function for training data if it exists
     if custom_func is not None:
         with HiddenPrints():
             data = custom_func(ds)
-
+            data = data.where(mask)
+            
     else:
+        # mask dataset
+        ds = ds.where(mask)
         # first check enough variables are set to run functions
         if (len(ds.time.values) > 1) and (reduce_func == None):
             raise ValueError("You're dataset has " + str(len(ds.time.values)) +
