@@ -291,7 +291,7 @@ def calculate_indices(ds,
                              "bands")
         
         elif collection == 'c1':
-
+            sr_max = 10000
             # Dictionary mapping full data names to simpler alias names
             bandnames_dict = {
                 'swir1': 'swir_1',
@@ -304,10 +304,12 @@ def calculate_indices(ds,
             }
         
         elif collection == 'c2':
+            sr_max=1.0
             # Pass an empty dict as no bands need renaming
             bands_to_rename = {}
-        
+            
         elif collection == 's2':
+            sr_max = 10000
             # Dictionary mapping full data names to simpler alias names
             bandnames_dict = {
                 'nir_1': 'nir',
@@ -336,7 +338,7 @@ def calculate_indices(ds,
         # Apply index function 
         try:
             # If normalised=True, divide data by 10,000 before applying func
-            mult = 10000.0 if normalise else 1.0
+            mult = sr_max if normalise else 1.0
             index_array = index_func(ds.rename(bands_to_rename) / mult)
             
         except AttributeError:
