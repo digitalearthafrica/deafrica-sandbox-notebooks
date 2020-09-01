@@ -18,14 +18,9 @@ Functions:
     allNaN_arg
     fast_completion
     smooth
-    various phenology statistics
+    phenology-statistics
     xr_phenology
     temporal_statistics
-    
-----------  
-TO DO:
-- Handle dask arrays once xarray releases version 0.16
-- Implement intergal-of-season statistic for xr_phenology
 
 """
 
@@ -152,7 +147,7 @@ def _aos(vpos, trough):
     return vpos - trough
 
 
-def _vsos(da, pos, method_sos="first"):
+def _vsos(da, pos, method_sos="median"):
     """
     vSOS = Value at the start of season
     Params
@@ -198,7 +193,7 @@ def _sos(vsos):
     return vsos.time.dt.dayofyear
 
 
-def _veos(da, pos, method_eos="last"):
+def _veos(da, pos, method_eos="median"):
     """
     vEOS = Value at the start of season
     Params
@@ -288,8 +283,8 @@ def xr_phenology(
         "ROG",
         "ROS",
     ],
-    method_sos="first",
-    method_eos="last",
+    method_sos="median",
+    method_eos="median",
     complete='fast_complete',
     smoothing=None,
     show_progress=True,
@@ -334,7 +329,7 @@ def xr_phenology(
         senescing side of the curve.
     complete : str
         If 'fast_complete', the timeseries will be completed (gap filled) using
-        fast_completion(da), if 'linear', time series with be completed using 
+        fast_completion(), if 'linear', time series with be completed using 
         da.interpolate_na(method='linear')
     smoothing : str
         If 'wiener', the timeseries will be smoothed using the
@@ -499,7 +494,9 @@ def temporal_statistics(da, stats):
     """
     Obtain generic temporal statistics using the hdstats temporal library:
     https://github.com/daleroberts/hdstats/blob/master/hdstats/ts.pyx
+    
     last modified June 2020
+    
     Parameters
     ----------
     da :  xarray.DataArray
@@ -520,11 +517,12 @@ def temporal_statistics(da, stats):
             'complexity' = 
             'central_diff' = 
             'num_peaks' : The number of peaks in the timeseries, defined with a local
-                          window of size 10.  NOTE: This statistic is very slow to calculate.
+                          window of size 10.  NOTE: This statistic is very slow
     Outputs
     -------
         xarray.Dataset containing variables for the selected 
-        temporal statistics 
+        temporal statistics
+        
     """
 
     # if dask arrays then map the blocks
