@@ -454,6 +454,7 @@ def get_training_data_for_shp(gdf,
         with HiddenPrints():
             ds = load_ard(dc=dc,
                           products=products,
+                          min_gooddata=0.5,
                           **dc_query)
 
     # create polygon mask

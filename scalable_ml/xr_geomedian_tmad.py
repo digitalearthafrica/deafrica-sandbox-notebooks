@@ -85,7 +85,7 @@ def xr_geomedian_tmad(ds, axis='time', where=None, **kw):
 
     dims = xx.dims[:-1]
     cc = {k: xx.coords[k] for k in dims}
-    cc[dims[-1]] = np.hstack([xx.coords[dims[-1]].values,['emad', 'smad', 'bcmad']])
+    cc[dims[-1]] = np.hstack([xx.coords[dims[-1]].values,['edev', 'sdev', 'bcdev']])
     xx_out = xr.DataArray(data, dims=dims, coords=cc)
 
     if ds is None:
