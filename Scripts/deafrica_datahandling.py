@@ -114,6 +114,7 @@ def load_ard(dc,
              ls7_slc_off=True,
              predicate=None,
              dtype='auto',
+             scaling='raw',
              **kwargs):
 
     '''
@@ -198,6 +199,12 @@ def load_ard(dc,
         if data is loaded in its native dtype, nodata and masked 
         pixels will be returned with the data's native nodata value 
         (typically -999), not NaN. 
+    scaling : str, optional
+        If 'normalised', then surface reflectance values are scaled from
+        their original values to 0-1.  If 'raw' then dataset is returned
+        in its native scaling. WARNING: USGS Landsat Collection 2
+        surface reflectance values have an offset so normliaed band indices 
+        will return non-sensical results if setting scaling='raw'. 
     **kwargs :
         A set of keyword arguments to `dc.load` that define the
         spatiotemporal query used to extract data. This typically
@@ -478,6 +485,42 @@ def load_ard(dc,
     if requested_measurements:
         ds = ds[requested_measurements]
     
+    # Scale data 0-1 if requested
+    if scaling=='normalised':
+        
+        if product_type == 'c1':
+            print("Re-scaling Landsat C1 data")
+            not_sr_bands = ['pixel_qa','sr_aerosol','radsat_qa']
+        
+            for band in ds.data_vars:
+                if band not in not_sr_bands:
+                    ds[band]=ds[band]/10000
+
+        if product_type == 's2':
+            print("Re-scaling Sentinel-2 data")
+            not_sr_bands = ['scl','qa','mask','water_vapour','aerosol_optical_thickness']
+        
+            for band in ds.data_vars:
+                if band not in not_sr_bands:
+                    ds[band]=ds[band]/10000   
+    
+    # Collection 2 Landsat raw values aren't useful so rescale,
+    # need different factors for surface-temp and SR
+    if product_type == 'c2':
+        print("Re-scaling Landsat C2 data")
+        not_sr_bands = ['thermal_radiance','upwell_radiance','upwell_radiance',
+                        'atmospheric_transmittance','emissivity','emissivity_stdev',
+                        'cloud_distance', 'quality_l2_aerosol','quality_l2_surface_temperature',
+                        'quality_l1_pixel','quality_l1_radiometric_saturation','surface_temperature']
+        
+        for band in ds.data_vars:
+        
+            if band == 'surface_temperature':
+                ds[band]=ds[band]*0.00341802 + 149.0 - 273.15
+        
+            if band not in not_sr_bands:
+                ds[band]=ds[band]* 2.75e-5 - 0.2
+            
     # If user supplied dask_chunks, return data as a dask array without
     # actually loading it in
     if dask_chunks is not None:
@@ -834,49 +877,3 @@ def nearest(array: xr.DataArray, dim: str, target, index_name: str = None) -> xr
                                              da_after[index_name])
     return nearest_array
 
-
-def calc_geomedian(ds, 
-                   axis="time", 
-                   max_value=None, 
-                   min_value=None,
-                   num_threads=1, 
-                   eps=1e-7, 
-                   nocheck=True):
-    '''
-    Runs geomedian over a xarray.Dataset or xarray.DataArray.
-    
-    Specify min_value and max_value if known for better performance, 
-    especially if using dask.
-    
-    Parameters
-    ----------
-    da : xarray.DataArray object
-    max_value : the maximum value that could be found in the array
-    min_value : the minimum value that could be found in the array
-    '''
-    da = odc.algo.reshape_for_geomedian(ds, axis=axis) if isinstance(ds, xr.Dataset) else ds
-    
-    if max_value is None:
-        max_value = da.max(skipna=True)
-    if min_value is None:
-        min_value = da.min(skipna=True)
-
-    offset = min_value
-    scale = max_value - min_value
-
-    da_scaled = odc.algo.to_f32(da, scale=(1 / scale), offset=(-offset / scale))
-
-    geomedian = odc.algo.xr_geomedian(da_scaled, num_threads=num_threads, eps=eps, nocheck=nocheck)
-
-    geomedian = odc.algo.from_float(
-        geomedian,
-        dtype=da.dtype,
-        nodata=np.nan,
-        scale=scale,
-        offset=offset,
-    )
-    
-    if isinstance(ds, xr.Dataset):
-        geomedian = geomedian.to_dataset(dim='band')
-        
-    return geomedian
