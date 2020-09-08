@@ -321,7 +321,7 @@ def predict_proba_xr(model, input_xr, progress=True):
 
         # Flatten array
         input_data_flattened = np.array(input_data_flattened).transpose()
-
+        
         # Mask out no-data in input (not all classifiers can cope with
         # Inf or NaN values)
         input_data_flattened = np.where(np.isfinite(input_data_flattened),
@@ -329,7 +329,8 @@ def predict_proba_xr(model, input_xr, progress=True):
 
         # Actually apply the classification
         out_class = model.predict_proba(input_data_flattened)
-
+        out_class = np.max(out_class, axis=1) * 100.0
+        
         # Mask out NaN or Inf values in results
         out_class = np.where(np.isfinite(out_class), out_class, 0)
 
@@ -720,9 +721,9 @@ def collect_training_data(gdf, products, dc_query, ncpus=1,
     model_input = np.vstack(results)
     print(f'\nOutput training data has shape {model_input.shape}')
 
-    # Remove any potential nans
-    model_input = model_input[~np.isnan(model_input).any(axis=1)]
-    print("Removed NaNs, cleaned input shape: ", model_input.shape)
+    # Remove any potential nans or infs
+    model_input = model_input[~np.isfinite(model_input).any(axis=1)]
+    print("Removed NaNs & infs, cleaned input shape: ", model_input.shape)
 
     return column_names, model_input
 
