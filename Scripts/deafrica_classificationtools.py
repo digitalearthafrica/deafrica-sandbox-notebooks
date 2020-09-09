@@ -722,8 +722,8 @@ def collect_training_data(gdf, products, dc_query, ncpus=1,
     print(f'\nOutput training data has shape {model_input.shape}')
 
     # Remove any potential nans or infs
-    model_input = model_input[~np.isfinite(model_input).any(axis=1)]
-    print("Removed NaNs & infs, cleaned input shape: ", model_input.shape)
+    model_input = model_input[np.isfinite(model_input).any(axis=1)]
+    print("Removed NaNs & Infs, cleaned input shape: ", model_input.shape)
 
     return column_names, model_input
 
