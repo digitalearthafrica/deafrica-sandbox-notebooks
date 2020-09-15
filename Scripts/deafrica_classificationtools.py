@@ -211,23 +211,19 @@ def fit_xr(model, input_xr):
 def predict_xr(model, input_xr, progress=True):
     """
     Utilise our wrappers to predict with a vanilla sklearn model.
-
     Last modified: September 2019
-
     Parameters
     ----------
     model : a scikit-learn model or compatible object
         Must have a predict() method that takes numpy arrays.
     input_xr : xarray.DataArray or xarray.Dataset
         Must have dimensions 'x' and 'y', may have dimension 'time'.
-
     Returns
     ----------
     output_xr : xarray.DataArray 
         An xarray.DataArray containing the prediction output from model 
         with input_xr as input. Has the same spatiotemporal structure 
         as input_xr.
-
     """
 
     def _get_class_ufunc(*args):
@@ -258,9 +254,7 @@ def predict_xr(model, input_xr, progress=True):
     def _get_class(*args):
         """
         Apply classification to xarray DataArrays.
-
         Uses dask to run chunks at a time in parallel
-
         """
         out = xr.apply_ufunc(_get_class_ufunc, *args,
                              dask='parallelized', output_dtypes=[np.uint8])
@@ -285,6 +279,7 @@ def predict_xr(model, input_xr, progress=True):
     output_xr = xr.DataArray(out_class, coords=input_xr.coords)
 
     return output_xr
+
 
 def predict_proba_xr(model, input_xr, progress=True):
     """
@@ -384,7 +379,7 @@ class HiddenPrints:
         sys.stdout = self._original_stdout
 
 
-def get_training_data_for_shp(gdf,
+def _get_training_data_for_shp(gdf,
                               index,
                               row,
                               out_arrs,
@@ -400,7 +395,7 @@ def get_training_data_for_shp(gdf,
     """
     This is the core function that is triggered by `collect_training_data`.
     The `collect_training_data` function loops through geometries in a geopandas
-    geodataframe and runs the code within `get_training_data_for_shp`. 
+    geodataframe and runs the code within `_get_training_data_for_shp`. 
     Parameters are inherited from `collect_training_data`.  
     See that function for information on the other params not listed below.
 
@@ -555,11 +550,11 @@ def get_training_data_for_shp(gdf,
     out_vars.append([field] + list(data.data_vars))
 
 
-def get_training_data_parallel(gdf, products, dc_query, ncpus,
+def _get_training_data_parallel(gdf, products, dc_query, ncpus,
                                custom_func=None, field=None, calc_indices=None,
                                reduce_func=None, drop=True, zonal_stats=None):
     """
-    Function passing the 'get_training_data_for_shp' function
+    Function passing the '_get_training_data_for_shp' function
     to a mulitprocessing.Pool.
     Inherits variables from 'collect_training_data()'.
 
@@ -577,7 +572,7 @@ def get_training_data_parallel(gdf, products, dc_query, ncpus,
 
     with mp.Pool(ncpus) as pool:
         for index, row in gdf.iterrows():
-            pool.apply_async(get_training_data_for_shp,
+            pool.apply_async(_get_training_data_for_shp,
                              [gdf,
                               index,
                               row,
@@ -683,7 +678,7 @@ def collect_training_data(gdf, products, dc_query, ncpus=1,
             print(" Feature {:04}/{:04}\r".format(i + 1, len(gdf)),
                   end='')
 
-            get_training_data_for_shp(
+            _get_training_data_for_shp(
                 gdf,
                 index,
                 row,
@@ -701,7 +696,7 @@ def collect_training_data(gdf, products, dc_query, ncpus=1,
 
     else:
         print('Collecting training data in parallel mode')
-        column_names, results = get_training_data_parallel(
+        column_names, results = _get_training_data_parallel(
             gdf=gdf,
             products=products,
             dc_query=dc_query,
