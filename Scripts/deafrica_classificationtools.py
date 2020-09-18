@@ -30,11 +30,11 @@ import joblib
 import datacube
 import rasterio
 import numpy as np
-import dask.array as da
 import xarray as xr
+from tqdm import tqdm
+import dask.array as da
 import geopandas as gpd
 from copy import deepcopy
-from tqdm import tqdm
 import multiprocessing as mp
 from sklearn.cluster import KMeans
 from datacube.utils import masking
@@ -43,8 +43,10 @@ from sklearn.base import ClusterMixin
 from dask.diagnostics import ProgressBar
 from rasterio.features import rasterize
 from rasterio.features import geometry_mask
+from dask_ml.wrappers import ParallelPostFit
 from datacube.utils.geometry import assign_crs
 from datacube_stats.statistics import GeoMedian
+
 
 sys.path.append('../Scripts')
 from deafrica_spatialtools import xr_rasterize
@@ -211,9 +213,18 @@ def fit_xr(model, input_xr):
     return model
 
 
-def predict_xr(model, input_xr, chunk_size=1000000, proba=False, clean=False):
+def predict_xr(model,
+               input_xr,
+               chunk_size=None,
+               persist=True,
+               proba=False,
+               clean=False):
     """
-
+    Using dask-ml ParallelPostfit(), runs  the parallel
+    predict and predict_proba methods of sklearn
+    estimators. Useful for running predictions
+    on a larger-than-RAM datasets.
+    
     Last modified: September 2020
 
     Parameters
@@ -223,7 +234,14 @@ def predict_xr(model, input_xr, chunk_size=1000000, proba=False, clean=False):
     input_xr : xarray.DataArray or xarray.Dataset. 
         Must have dimensions 'x' and 'y'
     chunk_size : int
-        the dask chunk size to use of the flattened array
+        The dask chunk size to use on the flattened array. If this
+        is left as None, then the chunks size is inferred from the
+        .chunks method on the `input_xr`
+    persist : bool
+        If True, and proba=True, then 'input_xr' data will be
+        loaded into distributed memory. This will ensure data
+        is not loaded twice for the prediction of probabilities,
+        but this will only work if the data is not larger than RAM.
     proba : bool
         If True, predict probabilities
     clean : bool
@@ -238,7 +256,12 @@ def predict_xr(model, input_xr, chunk_size=1000000, proba=False, clean=False):
         as input_xr.
 
     """
-        
+    if chunk_size is None:
+        chunk_size=int(input_xr.chunks['x'][0])*int(input_xr.chunks['y'][0])
+    
+    #convert model to dask predict
+    model=ParallelPostFit(model)   
+    
     with joblib.parallel_backend('dask'):
         x, y, crs = input_xr.x, input_xr.y, input_xr.geobox.crs
 
@@ -260,7 +283,7 @@ def predict_xr(model, input_xr, chunk_size=1000000, proba=False, clean=False):
             input_data_flattened = da.where(da.isfinite(input_data_flattened),
                                             input_data_flattened, 0)
 
-        if proba==True:
+        if (proba==True) & (persist==True):
             #persisting data so we don't require loading all the data twice
             input_data_flattened=input_data_flattened.persist()
 
