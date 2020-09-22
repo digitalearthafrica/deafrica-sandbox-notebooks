@@ -218,7 +218,8 @@ def predict_xr(model,
                chunk_size=None,
                persist=True,
                proba=False,
-               clean=False):
+               clean=False,
+               return_input=False):
     """
     Using dask-ml ParallelPostfit(), runs  the parallel
     predict and predict_proba methods of sklearn
@@ -246,6 +247,9 @@ def predict_xr(model,
         If True, predict probabilities
     clean : bool
         If True, remove Infs and NaNs from input and output arrays
+    return_input : bool
+        If True, then the data variables in the 'input_xr' dataset will
+        be appended to the output xarray dataset.
     
     Returns
     ----------
@@ -305,7 +309,7 @@ def predict_xr(model,
                         dims=["y", "x"])
 
         output_xr = output_xr.to_dataset(name='Predictions')
-
+        
         if proba == True:
             print("   probabilities...")
             out_proba = model.predict_proba(input_data_flattened)
@@ -320,6 +324,33 @@ def predict_xr(model,
 
             out_proba = xr.DataArray(out_proba, coords={"x": x,"y": y}, dims=["y", "x"])
             output_xr['Probabilities'] = out_proba
+        
+        if return_input==True:
+            print("   input features...")            
+            # unflatten the input_data_flattened array and append
+            # to the output_xr containin the predictions
+            arr = input_xr.to_array()
+            stacked = arr.stack(z=['x', 'y'])
+
+            # handle multivariable output
+            output_px_shape = ()
+            if len(input_data_flattened.shape[1:]):
+                output_px_shape = input_data_flattened.shape[1:]
+
+            output_features = input_data_flattened.reshape((len(stacked.z), *output_px_shape))
+
+            # set the stacked coordinate to match the input
+            output_features = xr.DataArray(output_features, coords={'z': stacked['z']},
+                                     dims=['z', *['output_dim_' + str(idx) for
+                                                  idx in range(len(output_px_shape))]]).unstack()
+
+            #convert to dataset and rename arrays
+            output_features = output_features.to_dataset(dim='output_dim_0')
+            data_vars = list(input_xr.data_vars)
+            output_features = output_features.rename({i:j for i,j in zip(output_features.data_vars, data_vars)})
+            
+            #merge with predictions
+            output_xr = xr.merge([output_xr, output_features], compat='override')
 
         return assign_crs(output_xr, str(crs))
     
