@@ -376,6 +376,7 @@ def _get_training_data_for_shp(gdf,
                               out_vars,
                               products,
                               dc_query,
+                              return_coords,
                               custom_func=None,
                               field=None,
                               calc_indices=None,
@@ -457,7 +458,7 @@ def _get_training_data_for_shp(gdf,
         # first check enough variables are set to run functions
         if (len(ds.time.values) > 1) and (reduce_func == None):
             raise ValueError("You're dataset has " + str(len(ds.time.values)) +
-                             " time-steps, please provide a reduction function," +
+                             " time-steps, please provide a time reduction function," +
                              " e.g. reduce_func='mean'")
 
         if calc_indices is not None:
@@ -516,11 +517,15 @@ def _get_training_data_for_shp(gdf,
                     data = method_to_call('time')
             else:
                 data = ds.squeeze()
-
+    
+    if return_coords == True:
+        #turn coords into a variable in the ds
+        data['x_coord'] = ds.x + 0 * ds.y
+        data['y_coord'] = ds.y + 0 * ds.x
+    
     if zonal_stats is None:
         # If no zonal stats were requested then extract all pixel values
         flat_train = sklearn_flatten(data)
-        # Make a labelled array of identical size
         flat_val = np.repeat(row[field], flat_train.shape[0])
         stacked = np.hstack((np.expand_dims(flat_val, axis=1), flat_train))
 
@@ -539,7 +544,7 @@ def _get_training_data_for_shp(gdf,
     out_vars.append([field] + list(data.data_vars))
 
 
-def _get_training_data_parallel(gdf, products, dc_query, ncpus,
+def _get_training_data_parallel(gdf, products, dc_query, ncpus, return_coords,
                                custom_func=None, field=None, calc_indices=None,
                                reduce_func=None, drop=True, zonal_stats=None):
     """
@@ -569,6 +574,7 @@ def _get_training_data_parallel(gdf, products, dc_query, ncpus,
                               column_names,
                               products,
                               dc_query,
+                              return_coords,
                               custom_func,
                               field,
                               calc_indices,
@@ -583,9 +589,9 @@ def _get_training_data_parallel(gdf, products, dc_query, ncpus,
     return column_names, results
 
 
-def collect_training_data(gdf, products, dc_query, ncpus=1,
+def collect_training_data(gdf, products, dc_query, ncpus=1, return_coords=False,
                           custom_func=None, field=None, calc_indices=None,
-                          reduce_func=None, drop=True, zonal_stats=None):
+                          reduce_func=None, drop=True, zonal_stats=None,):
     """
     This function executes the training data functions and tidies the results
     into a 'model_input' object containing stacked training data arrays
@@ -613,6 +619,10 @@ def collect_training_data(gdf, products, dc_query, ncpus=1,
         The number of cpus/processes over which to parallelize the gathering
         of training data (only if ncpus is > 1). Use 'mp.cpu_count()' to determine the number of
         cpus available on a machine. Defaults to 1.
+    return_coords : bool
+        If True, then the training data will contain two extra columns 'x_coord' and
+        'y_coord' corresponding to the x,y coordinate of each sample. This variable can
+        be useful for handling spatial autocorrelation between samples later in the ML workflow. 
     custom_func : function, optional 
         A custom function for generating feature layers. If this parameter
         is set, all other options (excluding 'zonal_stats'), will be ignored.
@@ -679,6 +689,7 @@ def collect_training_data(gdf, products, dc_query, ncpus=1,
                 column_names,
                 products,
                 dc_query,
+                return_coords,
                 custom_func,
                 field,
                 calc_indices,
@@ -694,6 +705,7 @@ def collect_training_data(gdf, products, dc_query, ncpus=1,
             products=products,
             dc_query=dc_query,
             ncpus=ncpus,
+            return_coords=return_coords,
             custom_func=custom_func,
             field=field,
             calc_indices=calc_indices,
