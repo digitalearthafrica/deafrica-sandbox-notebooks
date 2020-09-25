@@ -36,6 +36,8 @@ import dask.array as da
 import geopandas as gpd
 from copy import deepcopy
 import multiprocessing as mp
+import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 from sklearn.cluster import KMeans
 from datacube.utils import masking
 from datacube.utils import geometry
@@ -44,8 +46,10 @@ from dask.diagnostics import ProgressBar
 from rasterio.features import rasterize
 from rasterio.features import geometry_mask
 from dask_ml.wrappers import ParallelPostFit
+from sklearn.mixture import GaussianMixture
 from datacube.utils.geometry import assign_crs
 from datacube_stats.statistics import GeoMedian
+from sklearn.model_selection import GroupShuffleSplit,LeavePGroupsOut, LeaveOneGroupOut
 
 
 sys.path.append('../Scripts')
@@ -829,3 +833,119 @@ class KMeans_tree(ClusterMixin):
                     sample_weight[rescpy == clu] if sample_weight is not None else None))
 
         return result
+
+
+def spatial_clusters(n_groups, coordinates, method='KMeans'):
+    """
+    Create groups on coorindate data using either KMeans clustering
+    or a Gaussian Mixture model.
+    
+    Last modified: September 2020
+
+    Parameters
+    ----------
+    n_groups : int
+        The number of groups to create. This is passed as N-clusters=n_groups
+        for the KMeans algo, and n_components=n_groups for the GMM.
+    coordinates : np.array
+        A numpy array of coordinate values, e.g. np.array([eastings, northings])
+    method : str
+        Which algorithm to use to seperate data points. Either 'KMeans' or 'GMM'
+    """
+    
+    if method=='KMeans':
+        clusters = KMeans(n_clusters=n_groups).fit(coordinates)
+    
+    if method=='GMM':    
+        clusters=GaussianMixture(n_components=n_groups).fit(coordinates)
+    
+    return clusters.labels_
+
+
+def spatial_split(X, y, n_splits, method, test_size, spatial_groups):
+    """
+    Generate test-train-splits on data containing groups, where the
+    groups represent spatially adjacent clusters.
+    
+    Last modified: September 2020
+
+    Parameters
+    ----------
+    X : np.array
+        Training data features
+    y : np.array
+        Training data labels
+    n_splits = int
+        The number of test-train splits to generate.
+        If n_splits =1, then this function will return four items: 
+            train_features, test_features, train_labels, test_labels. i.e. 
+            this options returns the equivalent of sklearn.model_selection.train_test_split
+        If n_splits is > 1, then the function will return a cross-validator
+        iterable that can be passed to other sklearn cross-validation functions
+        like GridSearchCV.  
+    test_size : float
+        Should be between 0.0 and 1.0 and represent the proportion
+        of the dataset to include in the test split. The train-size will be equal to
+        1-test_size 
+    spatial_groups : ndarray of shape (n_samples,)
+        Labels output from running "spatial_clusters" function
+    
+    """    
+    
+    #intiate a groupshufflesplit
+    if method=='groupshufflesplit':
+        splitter = GroupShuffleSplit(n_splits=n_splits, test_size=test_size)
+    
+    if method=='lpgo':
+        splitter=LeavePGroupsOut(n_groups=2)
+    
+    if method=='logo':
+        splitter=LeaveOneGroupOut()
+    
+    if n_splits==1:
+        #generate train, test indices and index input arrays
+        lst=[]
+        for train, test in splitter.split(X, y, groups=spatial_groups):
+            X_tr, X_tt = X[train,:], X[test,:]
+            y_tr, y_tt = y[train], y[test]
+            lst.extend([X_tr, X_tt, y_tr, y_tt])
+        
+        return lst[0], lst[1], lst[2], lst[3]
+    
+    if n_splits > 1:
+   
+        fv = splitter.split(X, y, groups=spatial_groups)
+        
+        return fv   
+
+    
+def plot_spatial_cv_indices(X, y, test_size, method, spatial_groups, ax, n_splits, lw=10):
+    """Create a sample plot for indices of a cross-validation object."""
+    cmap_data = plt.cm.Paired
+    cmap_cv = plt.cm.coolwarm
+    # Generate the training/testing visualizations for each CV split
+    for ii, (tr, tt) in enumerate(spatial_split(X, y, n_splits,method, test_size, spatial_groups)):
+        # Fill in indices with the training/test groups
+        indices = np.array([np.nan] * len(X))
+        indices[tt] = 1
+        indices[tr] = 0
+
+        # Visualize the results
+        ax.scatter(range(len(indices)), [ii + .5] * len(indices),
+                   c=indices, marker='_', lw=lw, cmap=cmap_cv,
+                   vmin=-.2, vmax=1.2)
+
+    # Plot the data classes and groups at the end
+    ax.scatter(range(len(X)), [ii + 1.5] * len(y),
+               c=y, marker='_', lw=lw, cmap=cmap_data)
+
+    ax.scatter(range(len(X)), [ii + 2.5] * len(X),
+               c=spatial_groups, marker='_', lw=lw, cmap=cmap_data)
+
+    # Formatting
+    yticklabels = list(range(n_splits)) + ['class', 'group']
+    ax.set(yticks=np.arange(n_splits+2) + .5, yticklabels=yticklabels,
+           xlabel='Sample index', ylabel="CV iteration",
+           ylim=[n_splits+2.2, -.2])
+    ax.set_title('Spatial GroupShuffleSplit', fontsize=15)
+    return ax
