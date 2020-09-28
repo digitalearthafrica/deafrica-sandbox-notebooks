@@ -1039,48 +1039,6 @@ def partition_by_sum(array, parts):
         )
     return indices
     
-def spatial_clusters(n_groups,
-                     coordinates,
-                     method='KMeans',
-                     covariance_type='full',
-                     ):
-    """
-    Create groups on coorindate data using either KMeans clustering
-    or a Gaussian Mixture model.
-
-    Last modified: September 2020
-
-    Parameters
-    ----------
-    n_groups : int
-        The number of groups to create. This is passed as 'n_clusters=n_groups'
-        for the KMeans algo, and 'n_components=n_groups' for the GMM.
-    coordinates : np.array
-        A numpy array of coordinate values e.g. 
-        np.array([[3337270.,  262400.],
-                  [3441390., -273060.],
-                   ...,
-    method : str
-        Which algorithm to use to seperate data points. Either 'KMeans' or 'GMM'
-    covariance_typ : str,
-        String describing the type of covariance parameters to use. Must be one of:
-        'full', 'tied', 'diag', 'spherical'. Only applies if setting method='GMM'.
-    
-    Returns
-    -------
-     labels : array, shape [n_samples,]
-        Index of the cluster each sample belongs to.
-
-    """
-
-    if method=='KMeans':
-        cluster_label = KMeans(n_clusters=n_groups).fit_predict(coordinates)
-
-    if method=='GMM':  
-        cluster_label = GaussianMixture(n_components=n_groups,
-                                        covariance_type=covariance_type).fit_predict(coordinates)
-
-    return cluster_label 
 
 class BaseSpatialCrossValidator(BaseCrossValidator, metaclass=ABCMeta):
     """
