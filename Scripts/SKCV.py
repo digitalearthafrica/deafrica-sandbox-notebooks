@@ -92,7 +92,7 @@ def spatial_clusters(n_groups, coordinates, method='KMeans'):
     if method=='KMeans':
         cluster_label = KMeans(n_clusters=n_groups).fit_predict(coordinates)
 
-    if method=='GMM':    
+    if method=='GMM':  
         cluster_label = GaussianMixture(n_components=n_groups).fit_predict(coordinates)
 
     return cluster_label 
@@ -277,7 +277,7 @@ class SpatialShuffleSplit(BaseSpatialCrossValidator):
         self,
         n_groups=None,
         coordinates=None,
-        method=None,
+        method='KMeans',
         n_splits=None,
         test_size=0.15,
         train_size=None,
