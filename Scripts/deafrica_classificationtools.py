@@ -845,12 +845,21 @@ def spatial_clusters(n_groups, coordinates, method='KMeans'):
     Parameters
     ----------
     n_groups : int
-        The number of groups to create. This is passed as N-clusters=n_groups
-        for the KMeans algo, and n_components=n_groups for the GMM.
+        The number of groups to create. This is passed as 'n_clusters=n_groups'
+        for the KMeans algo, and 'n_components=n_groups' for the GMM.
     coordinates : np.array
-        A numpy array of coordinate values, e.g. np.array([eastings, northings])
+        A numpy array of coordinate values e.g. 
+        np.array([[3337270.,  262400.],
+                  [3441390., -273060.],
+                   ...,
     method : str
         Which algorithm to use to seperate data points. Either 'KMeans' or 'GMM'
+        
+    Returns
+    -------
+     labels : array, shape [n_samples,]
+        Index of the cluster each sample belongs to.
+            
     """
     
     if method=='KMeans':
