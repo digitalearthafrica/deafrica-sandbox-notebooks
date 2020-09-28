@@ -322,12 +322,10 @@ class SpatialShuffleSplit(BaseSpatialCrossValidator):
             The testing set indices for that split.
 
         """
-        print('here')
-        
         labels = spatial_clusters(n_groups=self.n_groups,
                                   coordinates=self.coordinates,
                                   method=self.method)
-        print(labels)
+        
         cluster_ids = np.unique(labels)
         # Generate many more splits so that we can pick and choose the ones
         # that have the right balance of training and testing data.
