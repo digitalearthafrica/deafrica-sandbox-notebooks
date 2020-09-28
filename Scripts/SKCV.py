@@ -1,5 +1,5 @@
 """
-Functions for automating model selection through cross-validation.
+
 """
 import warnings
 warnings.simplefilter("default")
@@ -10,8 +10,6 @@ from sklearn.utils import check_random_state
 from sklearn.cluster import KMeans
 from sklearn.mixture import GaussianMixture 
 from abc import ABCMeta, abstractmethod
-import xarray as xr
-import pandas as pd
 from sklearn.base import BaseEstimator
 from sklearn.model_selection import BaseCrossValidator
 
@@ -62,7 +60,11 @@ def partition_by_sum(array, parts):
         )
     return indices
     
-def spatial_clusters(n_groups, coordinates, method='KMeans'):
+def spatial_clusters(n_groups,
+                     coordinates,
+                     method='KMeans',
+                     covariance_type='full',
+                     ):
     """
     Create groups on coorindate data using either KMeans clustering
     or a Gaussian Mixture model.
@@ -81,7 +83,10 @@ def spatial_clusters(n_groups, coordinates, method='KMeans'):
                    ...,
     method : str
         Which algorithm to use to seperate data points. Either 'KMeans' or 'GMM'
-
+    covariance_typ : str,
+        String describing the type of covariance parameters to use. Must be one of:
+        'full', 'tied', 'diag', 'spherical'. Only applies if setting method='GMM'.
+    
     Returns
     -------
      labels : array, shape [n_samples,]
@@ -93,7 +98,8 @@ def spatial_clusters(n_groups, coordinates, method='KMeans'):
         cluster_label = KMeans(n_clusters=n_groups).fit_predict(coordinates)
 
     if method=='GMM':  
-        cluster_label = GaussianMixture(n_components=n_groups).fit_predict(coordinates)
+        cluster_label = GaussianMixture(n_components=n_groups,
+                                        covariance_type=covariance_type).fit_predict(coordinates)
 
     return cluster_label 
 
@@ -122,12 +128,14 @@ class BaseSpatialCrossValidator(BaseCrossValidator, metaclass=ABCMeta):
         n_groups=None,
         coordinates=None,
         method=None,
+        covariance_type=None,
         n_splits=None,
     ):
 
         self.n_groups = n_groups
         self.coordinates = coordinates
         self.method=method
+        self.covariance_type=covariance_type
         self.n_splits = n_splits
 
     def split(self, X, y=None, groups=None):
@@ -278,6 +286,7 @@ class SpatialShuffleSplit(BaseSpatialCrossValidator):
         n_groups=None,
         coordinates=None,
         method='KMeans',
+        covariance_type='full',
         n_splits=None,
         test_size=0.15,
         train_size=None,
@@ -286,6 +295,7 @@ class SpatialShuffleSplit(BaseSpatialCrossValidator):
     ):
         super().__init__(n_groups=n_groups,
                          coordinates=coordinates,
+                         covariance_type=covariance_type,
                          method=method,
                          n_splits=n_splits)
         if balancing < 1:
@@ -420,6 +430,7 @@ class SpatialKFold(BaseSpatialCrossValidator):
         n_groups=None,
         coordinates=None,
         method='KMeans',
+        covariance_type='full',
         n_splits=5,
         shuffle=False,
         random_state=None,
@@ -428,6 +439,7 @@ class SpatialKFold(BaseSpatialCrossValidator):
         super().__init__(n_groups=n_groups,
                          coordinates=coordinates,
                          method=method,
+                         covariance_type=covariance_type,
                          n_splits=n_splits)
         if n_splits < 2:
             raise ValueError(
