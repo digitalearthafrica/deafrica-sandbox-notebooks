@@ -1001,8 +1001,7 @@ def SKCV(X, y, coordinates, n_groups, n_splits, cluster_method, kfold_method,
     return splitter.split(coordinates)
 
 
-def spatial_train_test_split(X, y, coordinates, n_groups, cluster_method,
-                             cluster_covar_type, kfold_method,
+def spatial_train_test_split(X, y, coordinates, n_groups, cluster_method, kfold_method,
                              test_size, train_size, random_state, balance, **kwargs):
     """
     Split arrays into random train and test subsets. Similar to 
