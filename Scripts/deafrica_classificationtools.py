@@ -23,7 +23,6 @@ Last modified: April 2020
 
 '''
 
-
 import sys
 import os
 import joblib
@@ -191,9 +190,13 @@ def sklearn_unflatten(output_np, input_xr):
     output_ma[mask] = np.ma.masked
 
     # set the stacked coordinate to match the input
-    output_xr = xr.DataArray(output_ma, coords={'z': stacked['z']},
-                             dims=['z', *['output_dim_' + str(idx) for
-                                          idx in range(len(output_px_shape))]])
+    output_xr = xr.DataArray(
+        output_ma,
+        coords={'z': stacked['z']},
+        dims=[
+            'z',
+            *['output_dim_' + str(idx) for idx in range(len(output_px_shape))]
+        ])
 
     output_xr = output_xr.unstack()
 
@@ -272,11 +275,11 @@ def predict_xr(model,
 
     """
     if chunk_size is None:
-        chunk_size=int(input_xr.chunks['x'][0])*int(input_xr.chunks['y'][0])
-    
+        chunk_size = int(input_xr.chunks['x'][0]) * int(input_xr.chunks['y'][0])
+
     #convert model to dask predict
-    model=ParallelPostFit(model)   
-    
+    model = ParallelPostFit(model)
+
     with joblib.parallel_backend('dask'):
         x, y, crs = input_xr.x, input_xr.y, input_xr.geobox.crs
 
@@ -294,33 +297,35 @@ def predict_xr(model,
         # reshape for prediction
         input_data_flattened = da.array(input_data_flattened).transpose()
 
-        if clean==True:        
+        if clean == True:
             input_data_flattened = da.where(da.isfinite(input_data_flattened),
                                             input_data_flattened, 0)
 
-        if (proba==True) & (persist==True):
+        if (proba == True) & (persist == True):
             #persisting data so we don't require loading all the data twice
-            input_data_flattened=input_data_flattened.persist()
+            input_data_flattened = input_data_flattened.persist()
 
         #apply the classification
-        print('   predicting...') 
+        print('   predicting...')
         out_class = model.predict(input_data_flattened)
 
         # Mask out NaN or Inf values in results
-        if clean==True:        
-            out_class = da.where(da.isfinite(out_class),out_class, 0)
+        if clean == True:
+            out_class = da.where(da.isfinite(out_class), out_class, 0)
 
         # Reshape when writing out
         out_class = out_class.reshape(len(y), len(x))
 
         # stack back into xarray
-        output_xr = xr.DataArray(out_class, coords={
-                        "x": x,
-                        "y": y},
-                        dims=["y", "x"])
+        output_xr = xr.DataArray(out_class,
+                                 coords={
+                                     "x": x,
+                                     "y": y
+                                 },
+                                 dims=["y", "x"])
 
         output_xr = output_xr.to_dataset(name='Predictions')
-        
+
         if proba == True:
             print("   probabilities...")
             out_proba = model.predict_proba(input_data_flattened)
@@ -328,16 +333,21 @@ def predict_xr(model,
             #convert to %
             out_proba = da.max(out_proba, axis=1) * 100.0
 
-            if clean==True:
+            if clean == True:
                 out_proba = da.where(da.isfinite(out_proba), out_proba, 0)
 
             out_proba = out_proba.reshape(len(y), len(x))
 
-            out_proba = xr.DataArray(out_proba, coords={"x": x,"y": y}, dims=["y", "x"])
+            out_proba = xr.DataArray(out_proba,
+                                     coords={
+                                         "x": x,
+                                         "y": y
+                                     },
+                                     dims=["y", "x"])
             output_xr['Probabilities'] = out_proba
-        
-        if return_input==True:
-            print("   input features...")            
+
+        if return_input == True:
+            print("   input features...")
             # unflatten the input_data_flattened array and append
             # to the output_xr containin the predictions
             arr = input_xr.to_array()
@@ -348,23 +358,34 @@ def predict_xr(model,
             if len(input_data_flattened.shape[1:]):
                 output_px_shape = input_data_flattened.shape[1:]
 
-            output_features = input_data_flattened.reshape((len(stacked.z), *output_px_shape))
+            output_features = input_data_flattened.reshape(
+                (len(stacked.z), *output_px_shape))
 
             # set the stacked coordinate to match the input
-            output_features = xr.DataArray(output_features, coords={'z': stacked['z']},
-                                     dims=['z', *['output_dim_' + str(idx) for
-                                                  idx in range(len(output_px_shape))]]).unstack()
+            output_features = xr.DataArray(
+                output_features,
+                coords={
+                    'z': stacked['z']
+                },
+                dims=[
+                    'z', *[
+                        'output_dim_' + str(idx)
+                        for idx in range(len(output_px_shape))
+                    ]
+                ]).unstack()
 
             #convert to dataset and rename arrays
             output_features = output_features.to_dataset(dim='output_dim_0')
             data_vars = list(input_xr.data_vars)
-            output_features = output_features.rename({i:j for i,j in zip(output_features.data_vars, data_vars)})
-            
+            output_features = output_features.rename(
+                {i: j for i, j in zip(output_features.data_vars, data_vars)})
+
             #merge with predictions
-            output_xr = xr.merge([output_xr, output_features], compat='override')
+            output_xr = xr.merge([output_xr, output_features],
+                                 compat='override')
 
         return assign_crs(output_xr, str(crs))
-    
+
 
 class HiddenPrints:
     """
@@ -381,19 +402,19 @@ class HiddenPrints:
 
 
 def _get_training_data_for_shp(gdf,
-                              index,
-                              row,
-                              out_arrs,
-                              out_vars,
-                              products,
-                              dc_query,
-                              return_coords,
-                              custom_func=None,
-                              field=None,
-                              calc_indices=None,
-                              reduce_func=None,
-                              drop=True,
-                              zonal_stats=None):
+                               index,
+                               row,
+                               out_arrs,
+                               out_vars,
+                               products,
+                               dc_query,
+                               return_coords,
+                               custom_func=None,
+                               field=None,
+                               calc_indices=None,
+                               reduce_func=None,
+                               drop=True,
+                               zonal_stats=None):
     """
     This is the core function that is triggered by `collect_training_data`.
     The `collect_training_data` function loops through geometries in a geopandas
@@ -429,9 +450,8 @@ def _get_training_data_for_shp(gdf,
     dc = datacube.Datacube(app='training_data')
 
     # set up query based on polygon (convert to WGS84)
-    geom = geometry.Geometry(
-        gdf.geometry.values[index].__geo_interface__, geometry.CRS(
-            'epsg:4326'))
+    geom = geometry.Geometry(gdf.geometry.values[index].__geo_interface__,
+                             geometry.CRS('epsg:4326'))
 
     # print(geom)
     q = {"geopolygon": geom}
@@ -449,9 +469,7 @@ def _get_training_data_for_shp(gdf,
     else:
         # load data
         with HiddenPrints():
-            ds = load_ard(dc=dc,
-                          products=products,
-                          **dc_query)
+            ds = load_ard(dc=dc, products=products, **dc_query)
 
     # create polygon mask
     with HiddenPrints():
@@ -462,15 +480,16 @@ def _get_training_data_for_shp(gdf,
         with HiddenPrints():
             data = custom_func(ds)
             data = data.where(mask)
-        
+
     else:
         # mask dataset
         ds = ds.where(mask)
         # first check enough variables are set to run functions
         if (len(ds.time.values) > 1) and (reduce_func == None):
-            raise ValueError("You're dataset has " + str(len(ds.time.values)) +
-                             " time-steps, please provide a time reduction function," +
-                             " e.g. reduce_func='mean'")
+            raise ValueError(
+                "You're dataset has " + str(len(ds.time.values)) +
+                " time-steps, please provide a time reduction function," +
+                " e.g. reduce_func='mean'")
 
         if calc_indices is not None:
             # determine which collection is being loaded
@@ -504,8 +523,10 @@ def _get_training_data_for_shp(gdf,
                                                  collection=collection)
 
                 else:
-                    raise Exception(reduce_func + " is not one of the supported" +
-                                    " reduce functions ('mean','median','std','max','min', 'geomedian')")
+                    raise Exception(
+                        reduce_func + " is not one of the supported" +
+                        " reduce functions ('mean','median','std','max','min', 'geomedian')"
+                    )
 
             else:
                 with HiddenPrints():
@@ -528,12 +549,12 @@ def _get_training_data_for_shp(gdf,
                     data = method_to_call('time')
             else:
                 data = ds.squeeze()
-    
+
     if return_coords == True:
         #turn coords into a variable in the ds
         data['x_coord'] = ds.x + 0 * ds.y
         data['y_coord'] = ds.y + 0 * ds.x
-    
+
     if zonal_stats is None:
         # If no zonal stats were requested then extract all pixel values
         flat_train = sklearn_flatten(data)
@@ -555,9 +576,17 @@ def _get_training_data_for_shp(gdf,
     out_vars.append([field] + list(data.data_vars))
 
 
-def _get_training_data_parallel(gdf, products, dc_query, ncpus, return_coords,
-                               custom_func=None, field=None, calc_indices=None,
-                               reduce_func=None, drop=True, zonal_stats=None):
+def _get_training_data_parallel(gdf,
+                                products,
+                                dc_query,
+                                ncpus,
+                                return_coords,
+                                custom_func=None,
+                                field=None,
+                                calc_indices=None,
+                                reduce_func=None,
+                                drop=True,
+                                zonal_stats=None):
     """
     Function passing the '_get_training_data_for_shp' function
     to a mulitprocessing.Pool.
@@ -577,21 +606,12 @@ def _get_training_data_parallel(gdf, products, dc_query, ncpus, return_coords,
 
     with mp.Pool(ncpus) as pool:
         for index, row in gdf.iterrows():
-            pool.apply_async(_get_training_data_for_shp,
-                             [gdf,
-                              index,
-                              row,
-                              results,
-                              column_names,
-                              products,
-                              dc_query,
-                              return_coords,
-                              custom_func,
-                              field,
-                              calc_indices,
-                              reduce_func,
-                              drop,
-                              zonal_stats], callback=update)
+            pool.apply_async(_get_training_data_for_shp, [
+                gdf, index, row, results, column_names, products, dc_query,
+                return_coords, custom_func, field, calc_indices, reduce_func,
+                drop, zonal_stats
+            ],
+                             callback=update)
 
         pool.close()
         pool.join()
@@ -600,9 +620,19 @@ def _get_training_data_parallel(gdf, products, dc_query, ncpus, return_coords,
     return column_names, results
 
 
-def collect_training_data(gdf, products, dc_query, ncpus=1, return_coords=False,
-                          custom_func=None, field=None, calc_indices=None,
-                          reduce_func=None, drop=True, zonal_stats=None,):
+def collect_training_data(
+    gdf,
+    products,
+    dc_query,
+    ncpus=1,
+    return_coords=False,
+    custom_func=None,
+    field=None,
+    calc_indices=None,
+    reduce_func=None,
+    drop=True,
+    zonal_stats=None,
+):
     """
     This function executes the training data functions and tidies the results
     into a 'model_input' object containing stacked training data arrays
@@ -666,8 +696,10 @@ def collect_training_data(gdf, products, dc_query, ncpus=1, return_coords=False,
     """
     # check the dtype of the class field
     if (gdf[field].dtype != np.int):
-        raise ValueError('The "field" column of the input vector must contain integer dtypes')
-    
+        raise ValueError(
+            'The "field" column of the input vector must contain integer dtypes'
+        )
+
     # set up some print statements
     if custom_func is not None:
         print("Reducing data using user supplied custom function")
@@ -677,7 +709,7 @@ def collect_training_data(gdf, products, dc_query, ncpus=1, return_coords=False,
         print("Reducing data using: " + reduce_func)
     if zonal_stats is not None:
         print("Taking zonal statistic: " + zonal_stats)
-    
+
     if ncpus == 1:
         # progress indicator
         print('Collecting training data in serial mode')
@@ -689,24 +721,12 @@ def collect_training_data(gdf, products, dc_query, ncpus=1, return_coords=False,
 
         # loop through polys and extract training data
         for index, row in gdf.iterrows():
-            print(" Feature {:04}/{:04}\r".format(i + 1, len(gdf)),
-                  end='')
+            print(" Feature {:04}/{:04}\r".format(i + 1, len(gdf)), end='')
 
-            _get_training_data_for_shp(
-                gdf,
-                index,
-                row,
-                results,
-                column_names,
-                products,
-                dc_query,
-                return_coords,
-                custom_func,
-                field,
-                calc_indices,
-                reduce_func,
-                drop,
-                zonal_stats)
+            _get_training_data_for_shp(gdf, index, row, results, column_names,
+                                       products, dc_query, return_coords,
+                                       custom_func, field, calc_indices,
+                                       reduce_func, drop, zonal_stats)
             i += 1
 
     else:
@@ -768,10 +788,11 @@ class KMeans_tree(ClusterMixin):
         self.n_clusters = n_clusters
         # make child models
         if n_levels > 1:
-            self.branches = [KMeans_tree(n_levels=n_levels - 1,
-                                         n_clusters=n_clusters,
-                                         **kwargs)
-                             for _ in range(n_clusters)]
+            self.branches = [
+                KMeans_tree(n_levels=n_levels - 1,
+                            n_clusters=n_clusters,
+                            **kwargs) for _ in range(n_clusters)
+            ]
 
     def fit(self, X, y=None, sample_weight=None):
         """
@@ -797,13 +818,14 @@ class KMeans_tree(ClusterMixin):
         if self.n_levels > 1:
             labels_old = np.copy(self.labels_)
             # make room to add the sub-cluster labels
-            self.labels_ *= (self.n_clusters) ** (self.n_levels - 1)
+            self.labels_ *= (self.n_clusters)**(self.n_levels - 1)
 
             for clu in range(self.n_clusters):
                 # fit child models on their corresponding partition of the training set
-                self.branches[clu].fit(X[labels_old == clu], sample_weight=(
-                    sample_weight[labels_old == clu]
-                    if sample_weight is not None else None))
+                self.branches[clu].fit(
+                    X[labels_old == clu],
+                    sample_weight=(sample_weight[labels_old == clu]
+                                   if sample_weight is not None else None))
                 self.labels_[labels_old == clu] += self.branches[clu].labels_
 
         return self
@@ -833,20 +855,18 @@ class KMeans_tree(ClusterMixin):
             rescpy = np.copy(result)
 
             # make room to add the sub-cluster labels
-            result *= (self.n_clusters) ** (self.n_levels - 1)
+            result *= (self.n_clusters)**(self.n_levels - 1)
 
             for clu in range(self.n_clusters):
-                result[rescpy == clu] += self.branches[clu].predict(X[rescpy == clu], sample_weight=(
-                    sample_weight[rescpy == clu] if sample_weight is not None else None))
+                result[rescpy == clu] += self.branches[clu].predict(
+                    X[rescpy == clu],
+                    sample_weight=(sample_weight[rescpy == clu]
+                                   if sample_weight is not None else None))
 
         return result
 
-    
-def spatial_clusters(n_groups,
-                     coordinates,
-                     method='KMeans',
-                     covariance_type='full',
-                     ):
+
+def spatial_clusters(n_groups, coordinates, method='KMeans', **kwargs):
     """
     Create groups on coorindate data using either KMeans clustering
     or a Gaussian Mixture model.
@@ -861,13 +881,12 @@ def spatial_clusters(n_groups,
     coordinates : np.array
         A numpy array of coordinate values e.g. 
         np.array([[3337270.,  262400.],
-                  [3441390., -273060.],
-                   ...,
+                  [3441390., -273060.], ...])
     method : str
         Which algorithm to use to seperate data points. Either 'KMeans' or 'GMM'
-    covariance_typ : str,
-        String describing the type of covariance parameters to use. Must be one of:
-        'full', 'tied', 'diag', 'spherical'. Only applies if setting method='GMM'.
+    **kwargs : optional,
+        Additional keyword arguments to pass to sklearn.cluster.Kmeans or
+        sklearn.mixture.GuassianMixture depending on the method= argument.
     
     Returns
     -------
@@ -876,33 +895,30 @@ def spatial_clusters(n_groups,
 
     """
 
-    if method=='KMeans':
-        cluster_label = KMeans(n_clusters=n_groups).fit_predict(coordinates)
+    if method == 'KMeans':
+        cluster_label = KMeans(n_clusters=n_groups,
+                               **kwargs).fit_predict(coordinates)
 
-    if method=='GMM':  
+    if method == 'GMM':
         cluster_label = GaussianMixture(n_components=n_groups,
-                                        covariance_type=covariance_type).fit_predict(coordinates)
+                                        **kwargs).fit_predict(coordinates)
 
-    return cluster_label 
+    return cluster_label
 
 
-def SKCV(X,
-         y,
-         coordinates,
-         n_groups,
-         n_splits,
-         cluster_method,
-         cluster_covar_type,
-         kfold_method,
-         shuffle,
-         test_size,
-         train_size,
-         random_state,
-         ):
-    
+def SKCV(X, y, coordinates, n_groups, n_splits, cluster_method, kfold_method,
+         test_size, train_size, random_state, balance, **kwargs):
     """
-    Generate spatial ck-fold cross validation indices
-    using coordinate data
+    Generate spatial k-fold cross validation indices using coordinate data.
+    This function wraps the 'SpatialShuffleSplit' and 'SpatialKFold' classes. 
+    These classes ingest coordinate data in the form of an
+    np.array([[Eastings, northings]]) and assign points to a spatial cluster
+    using either a KMeans or Gaussain Mixture model algorithm.  
+    
+    This cross-validator is preferred over other sklearn.model_selection methods
+    for spatial data to avoid overestimating cross-validation scores.
+    This can happen because of the inherent autocorrelation that is usually
+    associated with this type of data.
     
     Last modified: September 2020
 
@@ -912,86 +928,168 @@ def SKCV(X,
         Training data features
     y : np.array
         Training data labels
-    n_splits = int
-        The number of test-train splits to generate.
-        If n_splits =1, then this function will return four items: 
-            train_features, test_features, train_labels, test_labels. i.e. 
-            this options returns the equivalent of sklearn.model_selection.train_test_split
-        If n_splits is > 1, then the function will return a cross-validator
-        iterable that can be passed to other sklearn cross-validation functions
-        like GridSearchCV.  
-    test_size : float
-        Should be between 0.0 and 1.0 and represent the proportion
-        of the dataset to include in the test split. The train-size will be equal to
-        1-test_size 
-    spatial_groups : ndarray of shape (n_samples,)
-        Labels output from running "spatial_clusters" function
+    coordinates : np.array
+        A numpy array of coordinate values e.g.
+        np.array([[3337270.,  262400.],
+                  [3441390., -273060.], ...])
+    n_groups : int
+        The number of spatial clusters to create. This is passed as
+        'n_clusters=n_groups' for the KMeans algo, and 
+        'n_components=n_groups' for the GMM.
+    n_splits : int
+        The number of test-train cross validation splits to generate.
+        test_size : float, int, None, default=None
+        If float, should be between 0.0 and 1.0 and represent the proportion
+        of the dataset to include in the test split. If int, represents the
+        absolute number of test samples. If None, the value is set to the
+        complement of the train size. If ``train_size`` is also None, it will
+        be set to 0.1.
+    cluster_method : str
+        Which algorithm to use to seperate data points into spatial clusters.
+        Either 'KMeans' or 'GMM'
+    train_size : float, int, or None, default=None
+        If float, should be between 0.0 and 1.0 and represent the
+        proportion of the dataset to include in the train split. If
+        int, represents the absolute number of train samples. If None,
+        the value is automatically set to the complement of the test size.
+    random_state : int, RandomState instance or None, optional (default=None)
+        If int, random_state is the seed used by the random number generator;
+        If RandomState instance, random_state is the random number generator;
+        If None, the random number generator is the RandomState instance used
+        by `np.random`.
+    balance : int or bool
+        if setting kfold_method to 'SpatialShuffleSplit': int
+            The number of splits generated per iteration to try to balance the
+            amount of data in each set so that *test_size* and *train_size* are
+            respected. If 1, then no extra splits are generated (essentially
+            disabling the balacing). Must be >= 1.
+         if setting kfold_method to 'SpatialKFold': bool
+             Whether or not to split clusters into fold with approximately equal
+            number of data points. If False, each fold will have the same number of
+            clusters (which can have different number of data points in them).
+    **kwargs : optional,
+        Additional keyword arguments to pass to sklearn.cluster.Kmeans or
+        sklearn.mixture.GuassianMixture depending on the cluster_method argument.
     
-    """    
+    Returns
+    --------
+    generator object BaseSpatialCrossValidator.split 
+            
+    
+    """
     #intiate a method
-    if kfold_method=='SpatialShuffleSplit':
+    if kfold_method == 'SpatialShuffleSplit':
         splitter = SpatialShuffleSplit(n_groups=n_groups,
-                                      method=cluster_method,
-                                      covariance_type=cluster_covar_type,
-                                      coordinates=coordinates,
-                                      test_size=test_size,
-                                      train_size=train_size,
-                                      n_splits=n_splits,
-                                      random_state=random_state)
-    
-    if kfold_method=='SpatialKFold':
+                                       method=cluster_method,
+                                       coordinates=coordinates,
+                                       test_size=test_size,
+                                       train_size=train_size,
+                                       n_splits=n_splits,
+                                       random_state=random_state,
+                                       balance=balance,
+                                       **kwargs)
+
+    if kfold_method == 'SpatialKFold':
         splitter = SpatialKFold(n_groups=n_groups,
-                             coordinates=coordinates,
-                             method=cluster_method,
-                             covariance_type=cluster_covar_type,
-                             shuffle=shuffle,
-                             n_splits=n_splits,
-                             random_state=random_state)
-        
+                                coordinates=coordinates,
+                                method=cluster_method,
+                                n_splits=n_splits,
+                                random_state=random_state,
+                                balance=balance,
+                                **kwargs)
+
     return splitter.split(coordinates)
 
 
-def spatial_train_test_split(X,
-         y,
-         coordinates,
-         n_groups,
-         cluster_method,
-         cluster_covar_type,
-         kfold_method,
-         shuffle,
-         test_size,
-         train_size,
-         random_state,
-         ):    
+def spatial_train_test_split(X, y, coordinates, n_groups, cluster_method,
+                             cluster_covar_type, kfold_method,
+                             test_size, train_size, random_state, balance, **kwargs):
+    """
+    Split arrays into random train and test subsets. Similar to 
+    `sklearn.model_selection.train_test_split` but is tuned to
+    work on spatial data. Coordinate data is grouped according
+    to either a GMM or KMeans algorthim.
     
-    if kfold_method=='SpatialShuffleSplit':
+    Grouping by spatial blocks is preferred over plain random splits for
+    spatial data to avoid overestimating validation scores. 
+    
+    Parameters
+    ----------
+    X : np.array
+        Training data features
+    y : np.array
+        Training data labels
+    coordinates : np.array
+        A numpy array of coordinate values e.g.
+        np.array([[3337270.,  262400.],
+                  [3441390., -273060.], ...])
+    n_groups : int
+        The number of spatial clusters to create. This is passed as
+        'n_clusters=n_groups' for the KMeans algo, and 
+        'n_components=n_groups' for the GMM.
+    cluster_method : str
+        Which algorithm to use to seperate data points into spatial clusters.
+        Either 'KMeans' or 'GMM'
+    train_size : float, int, or None, default=None
+        If float, should be between 0.0 and 1.0 and represent the
+        proportion of the dataset to include in the train split. If
+        int, represents the absolute number of train samples. If None,
+        the value is automatically set to the complement of the test size.
+    random_state : int, RandomState instance or None, optional (default=None)
+        If int, random_state is the seed used by the random number generator;
+        If RandomState instance, random_state is the random number generator;
+        If None, the random number generator is the RandomState instance used
+        by `np.random`.
+    balance : int or bool
+        if setting kfold_method to 'SpatialShuffleSplit': int
+            The number of splits generated per iteration to try to balance the
+            amount of data in each set so that *test_size* and *train_size* are
+            respected. If 1, then no extra splits are generated (essentially
+            disabling the balacing). Must be >= 1.
+         if setting kfold_method to 'SpatialKFold': bool
+             Whether or not to split clusters into fold with approximately equal
+            number of data points. If False, each fold will have the same number of
+            clusters (which can have different number of data points in them).
+    **kwargs : optional,
+        Additional keyword arguments to pass to sklearn.cluster.Kmeans or
+        sklearn.mixture.GuassianMixture depending on the cluster_method argument.
+        
+    Returns
+    -------
+    Tuple :
+        Contains four arrays and in the following order:
+            X_train, X_test, y_train, y_test
+        
+    """
+    if kfold_method == 'SpatialShuffleSplit':
         splitter = SpatialShuffleSplit(n_groups=n_groups,
-                                      method=cluster_method,
-                                      covariance_type=cluster_covar_type,
-                                      coordinates=coordinates,
-                                      test_size=test_size,
-                                      train_size=train_size,
-                                      n_splits=1,
-                                      random_state=random_state)
-    
-    if kfold_method=='SpatialKFold':
+                                       method=cluster_method,
+                                       coordinates=coordinates,
+                                       test_size=test_size,
+                                       train_size=train_size,
+                                       n_splits=1,
+                                       random_state=random_state,
+                                       balance=balance,
+                                       **kwargs)
+
+    if kfold_method == 'SpatialKFold':
         splitter = SpatialKFold(n_groups=n_groups,
-                             coordinates=coordinates,
-                             method=cluster_method,
-                             covariance_type=cluster_covar_type,
-                             shuffle=shuffle,
-                             n_splits=2,
-                             random_state=random_state)
-    
-    lst=[]
+                                coordinates=coordinates,
+                                method=cluster_method,
+                                n_splits=2,
+                                random_state=random_state,
+                                balance=balance,
+                                **kwargs)
+
+    lst = []
     for train, test in splitter.split(coordinates):
-        X_tr, X_tt = X[train,:], X[test,:]
+        X_tr, X_tt = X[train, :], X[test, :]
         y_tr, y_tt = y[train], y[test]
         lst.extend([X_tr, X_tt, y_tr, y_tt])
 
-    return lst[0], lst[1], lst[2], lst[3]
-    
-    
+    return (lst[0], lst[1], lst[2], lst[3])
+
+
 def partition_by_sum(array, parts):
     """
     Partition an array into parts of approximately equal sum.
@@ -1019,10 +1117,8 @@ def partition_by_sum(array, parts):
     array = np.atleast_1d(array).ravel()
     if parts > array.size:
         raise ValueError(
-            "Cannot partition an array of size {} into {} parts of equal sum.".format(
-                array.size, parts
-            )
-        )
+            "Cannot partition an array of size {} into {} parts of equal sum.".
+            format(array.size, parts))
     cumulative_sum = array.cumsum()
     # Ideally, we want each part to have the same number of points (total /
     # parts).
@@ -1035,10 +1131,9 @@ def partition_by_sum(array, parts):
     if np.unique(indices).size != indices.size:
         raise ValueError(
             "Could not find partition points to split the array into {} parts "
-            "of equal sum.".format(parts)
-        )
+            "of equal sum.".format(parts))
     return indices
-    
+
 
 class BaseSpatialCrossValidator(BaseCrossValidator, metaclass=ABCMeta):
     """
@@ -1066,13 +1161,13 @@ class BaseSpatialCrossValidator(BaseCrossValidator, metaclass=ABCMeta):
         coordinates=None,
         method=None,
         covariance_type=None,
-        n_splits=None,
+        n_splits=None
     ):
 
         self.n_groups = n_groups
         self.coordinates = coordinates
-        self.method=method
-        self.covariance_type=covariance_type
+        self.method = method
+        self.covariance_type = covariance_type
         self.n_splits = n_splits
 
     def split(self, X, y=None, groups=None):
@@ -1100,12 +1195,11 @@ class BaseSpatialCrossValidator(BaseCrossValidator, metaclass=ABCMeta):
 
         """
         if X.shape[1] != 2:
-            raise ValueError(
-                "X must have exactly 2 columns ({} given).".format(X.shape[1])
-            )
+            raise ValueError("X must have exactly 2 columns ({} given).".format(
+                X.shape[1]))
         for train, test in super().split(X, y, groups):
             yield train, test
-    
+
     def get_n_splits(self, X=None, y=None, groups=None):
         """
         Returns the number of splitting iterations in the cross-validator
@@ -1152,13 +1246,14 @@ class BaseSpatialCrossValidator(BaseCrossValidator, metaclass=ABCMeta):
 
         """
 
+
 class SpatialShuffleSplit(BaseSpatialCrossValidator):
     """
     Random permutation of spatial cross-validator.
 
     Yields indices to split data into training and test sets. Data are first
     grouped into clusters using either a KMeans or GMM algorithm
-    clusters are then split into testing and training sets randomly.
+    and are then split into testing and training sets randomly.
 
     The proportion of clusters assigned to each set is controlled by *test_size*
     and/or *train_size*. However, the total amount of actual data points in
@@ -1167,15 +1262,13 @@ class SpatialShuffleSplit(BaseSpatialCrossValidator):
     proportion of actual data is as close as possible to the proportion of
     clusters, this cross-validator generates an extra number of splits and
     selects the one with proportion of data points in each set closer to the
-    desired amount [Valavi_etal2019]_. The number of balancing splits per
-    iteration is controlled by the *balancing* argument.
+    desired amount. The number of balance splits per
+    iteration is controlled by the *balance* argument.
 
-    This cross-validator is preferred over
-    :class:`sklearn.model_selection.ShuffleSplit` for spatial data to avoid
-    overestimating cross-validation scores. This can happen because of the
-    inherent autocorrelation that is usually associated with this type of data
-    (points that are close together are more likely to have similar values).
-    See [Roberts_etal2017]_ for an overview of this topic.
+    This cross-validator is preferred over `sklearn.model_selection.ShuffleSplit`
+    for spatial data to avoid overestimating cross-validation scores.
+    This can happen because of the inherent autocorrelation that is usually
+    associated with this type of data.
 
     Parameters
     ----------
@@ -1206,44 +1299,46 @@ class SpatialShuffleSplit(BaseSpatialCrossValidator):
         If RandomState instance, random_state is the random number generator;
         If None, the random number generator is the RandomState instance used
         by `np.random`.
-    balancing : int
+    balance : int
         The number of splits generated per iteration to try to balance the
         amount of data in each set so that *test_size* and *train_size* are
         respected. If 1, then no extra splits are generated (essentially
         disabling the balacing). Must be >= 1.
+    **kwargs : optional,
+        Additional keyword arguments to pass to sklearn.cluster.Kmeans or
+        sklearn.mixture.GuassianMixture depending on the cluster_method argument.
 
     Returns
     --------
     generator
         containing indices to split data into training and test sets
-    """        
-    
-    def __init__(
-        self,
-        n_groups=None,
-        coordinates=None,
-        method='KMeans',
-        covariance_type='full',
-        n_splits=None,
-        test_size=0.15,
-        train_size=None,
-        random_state=None,
-        balancing=10,
-    ):
+    """
+
+    def __init__(self,
+                 n_groups=None,
+                 coordinates=None,
+                 method='KMeans',
+                 n_splits=None,
+                 test_size=0.15,
+                 train_size=None,
+                 random_state=None,
+                 balance=10,
+                 **kwargs):
         super().__init__(n_groups=n_groups,
                          coordinates=coordinates,
-                         covariance_type=covariance_type,
                          method=method,
-                         n_splits=n_splits)
-        if balancing < 1:
+                         n_splits=n_splits,
+                         **kwargs)
+        if balance < 1:
             raise ValueError(
-                "The *balancing* argument must be >= 1. To disable balancing, use 1."
+                "The *balance* argument must be >= 1. To disable balance, use 1."
             )
-        self.test_size=test_size
-        self.train_size=train_size
-        self.random_state=random_state
-        self.balancing=balancing
-    
+        self.test_size = test_size
+        self.train_size = train_size
+        self.random_state = random_state
+        self.balance = balance
+        self.kwargs = kwargs
+
     def _iter_test_indices(self, X=None, y=None, groups=None):
         """
         Generates integer indices corresponding to test sets.
@@ -1271,44 +1366,45 @@ class SpatialShuffleSplit(BaseSpatialCrossValidator):
         """
         labels = spatial_clusters(n_groups=self.n_groups,
                                   coordinates=self.coordinates,
-                                  method=self.method)
-        
+                                  method=self.method,
+                                  **self.kwargs)
+
         cluster_ids = np.unique(labels)
         # Generate many more splits so that we can pick and choose the ones
         # that have the right balance of training and testing data.
         shuffle = ShuffleSplit(
-            n_splits=self.n_splits * self.balancing,
+            n_splits=self.n_splits * self.balance,
             test_size=self.test_size,
             train_size=self.train_size,
             random_state=self.random_state,
         ).split(cluster_ids)
-        
+
         for _ in range(self.n_splits):
             test_sets, balance = [], []
-            for _ in range(self.balancing):
+            for _ in range(self.balance):
                 # This is a false positive in pylint which is why the warning
                 # is disabled at the top of this file:
                 # https://github.com/PyCQA/pylint/issues/1830
                 # pylint: disable=stop-iteration-return
                 train_clusters, test_clusters = next(shuffle)
                 # pylint: enable=stop-iteration-return
-                train_points = np.where(np.isin(labels, cluster_ids[train_clusters]))[0]
-                test_points = np.where(np.isin(labels, cluster_ids[test_clusters]))[0]
+                train_points = np.where(
+                    np.isin(labels, cluster_ids[train_clusters]))[0]
+                test_points = np.where(
+                    np.isin(labels, cluster_ids[test_clusters]))[0]
                 # The proportion of data points assigned to each group should
                 # be close the proportion of clusters assigned to each group.
                 balance.append(
-                    abs(
-                        train_points.size / test_points.size
-                        - train_clusters.size / test_clusters.size
-                    )
-                )
+                    abs(train_points.size / test_points.size -
+                        train_clusters.size / test_clusters.size))
                 test_sets.append(test_points)
             best = np.argmin(balance)
             yield test_sets[best]
 
+
 class SpatialKFold(BaseSpatialCrossValidator):
     """
-    K-Folds over spatial cross-validator.
+    Spatial K-Folds cross-validator.
 
     Yields indices to split data into training and test sets. Data are first
     grouped into clusters using either a KMeans or GMM algorithm
@@ -1322,12 +1418,10 @@ class SpatialKFold(BaseSpatialCrossValidator):
     clusters regardless of how many data points are in each cluster. This
     behaviour can also be disabled by setting ``balance=False``.
 
-    This cross-validator is preferred over
-    :class:`sklearn.model_selection.KFold` for spatial data to avoid
-    overestimating cross-validation scores. This can happen because of the
-    inherent autocorrelation that is usually associated with this type of data
-    (points that are close together are more likely to have similar values).
-    See [Roberts_etal2017]_ for an overview of this topic.
+    This cross-validator is preferred over `sklearn.model_selection.KFold` for
+    spatial data to avoid overestimating cross-validation scores. This can happen
+    because of the inherent autocorrelation that is usually associated with
+    this type of data.
 
     Parameters
     ----------
@@ -1337,13 +1431,12 @@ class SpatialKFold(BaseSpatialCrossValidator):
     coordinates : np.array
         A numpy array of coordinate values e.g. 
         np.array([[3337270.,  262400.],
-                  [3441390., -273060.],
-                   ...,
+                  [3441390., -273060.], ...])
     n_splits : int
         Number of folds. Must be at least 2.
     shuffle : bool
         Whether to shuffle the data before splitting into batches.
-    random_state : int, RandomState instance or None, optional (default=None)
+    random_state : int, RandomState instance or None, optional (defasult=None)
         If int, random_state is the seed used by the random number generator;
         If RandomState instance, random_state is the random number generator;
         If None, the random number generator is the RandomState instance used
@@ -1352,41 +1445,35 @@ class SpatialKFold(BaseSpatialCrossValidator):
         Whether or not to split clusters into fold with approximately equal
         number of data points. If False, each fold will have the same number of
         clusters (which can have different number of data points in them).
-
-    See also
-    --------
-    train_test_split : Split a dataset into a training and a testing set.
-    cross_val_score : Score an estimator/gridder using cross-validation.
-
-   
-
+    **kwargs : optional,
+        Additional keyword arguments to pass to sklearn.cluster.Kmeans or
+        sklearn.mixture.GuassianMixture depending on the cluster_method argument.
+        
     """
 
-    def __init__(
-        self,
-        n_groups=None,
-        coordinates=None,
-        method='KMeans',
-        covariance_type='full',
-        n_splits=5,
-        shuffle=False,
-        random_state=None,
-        balance=True,
-    ):
+    def __init__(self,
+                 n_groups=None,
+                 coordinates=None,
+                 method='KMeans',
+                 n_splits=5,
+                 shuffle=True,
+                 random_state=None,
+                 balance=True,
+                 **kwargs):
         super().__init__(n_groups=n_groups,
                          coordinates=coordinates,
                          method=method,
-                         covariance_type=covariance_type,
-                         n_splits=n_splits)
+                         n_splits=n_splits,
+                         **kwargs)
+
         if n_splits < 2:
             raise ValueError(
-                "Number of splits must be >=2 for clusterKFold. Given {}.".format(
-                    n_splits
-                )
-            )
+                "Number of splits must be >=2 for clusterKFold. Given {}.".
+                format(n_splits))
         self.shuffle = shuffle
         self.random_state = random_state
         self.balance = balance
+        self.kwargs = kwargs
 
     def _iter_test_indices(self, X=None, y=None, groups=None):
         """
@@ -1412,21 +1499,22 @@ class SpatialKFold(BaseSpatialCrossValidator):
         """
         labels = spatial_clusters(n_groups=self.n_groups,
                                   coordinates=self.coordinates,
-                                  method=self.method)
-            
+                                  method=self.method,
+                                  **self.kwargs)
+
         cluster_ids = np.unique(labels)
         if self.n_splits > cluster_ids.size:
             raise ValueError(
                 "Number of k-fold splits ({}) cannot be greater than the number of "
                 "clusters ({}). Either decrease n_splits or increase the number of "
-                "clusters.".format(self.n_splits, cluster_ids.size)
-            )
+                "clusters.".format(self.n_splits, cluster_ids.size))
         if self.shuffle:
             check_random_state(self.random_state).shuffle(cluster_ids)
         if self.balance:
             cluster_sizes = [np.isin(labels, i).sum() for i in cluster_ids]
             try:
-                split_points = partition_by_sum(cluster_sizes, parts=self.n_splits)
+                split_points = partition_by_sum(cluster_sizes,
+                                                parts=self.n_splits)
                 folds = np.split(np.arange(cluster_ids.size), split_points)
             except ValueError:
                 warnings.warn(
@@ -1436,10 +1524,15 @@ class SpatialKFold(BaseSpatialCrossValidator):
                     "the number of clusters may help.",
                     UserWarning,
                 )
-                folds = [i for _, i in KFold(n_splits=self.n_splits).split(cluster_ids)]
+                folds = [
+                    i
+                    for _, i in KFold(n_splits=self.n_splits).split(cluster_ids)
+                ]
         else:
-            folds = [i for _, i in KFold(n_splits=self.n_splits).split(cluster_ids)]
+            folds = [
+                i for _, i in KFold(n_splits=self.n_splits).split(cluster_ids)
+            ]
         for test_clusters in folds:
-            test_points = np.where(np.isin(labels, cluster_ids[test_clusters]))[0]
+            test_points = np.where(np.isin(labels,
+                                           cluster_ids[test_clusters]))[0]
             yield test_points
-
