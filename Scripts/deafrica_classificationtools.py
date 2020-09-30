@@ -52,6 +52,7 @@ from dask_ml.wrappers import ParallelPostFit
 from sklearn.mixture import GaussianMixture
 from datacube.utils.geometry import assign_crs
 from datacube_stats.statistics import GeoMedian
+from sklearn.cluster import AgglomerativeClustering
 from sklearn.model_selection import KFold, ShuffleSplit
 from sklearn.model_selection import BaseCrossValidator
 
@@ -636,10 +637,10 @@ def collect_training_data(
     """
     This function executes the training data functions and tidies the results
     into a 'model_input' object containing stacked training data arrays
-    with all NaNs removed. In the instance where ncpus > 1, a parallel version of the
+    with all NaNs & Infs removed. In the instance where ncpus > 1, a parallel version of the
     function will be run (functions are passed to a mp.Pool())
     
-    This function provides a number of pre-defined feature layer methods for producing training data, 
+    This function provides a number of pre-defined feature layer methods,
     including calculating band indices, reducing time series using several summary statistics, 
     and/or generating zonal statistics across polygons.  The 'custom_func' parameter provides 
     a method for the user to supply a custom function for generating features rather than using the
@@ -866,10 +867,10 @@ class KMeans_tree(ClusterMixin):
         return result
 
 
-def spatial_clusters(n_groups, coordinates, method='KMeans', **kwargs):
+def spatial_clusters(coordinates, method='Hierarchical', max_distance=None, n_groups=None, **kwargs):
     """
     Create spatial groups on coorindate data using either KMeans clustering
-    or a Gaussian Mixture model.
+    or a Gaussian Mixture model
 
     Last modified: September 2020
 
@@ -877,13 +878,19 @@ def spatial_clusters(n_groups, coordinates, method='KMeans', **kwargs):
     ----------
     n_groups : int
         The number of groups to create. This is passed as 'n_clusters=n_groups'
-        for the KMeans algo, and 'n_components=n_groups' for the GMM.
+        for the KMeans algo, and 'n_components=n_groups' for the GMM. If using
+        method='Hierarchical' then this paramter is ignored.
     coordinates : np.array
         A numpy array of coordinate values e.g. 
         np.array([[3337270.,  262400.],
                   [3441390., -273060.], ...])
     method : str
-        Which algorithm to use to seperate data points. Either 'KMeans' or 'GMM'
+        Which algorithm to use to seperate data points. Either 'KMeans', 'GMM', or
+        'Hierarchical'. If using 'Hierarchical' then must set max_distance.
+    max_distance : int
+        If method is set to 'hierarchical' then maximum distance describes the
+        maximum euclidean distances between all observations in a cluster. 'n_groups'
+        is ignored in this case.
     **kwargs : optional,
         Additional keyword arguments to pass to sklearn.cluster.Kmeans or
         sklearn.mixture.GuassianMixture depending on the 'method' argument.
@@ -894,7 +901,19 @@ def spatial_clusters(n_groups, coordinates, method='KMeans', **kwargs):
         Index of the cluster each sample belongs to.
 
     """
-
+    if method not in ['Hierarchical','KMeans','GMM']:
+        raise ValueError("method must be one of: 'Hierarchical','KMeans' or 'GMM'")
+    
+    if (method in ['GMM', 'KMeans']) & (n_groups is None):
+        raise ValueError("The 'GMM' and 'KMeans' methods requires explicitly setting 'n_groups'")
+    
+    if (method == 'Hierarchical') & (max_distance is None):
+        raise ValueError("The 'Hierarchical' method requires setting max_distance")
+     
+    if method == 'Hierarchical':
+        cluster_label = AgglomerativeClustering(n_clusters=None, linkage='complete', 
+                                distance_threshold=max_distance, **kwargs).fit_predict(coordinates)     
+        
     if method == 'KMeans':
         cluster_label = KMeans(n_clusters=n_groups,
                                **kwargs).fit_predict(coordinates)
@@ -902,12 +921,15 @@ def spatial_clusters(n_groups, coordinates, method='KMeans', **kwargs):
     if method == 'GMM':
         cluster_label = GaussianMixture(n_components=n_groups,
                                         **kwargs).fit_predict(coordinates)
-
+    
+    print("n clusters = "+ str(len(np.unique(cluster_label))))
+    
     return cluster_label
 
 
-def SKCV(X, y, coordinates, n_groups, n_splits, cluster_method, kfold_method,
-         test_size, balance, train_size=None, random_state=None, **kwargs):
+def SKCV(X, y, coordinates, n_splits, cluster_method, kfold_method,
+         test_size, balance, n_groups=None, max_distance=None, train_size=None,
+         random_state=None, **kwargs):
     """
     Generate spatial k-fold cross validation indices using coordinate data.
     This function wraps the 'SpatialShuffleSplit' and 'SpatialKFold' classes. 
@@ -928,14 +950,21 @@ def SKCV(X, y, coordinates, n_groups, n_splits, cluster_method, kfold_method,
         Training data features
     y : np.array
         Training data labels
+    n_groups : int
+        The number of groups to create. This is passed as 'n_clusters=n_groups'
+        for the KMeans algo, and 'n_components=n_groups' for the GMM. If using
+        cluster_method='Hierarchical' then this parameter is ignored.
     coordinates : np.array
-        A numpy array of coordinate values e.g.
+        A numpy array of coordinate values e.g. 
         np.array([[3337270.,  262400.],
                   [3441390., -273060.], ...])
-    n_groups : int
-        The number of spatial clusters to create. This is passed as
-        'n_clusters=n_groups' for the KMeans algo, and 
-        'n_components=n_groups' for the GMM.
+    cluster_method : str
+        Which algorithm to use to seperate data points. Either 'KMeans', 'GMM', or
+        'Hierarchical'
+    max_distance : int
+        If method is set to 'hierarchical' then maximum distance describes the
+        maximum euclidean distances between all observations in a cluster. 'n_groups'
+        is ignored in this case.
     n_splits : int
         The number of test-train cross validation splits to generate.
     test_size : float, int, None
@@ -949,9 +978,6 @@ def SKCV(X, y, coordinates, n_groups, n_splits, cluster_method, kfold_method,
         proportion of the dataset to include in the train split. If
         int, represents the absolute number of train samples. If None,
         the value is automatically set to the complement of the test size.
-    cluster_method : str
-        Which algorithm to use to seperate data points into spatial clusters.
-        Either 'KMeans' or 'GMM'
     kfold_method : str
         One of either 'SpatialShuffleSplit' or 'SpatialKFold'. See the docs
         under class:_SpatialShuffleSplit and class: _SpatialKFold for more
@@ -986,6 +1012,7 @@ def SKCV(X, y, coordinates, n_groups, n_splits, cluster_method, kfold_method,
         splitter = _SpatialShuffleSplit(n_groups=n_groups,
                                        method=cluster_method,
                                        coordinates=coordinates,
+                                       max_distance=max_distance,
                                        test_size=test_size,
                                        train_size=train_size,
                                        n_splits=n_splits,
@@ -996,17 +1023,19 @@ def SKCV(X, y, coordinates, n_groups, n_splits, cluster_method, kfold_method,
     if kfold_method == 'SpatialKFold':
         splitter = _SpatialKFold(n_groups=n_groups,
                                 coordinates=coordinates,
+                                max_distance=max_distance,
                                 method=cluster_method,
                                 n_splits=n_splits,
                                 random_state=random_state,
                                 balance=balance,
                                 **kwargs)
-
+    
     return splitter.split(coordinates)
 
 
-def spatial_train_test_split(X, y, coordinates, n_groups, cluster_method, kfold_method,
-                             test_size, balance, random_state=None, train_size=None, **kwargs):
+def spatial_train_test_split(X, y, coordinates, cluster_method, kfold_method,
+                             test_size, balance, n_groups=None, max_distance=None,
+                             random_state=None, train_size=None, **kwargs):
     """
     Split arrays into random train and test subsets. Similar to 
     `sklearn.model_selection.train_test_split` but instead works on
@@ -1023,17 +1052,21 @@ def spatial_train_test_split(X, y, coordinates, n_groups, cluster_method, kfold_
         Training data features
     y : np.array
         Training data labels
+    n_groups : int
+        The number of groups to create. This is passed as 'n_clusters=n_groups'
+        for the KMeans algo, and 'n_components=n_groups' for the GMM. If using
+        cluster_method='Hierarchical' then this parameter is ignored.
     coordinates : np.array
-        A numpy array of coordinate values e.g.
+        A numpy array of coordinate values e.g. 
         np.array([[3337270.,  262400.],
                   [3441390., -273060.], ...])
-    n_groups : int
-        The number of spatial clusters to create. This is passed as
-        'n_clusters=n_groups' for the KMeans algo, and 
-        'n_components=n_groups' for the GMM.
     cluster_method : str
-        Which algorithm to use to seperate data points into spatial clusters.
-        Either 'KMeans' or 'GMM'
+        Which algorithm to use to seperate data points. Either 'KMeans', 'GMM', or
+        'Hierarchical'
+    max_distance : int
+        If method is set to 'hierarchical' then maximum distance describes the
+        maximum euclidean distances between all observations in a cluster. 'n_groups'
+        is ignored in this case.
     kfold_method : str
         One of either 'SpatialShuffleSplit' or 'SpatialKFold'. See the docs
         under class:_SpatialShuffleSplit and class: _SpatialKFold for more
@@ -1080,6 +1113,7 @@ def spatial_train_test_split(X, y, coordinates, n_groups, cluster_method, kfold_
         splitter = _SpatialShuffleSplit(n_groups=n_groups,
                                        method=cluster_method,
                                        coordinates=coordinates,
+                                       max_distance=max_distance,
                                        test_size=test_size,
                                        train_size=train_size,
                                        n_splits=1,
@@ -1090,6 +1124,7 @@ def spatial_train_test_split(X, y, coordinates, n_groups, cluster_method, kfold_
     if kfold_method == 'SpatialKFold':
         splitter = _SpatialKFold(n_groups=n_groups,
                                 coordinates=coordinates,
+                                max_distance=max_distance,
                                 method=cluster_method,
                                 n_splits=2,
                                 random_state=random_state,
@@ -1175,15 +1210,15 @@ class _BaseSpatialCrossValidator(BaseCrossValidator, metaclass=ABCMeta):
         n_groups=None,
         coordinates=None,
         method=None,
-        covariance_type=None,
+        max_distance=None,
         n_splits=None
     ):
 
-        self.n_groups = n_groups
-        self.coordinates = coordinates
-        self.method = method
-        self.covariance_type = covariance_type
-        self.n_splits = n_splits
+        self.n_groups=n_groups
+        self.coordinates=coordinates
+        self.method=method
+        self.max_distance=max_distance
+        self.n_splits=n_splits
 
     def split(self, X, y=None, groups=None):
         """
@@ -1288,13 +1323,19 @@ class _SpatialShuffleSplit(_BaseSpatialCrossValidator):
     ----------
     n_groups : int
         The number of groups to create. This is passed as 'n_clusters=n_groups'
-        for the KMeans algo, and 'n_components=n_groups' for the GMM.
+        for the KMeans algo, and 'n_components=n_groups' for the GMM. If using
+        cluster_method='Hierarchical' then this parameter is ignored.
     coordinates : np.array
-        A numpy array of coordinate values e.g.
+        A numpy array of coordinate values e.g. 
         np.array([[3337270.,  262400.],
-                  [3441390., -273060.], ...,
-    method : str
-        Which algorithm to use to seperate data points. Either 'KMeans' or 'GMM'
+                  [3441390., -273060.], ...])
+    cluster_method : str
+        Which algorithm to use to seperate data points. Either 'KMeans', 'GMM', or
+        'Hierarchical'
+    max_distance : int
+        If method is set to 'hierarchical' then maximum distance describes the
+        maximum euclidean distances between all observations in a cluster. 'n_groups'
+        is ignored in this case.
     n_splits : int,
         Number of re-shuffling & splitting iterations.
     test_size : float, int, None
@@ -1331,7 +1372,8 @@ class _SpatialShuffleSplit(_BaseSpatialCrossValidator):
     def __init__(self,
                  n_groups=None,
                  coordinates=None,
-                 method='KMeans',
+                 method='Heirachical',
+                 max_distance=None,
                  n_splits=None,
                  test_size=0.15,
                  train_size=None,
@@ -1341,17 +1383,18 @@ class _SpatialShuffleSplit(_BaseSpatialCrossValidator):
         super().__init__(n_groups=n_groups,
                          coordinates=coordinates,
                          method=method,
+                         max_distance=max_distance,
                          n_splits=n_splits,
                          **kwargs)
         if balance < 1:
             raise ValueError(
                 "The *balance* argument must be >= 1. To disable balance, use 1."
             )
-        self.test_size = test_size
-        self.train_size = train_size
-        self.random_state = random_state
-        self.balance = balance
-        self.kwargs = kwargs
+        self.test_size=test_size
+        self.train_size=train_size
+        self.random_state=random_state
+        self.balance=balance
+        self.kwargs=kwargs
 
     def _iter_test_indices(self, X=None, y=None, groups=None):
         """
@@ -1381,6 +1424,7 @@ class _SpatialShuffleSplit(_BaseSpatialCrossValidator):
         labels = spatial_clusters(n_groups=self.n_groups,
                                   coordinates=self.coordinates,
                                   method=self.method,
+                                  max_distance=self.max_distance,
                                   **self.kwargs)
 
         cluster_ids = np.unique(labels)
@@ -1441,11 +1485,19 @@ class _SpatialKFold(_BaseSpatialCrossValidator):
     ----------
     n_groups : int
         The number of groups to create. This is passed as 'n_clusters=n_groups'
-        for the KMeans algo, and 'n_components=n_groups' for the GMM.
+        for the KMeans algo, and 'n_components=n_groups' for the GMM. If using
+        cluster_method='Hierarchical' then this parameter is ignored.
     coordinates : np.array
         A numpy array of coordinate values e.g. 
         np.array([[3337270.,  262400.],
                   [3441390., -273060.], ...])
+    cluster_method : str
+        Which algorithm to use to seperate data points. Either 'KMeans', 'GMM', or
+        'Hierarchical'
+    max_distance : int
+        If method is set to 'hierarchical' then maximum distance describes the
+        maximum euclidean distances between all observations in a cluster. 'n_groups'
+        is ignored in this case.
     n_splits : int
         Number of folds. Must be at least 2.
     shuffle : bool
@@ -1468,7 +1520,8 @@ class _SpatialKFold(_BaseSpatialCrossValidator):
     def __init__(self,
                  n_groups=None,
                  coordinates=None,
-                 method='KMeans',
+                 method='Heirachical',
+                 max_distance=None,
                  n_splits=5,
                  shuffle=True,
                  random_state=None,
@@ -1477,6 +1530,7 @@ class _SpatialKFold(_BaseSpatialCrossValidator):
         super().__init__(n_groups=n_groups,
                          coordinates=coordinates,
                          method=method,
+                         max_distance=max_distance,
                          n_splits=n_splits,
                          **kwargs)
 
@@ -1514,6 +1568,7 @@ class _SpatialKFold(_BaseSpatialCrossValidator):
         labels = spatial_clusters(n_groups=self.n_groups,
                                   coordinates=self.coordinates,
                                   method=self.method,
+                                  max_distance=self.max_distance,
                                   **self.kwargs)
 
         cluster_ids = np.unique(labels)
