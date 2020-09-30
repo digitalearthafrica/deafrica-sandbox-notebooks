@@ -18,7 +18,7 @@ here: https://gis.stackexchange.com/questions/tagged/open-data-cube).
 If you would like to report an issue with this script, you can file one on 
 Github https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues
 
-Last modified: April 2020
+Last modified: Septemeber 2020
 
 
 '''
@@ -868,7 +868,7 @@ class KMeans_tree(ClusterMixin):
 
 def spatial_clusters(n_groups, coordinates, method='KMeans', **kwargs):
     """
-    Create groups on coorindate data using either KMeans clustering
+    Create spatial groups on coorindate data using either KMeans clustering
     or a Gaussian Mixture model.
 
     Last modified: September 2020
@@ -886,7 +886,7 @@ def spatial_clusters(n_groups, coordinates, method='KMeans', **kwargs):
         Which algorithm to use to seperate data points. Either 'KMeans' or 'GMM'
     **kwargs : optional,
         Additional keyword arguments to pass to sklearn.cluster.Kmeans or
-        sklearn.mixture.GuassianMixture depending on the method= argument.
+        sklearn.mixture.GuassianMixture depending on the 'method' argument.
     
     Returns
     -------
@@ -907,17 +907,17 @@ def spatial_clusters(n_groups, coordinates, method='KMeans', **kwargs):
 
 
 def SKCV(X, y, coordinates, n_groups, n_splits, cluster_method, kfold_method,
-         test_size, train_size, random_state, balance, **kwargs):
+         test_size, balance, train_size=None, random_state=None, **kwargs):
     """
     Generate spatial k-fold cross validation indices using coordinate data.
     This function wraps the 'SpatialShuffleSplit' and 'SpatialKFold' classes. 
     These classes ingest coordinate data in the form of an
-    np.array([[Eastings, northings]]) and assign points to a spatial cluster
+    np.array([[Eastings, northings]]) and assign samples to a spatial cluster
     using either a KMeans or Gaussain Mixture model algorithm.  
     
     This cross-validator is preferred over other sklearn.model_selection methods
     for spatial data to avoid overestimating cross-validation scores.
-    This can happen because of the inherent autocorrelation that is usually
+    This can happen because of the inherent spatial autocorrelation that is usually
     associated with this type of data.
     
     Last modified: September 2020
@@ -938,20 +938,24 @@ def SKCV(X, y, coordinates, n_groups, n_splits, cluster_method, kfold_method,
         'n_components=n_groups' for the GMM.
     n_splits : int
         The number of test-train cross validation splits to generate.
-        test_size : float, int, None, default=None
+    test_size : float, int, None
         If float, should be between 0.0 and 1.0 and represent the proportion
         of the dataset to include in the test split. If int, represents the
         absolute number of test samples. If None, the value is set to the
         complement of the train size. If ``train_size`` is also None, it will
-        be set to 0.1.
-    cluster_method : str
-        Which algorithm to use to seperate data points into spatial clusters.
-        Either 'KMeans' or 'GMM'
-    train_size : float, int, or None, default=None
+        be set to 0.15.
+    train_size : float, int, or None
         If float, should be between 0.0 and 1.0 and represent the
         proportion of the dataset to include in the train split. If
         int, represents the absolute number of train samples. If None,
         the value is automatically set to the complement of the test size.
+    cluster_method : str
+        Which algorithm to use to seperate data points into spatial clusters.
+        Either 'KMeans' or 'GMM'
+    kfold_method : str
+        One of either 'SpatialShuffleSplit' or 'SpatialKFold'. See the docs
+        under class:_SpatialShuffleSplit and class: _SpatialKFold for more
+        information on these options.
     random_state : int, RandomState instance or None, optional (default=None)
         If int, random_state is the seed used by the random number generator;
         If RandomState instance, random_state is the random number generator;
@@ -973,13 +977,13 @@ def SKCV(X, y, coordinates, n_groups, n_splits, cluster_method, kfold_method,
     
     Returns
     --------
-    generator object BaseSpatialCrossValidator.split 
+    generator object _BaseSpatialCrossValidator.split 
             
     
     """
     #intiate a method
     if kfold_method == 'SpatialShuffleSplit':
-        splitter = SpatialShuffleSplit(n_groups=n_groups,
+        splitter = _SpatialShuffleSplit(n_groups=n_groups,
                                        method=cluster_method,
                                        coordinates=coordinates,
                                        test_size=test_size,
@@ -990,7 +994,7 @@ def SKCV(X, y, coordinates, n_groups, n_splits, cluster_method, kfold_method,
                                        **kwargs)
 
     if kfold_method == 'SpatialKFold':
-        splitter = SpatialKFold(n_groups=n_groups,
+        splitter = _SpatialKFold(n_groups=n_groups,
                                 coordinates=coordinates,
                                 method=cluster_method,
                                 n_splits=n_splits,
@@ -1002,15 +1006,16 @@ def SKCV(X, y, coordinates, n_groups, n_splits, cluster_method, kfold_method,
 
 
 def spatial_train_test_split(X, y, coordinates, n_groups, cluster_method, kfold_method,
-                             test_size, train_size, random_state, balance, **kwargs):
+                             test_size, balance, random_state=None, train_size=None, **kwargs):
     """
     Split arrays into random train and test subsets. Similar to 
-    `sklearn.model_selection.train_test_split` but is tuned to
-    work on spatial data. Coordinate data is grouped according
+    `sklearn.model_selection.train_test_split` but instead works on
+    spatial coordinate data. Coordinate data is grouped according
     to either a GMM or KMeans algorthim.
     
-    Grouping by spatial blocks is preferred over plain random splits for
-    spatial data to avoid overestimating validation scores. 
+    Grouping by spatial clusters is preferred over plain random splits for
+    spatial data to avoid overestimating validation scores due to spatial
+    autocorrelation. 
     
     Parameters
     ----------
@@ -1029,12 +1034,23 @@ def spatial_train_test_split(X, y, coordinates, n_groups, cluster_method, kfold_
     cluster_method : str
         Which algorithm to use to seperate data points into spatial clusters.
         Either 'KMeans' or 'GMM'
-    train_size : float, int, or None, default=None
+    kfold_method : str
+        One of either 'SpatialShuffleSplit' or 'SpatialKFold'. See the docs
+        under class:_SpatialShuffleSplit and class: _SpatialKFold for more
+        information on these options.
+    test_size : float, int, None
+        If float, should be between 0.0 and 1.0 and represent the proportion
+        of the dataset to include in the test split. If int, represents the
+        absolute number of test samples. If None, the value is set to the
+        complement of the train size. If ``train_size`` is also None, it will
+        be set to 0.15.
+    train_size : float, int, or None
         If float, should be between 0.0 and 1.0 and represent the
         proportion of the dataset to include in the train split. If
         int, represents the absolute number of train samples. If None,
         the value is automatically set to the complement of the test size.
-    random_state : int, RandomState instance or None, optional (default=None)
+    random_state : int,
+        RandomState instance or None, optional
         If int, random_state is the seed used by the random number generator;
         If RandomState instance, random_state is the random number generator;
         If None, the random number generator is the RandomState instance used
@@ -1046,7 +1062,7 @@ def spatial_train_test_split(X, y, coordinates, n_groups, cluster_method, kfold_
             respected. If 1, then no extra splits are generated (essentially
             disabling the balacing). Must be >= 1.
          if setting kfold_method to 'SpatialKFold': bool
-             Whether or not to split clusters into fold with approximately equal
+            Whether or not to split clusters into fold with approximately equal
             number of data points. If False, each fold will have the same number of
             clusters (which can have different number of data points in them).
     **kwargs : optional,
@@ -1056,12 +1072,12 @@ def spatial_train_test_split(X, y, coordinates, n_groups, cluster_method, kfold_
     Returns
     -------
     Tuple :
-        Contains four arrays and in the following order:
+        Contains four arrays in the following order:
             X_train, X_test, y_train, y_test
         
     """
     if kfold_method == 'SpatialShuffleSplit':
-        splitter = SpatialShuffleSplit(n_groups=n_groups,
+        splitter = _SpatialShuffleSplit(n_groups=n_groups,
                                        method=cluster_method,
                                        coordinates=coordinates,
                                        test_size=test_size,
@@ -1072,7 +1088,7 @@ def spatial_train_test_split(X, y, coordinates, n_groups, cluster_method, kfold_
                                        **kwargs)
 
     if kfold_method == 'SpatialKFold':
-        splitter = SpatialKFold(n_groups=n_groups,
+        splitter = _SpatialKFold(n_groups=n_groups,
                                 coordinates=coordinates,
                                 method=cluster_method,
                                 n_splits=2,
@@ -1089,7 +1105,7 @@ def spatial_train_test_split(X, y, coordinates, n_groups, cluster_method, kfold_
     return (lst[0], lst[1], lst[2], lst[3])
 
 
-def partition_by_sum(array, parts):
+def _partition_by_sum(array, parts):
     """
     Partition an array into parts of approximately equal sum.
     Does not change the order of the array elements.
@@ -1134,7 +1150,7 @@ def partition_by_sum(array, parts):
     return indices
 
 
-class BaseSpatialCrossValidator(BaseCrossValidator, metaclass=ABCMeta):
+class _BaseSpatialCrossValidator(BaseCrossValidator, metaclass=ABCMeta):
     """
     Base class for spatial cross-validators.
 
@@ -1246,7 +1262,7 @@ class BaseSpatialCrossValidator(BaseCrossValidator, metaclass=ABCMeta):
         """
 
 
-class SpatialShuffleSplit(BaseSpatialCrossValidator):
+class _SpatialShuffleSplit(_BaseSpatialCrossValidator):
     """
     Random permutation of spatial cross-validator.
 
@@ -1266,8 +1282,7 @@ class SpatialShuffleSplit(BaseSpatialCrossValidator):
 
     This cross-validator is preferred over `sklearn.model_selection.ShuffleSplit`
     for spatial data to avoid overestimating cross-validation scores.
-    This can happen because of the inherent autocorrelation that is usually
-    associated with this type of data.
+    This can happen because of the inherent spatial autocorrelation.
 
     Parameters
     ----------
@@ -1280,15 +1295,15 @@ class SpatialShuffleSplit(BaseSpatialCrossValidator):
                   [3441390., -273060.], ...,
     method : str
         Which algorithm to use to seperate data points. Either 'KMeans' or 'GMM'
-    n_splits : int, default 10
+    n_splits : int,
         Number of re-shuffling & splitting iterations.
-    test_size : float, int, None, default=None
+    test_size : float, int, None
         If float, should be between 0.0 and 1.0 and represent the proportion
         of the dataset to include in the test split. If int, represents the
         absolute number of test samples. If None, the value is set to the
         complement of the train size. If ``train_size`` is also None, it will
         be set to 0.1.
-    train_size : float, int, or None, default=None
+    train_size : float, int, or None
         If float, should be between 0.0 and 1.0 and represent the
         proportion of the dataset to include in the train split. If
         int, represents the absolute number of train samples. If None,
@@ -1401,7 +1416,7 @@ class SpatialShuffleSplit(BaseSpatialCrossValidator):
             yield test_sets[best]
 
 
-class SpatialKFold(BaseSpatialCrossValidator):
+class _SpatialKFold(_BaseSpatialCrossValidator):
     """
     Spatial K-Folds cross-validator.
 
@@ -1512,7 +1527,7 @@ class SpatialKFold(BaseSpatialCrossValidator):
         if self.balance:
             cluster_sizes = [np.isin(labels, i).sum() for i in cluster_ids]
             try:
-                split_points = partition_by_sum(cluster_sizes,
+                split_points = _partition_by_sum(cluster_sizes,
                                                 parts=self.n_splits)
                 folds = np.split(np.arange(cluster_ids.size), split_points)
             except ValueError:
