@@ -232,7 +232,7 @@ def fit_xr(model, input_xr):
 def predict_xr(model,
                input_xr,
                chunk_size=None,
-               persist=True,
+               persist=False,
                proba=False,
                clean=False,
                return_input=False):
@@ -277,14 +277,18 @@ def predict_xr(model,
         Has the same spatiotemporal structure as input_xr.
 
     """
+    # if input_xr isn't dask, coerce it
+    dask=True
+    if not bool(input_xr.chunks):
+        dask=False
+        input_xr=input_xr.chunk({'x':len(input_xr.x), 'y':len(input_xr.y)})
+    
+    #set chunk size if not supplied
     if chunk_size is None:
         chunk_size = int(input_xr.chunks['x'][0]) * \
                          int(input_xr.chunks['y'][0])
-
-    # convert model to dask predict
-    model = ParallelPostFit(model)
-
-    with joblib.parallel_backend('dask'):
+    
+    def _predict_func(model,input_xr,persist,proba,clean,return_input):
         x, y, crs = input_xr.x, input_xr.y, input_xr.geobox.crs
 
         input_data = []
@@ -310,7 +314,7 @@ def predict_xr(model,
             input_data_flattened = input_data_flattened.persist()
 
         # apply the classification
-        print('   predicting...')
+        print('predicting...')
         out_class = model.predict(input_data_flattened)
 
         # Mask out NaN or Inf values in results
@@ -388,6 +392,17 @@ def predict_xr(model,
                                  compat='override')
 
         return assign_crs(output_xr, str(crs))
+    
+    if dask==True:
+        # convert model to dask predict
+        model = ParallelPostFit(model)
+        with joblib.parallel_backend('dask'):
+               output_xr= _predict_func(model,input_xr,persist,proba,clean,return_input)
+
+    else:
+        output_xr= _predict_func(model,input_xr,persist,proba,clean,return_input).compute()
+    
+    return output_xr
 
 
 class HiddenPrints:
@@ -402,7 +417,7 @@ class HiddenPrints:
     def __exit__(self, exc_type, exc_val, exc_tb):
         sys.stdout.close()
         sys.stdout = self._original_stdout
-
+        
 
 def _get_training_data_for_shp(gdf,
                                index,
@@ -453,8 +468,9 @@ def _get_training_data_for_shp(gdf,
     dc = datacube.Datacube(app='training_data')
 
     # set up query based on polygon (convert to WGS84)
-    geom = geometry.Geometry(gdf.geometry.values[index].__geo_interface__,
-                             geometry.CRS('epsg:4326'))
+    geom = geometry.Geometry(
+        gdf.geometry.values[index].__geo_interface__,
+        geometry.CRS(f'EPSG:{gdf.crs.to_epsg()}'))
 
     # print(geom)
     q = {"geopolygon": geom}
@@ -463,12 +479,15 @@ def _get_training_data_for_shp(gdf,
     dc_query.update(q)
 
     # load_ard doesn't handle geomedians
-    # TODO: Add support for other sensors
     if 'ga_ls8c_gm_2_annual' in products:
         ds = dc.load(product='ga_ls8c_gm_2_annual', **dc_query)
         ds = ds.where(ds != 0, np.nan)
         ds = ds * 2.75e-5 - 0.2
-
+    
+    if 'ga_s2_gm' in products:
+        ds = dc.load(product='ga_s2_gm', **dc_query)
+        ds = ds.where(ds != 0, np.nan)
+    
     else:
         # load data
         with HiddenPrints():
@@ -498,7 +517,7 @@ def _get_training_data_for_shp(gdf,
             # determine which collection is being loaded
             if 'level2' in products[0]:
                 collection = 'c2'
-            elif 'gm' in products[0]:
+            elif 'ls8c_gm' in products[0]:
                 collection = 'c2'
             elif 'sr' in products[0]:
                 collection = 'c1'
