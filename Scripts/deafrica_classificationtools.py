@@ -468,11 +468,9 @@ def _get_training_data_for_shp(gdf,
     dc = datacube.Datacube(app='training_data')
 
     # set up query based on polygon (convert to WGS84)
-    geom = geometry.Geometry(
-        gdf.geometry.values[index].__geo_interface__,
-        geometry.CRS(f'EPSG:{gdf.crs.to_epsg()}'))
+    geom = geometry.Geometry(geom=gdf.iloc[index].geometry,
+                             crs=gdf.crs)
 
-    # print(geom)
     q = {"geopolygon": geom}
 
     # merge polygon query with user supplied query params
