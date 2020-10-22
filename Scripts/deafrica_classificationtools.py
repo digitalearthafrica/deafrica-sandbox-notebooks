@@ -968,8 +968,6 @@ def spatial_clusters(coordinates, method='Hierarchical', max_distance=None, n_gr
         cluster_label=GaussianMixture(n_components=n_groups,
                                         **kwargs).fit_predict(coordinates)
 
-    print("n clusters = " + str(len(np.unique(cluster_label))))
-
     return cluster_label
 
 
