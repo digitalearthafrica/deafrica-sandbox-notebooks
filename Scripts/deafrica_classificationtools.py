@@ -971,7 +971,7 @@ def spatial_clusters(coordinates, method='Hierarchical', max_distance=None, n_gr
     return cluster_label
 
 
-def SKCV(X, y, coordinates, n_splits, cluster_method, kfold_method,
+def SKCV(coordinates, n_splits, cluster_method, kfold_method,
          test_size, balance, n_groups=None, max_distance=None, train_size=None,
          random_state=None, **kwargs):
     """
@@ -990,10 +990,6 @@ def SKCV(X, y, coordinates, n_splits, cluster_method, kfold_method,
 
     Parameters
     ----------
-    X : np.array
-        Training data features
-    y : np.array
-        Training data labels
     n_groups : int
         The number of groups to create. This is passed as 'n_clusters=n_groups'
         for the KMeans algo, and 'n_components=n_groups' for the GMM. If using
