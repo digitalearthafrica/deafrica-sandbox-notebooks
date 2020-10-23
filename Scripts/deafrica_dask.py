@@ -32,7 +32,8 @@ from datacube.utils.rio import configure_s3_access
 
 def create_local_dask_cluster(spare_mem='3Gb',
                               aws_unsigned= True,
-                              display_client=True):
+                              display_client=True,
+                              **kwargs):
     """
     Using the datacube utils function 'start_local_dask', generate
     a local dask cluster.
@@ -60,7 +61,9 @@ def create_local_dask_cluster(spare_mem='3Gb',
         An optional boolean indicating whether to display a summary of
         the dask client, including a link to monitor progress of the
         analysis. Set to False to hide this display.
-    
+    **kwargs:
+        Additional keyword arguments that will be passed to start_local_dask().
+        E.g. n_workers can be set to be greater than 1.
     """
 
     # configure dashboard link to go over proxy
@@ -68,7 +71,7 @@ def create_local_dask_cluster(spare_mem='3Gb',
                  os.environ.get('JUPYTERHUB_SERVICE_PREFIX', '/')+"proxy/{port}/status"})
 
     # start up a local cluster  
-    client = start_local_dask(mem_safety_margin=spare_mem)
+    client = start_local_dask(mem_safety_margin=spare_mem, **kwargs)
 
     ## Configure GDAL for s3 access
     configure_s3_access(aws_unsigned=aws_unsigned,  
