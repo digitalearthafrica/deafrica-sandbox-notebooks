@@ -850,7 +850,7 @@ def xr_animation(ds,
 
     # Convert data to 4D numpy array of shape [time, y, x, bands]
     ds = ds[bands].to_array().transpose(..., 'variable')[0:limit, ...]
-    array = ds.values
+    array = ds.astype(np.float32).values
 
     # Optionally apply image processing along axis 0 (e.g. to each timestep)
     bar_format='{l_bar}{bar}| {n_fmt}/{total_fmt} ({remaining_s:.1f} ' \
