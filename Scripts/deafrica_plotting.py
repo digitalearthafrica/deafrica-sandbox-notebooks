@@ -22,11 +22,8 @@ Functions included:
     display_map
     map_shapefile
     xr_animation
-    animated_timeseries (depreciated)
-    animated_timeseriesline
-    animated_doubletimeseries
 
-Last modified: March 2020
+Last modified: October 2020
 
 '''
 
@@ -753,8 +750,7 @@ def xr_animation(ds,
         animate each frame in the animation. Plots array and any text
         annotations, as well as a temporal subset of `gdf` data based
         on the times specified in 'start_time' and 'end_time' columns.
-        """
-        
+        """        
 
         # Clear previous frame to optimise render speed and plot imagery
         ax.clear()
