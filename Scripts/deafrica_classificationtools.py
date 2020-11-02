@@ -811,7 +811,7 @@ def collect_training_data(
                 #find rows where NaNs account for more than half the values
                 nans=model_input[np.count_nonzero(np.isnan(model_input), axis=1) > int(model_input.shape[1]*0.5)]
                 #remove nan rows from model_input object
-                model_input=model_input[np.count_nonzero(np.isnan(model_input), axis=1) < int(model_input.shape[1]*0.5)]
+                model_input=model_input[np.count_nonzero(np.isnan(model_input), axis=1) <= int(model_input.shape[1]*0.5)]
 
                 #get id of NaN rows and index original gdf
                 idx_nans = nans[:, [-1]].flatten()
