@@ -32,8 +32,8 @@ Last modified: February 2020
 '''
 
 # Import required packages
-import osr
-import ogr
+from osgeo import osr
+from osgeo import ogr
 import fiona
 import collections
 import numpy as np
