@@ -19,7 +19,7 @@ from ipyleaflet import (
 )
 import datetime as dt
 import datacube
-import ogr
+from osgeo import ogr
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import rasterio
