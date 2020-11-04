@@ -254,14 +254,15 @@ def predict_xr(model,
     chunk_size : int
         The dask chunk size to use on the flattened array. If this
         is left as None, then the chunks size is inferred from the
-        .chunks method on the `input_xr`
+        .chunks() method on the `input_xr`
     persist : bool
         If True, and proba=True, then 'input_xr' data will be
         loaded into distributed memory. This will ensure data
         is not loaded twice for the prediction of probabilities,
         but this will only work if the data is not larger than RAM.
     proba : bool
-        If True, predict probabilities
+        If True, predict probabilities. This only applies if the 
+        model has a .predict_proba() method
     clean : bool
         If True, remove Infs and NaNs from input and output arrays
     return_input : bool
@@ -573,7 +574,7 @@ def _get_training_data_for_shp(gdf,
         raise Exception(zonal_stats + " is not one of the supported" +
                         " reduce functions ('mean','median','std','max','min')")
     
-    #return unique-id so we can index if load failed silently
+    #return unique-id so we can index if dc.load fails silently
     _id=gdf.iloc[index]['id']
     
     # Append training data and labels to list
@@ -651,8 +652,8 @@ def collect_training_data(
     drop=True,
     zonal_stats=None,
     clean=True,
-    fail_threshold=0.05,
-    max_retries=4
+    fail_threshold=0.02,
+    max_retries=3
 ):
     """
     
@@ -715,15 +716,15 @@ def collect_training_data(
         Whether or not to remove missing values in the training dataset. If True,
         training labels with any NaNs or Infs in the feature layers will be dropped
         from the dataset.
-    fail_threshold : float, default 0.05
-        Silent read fails on S3 mean some rows in the returned data contain all-NaNs,
-        set the fail_threshold fraction to specify a minimum number of acceptable fails
-        e.g. setting fail_threshold to 0.05 means 5 % no-data in the returned dataset is acceptable.
+    fail_threshold : float, default 0.02
+        Silent read fails on S3 can result in some rows of the returned data containing NaN values.
+        The'fail_threshold' fraction specifies a minimum number of acceptable fails.
+        e.g. setting 'fail_threshold' to 0.05 means 5 % no-data in the returned dataset is acceptable.
         Above this fraction the function will attempt to recollect the samples that have failed.
         A sample is defined as having failed if it returns > 50 % NaN values.
     max_retries: int, default 3
-        number of times to retry collecting a sample. This number is invoked if the fail_threshold is 
-        not reached.
+        Maximum number of times to retry collecting samples. This number is invoked
+        if the 'fail_threshold' is not reached
         
     Returns
     --------
@@ -813,12 +814,12 @@ def collect_training_data(
                 #remove nan rows from model_input object
                 model_input=model_input[np.count_nonzero(np.isnan(model_input), axis=1) <= int(model_input.shape[1]*0.5)]
 
-                #get id of NaN rows and index original gdf
+                #get '_id' of NaN rows and index original gdf
                 idx_nans = nans[:, [-1]].flatten()
                 gdf_rerun = gdf.loc[gdf['id'].isin(idx_nans)]
                 gdf_rerun=gdf_rerun.reset_index(drop=True)
 
-                time.sleep(60) #sleep for 60 sec to rest api 
+                time.sleep(30) #sleep for 30 sec to rest api 
                 column_names_again, results_again=_get_training_data_parallel(
                         gdf=gdf_rerun,
                         products=products,
