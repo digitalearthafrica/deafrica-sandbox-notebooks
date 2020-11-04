@@ -32,6 +32,7 @@ import math
 import folium
 import calendar
 import ipywidgets
+import branca
 import numpy as np
 import geopandas as gpd
 import matplotlib as mpl
