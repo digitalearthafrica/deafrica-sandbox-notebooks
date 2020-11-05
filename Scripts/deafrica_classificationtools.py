@@ -803,7 +803,7 @@ def collect_training_data(
     # reached - whichever occurs first
     if ncpus > 1:
         i=1
-        while (i < max_retries):
+        while (i <= max_retries):
             # Count number of fails
             num = np.count_nonzero(np.isnan(model_input), axis=1) > int(model_input.shape[1]*0.5)
             num = num.sum()
