@@ -35,7 +35,7 @@ Last modified: March 2020
 
 # Import required packages
 import os
-import gdal
+from osgeo import gdal
 import requests
 import zipfile
 import warnings
