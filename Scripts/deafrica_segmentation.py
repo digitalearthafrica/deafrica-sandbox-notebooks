@@ -1,49 +1,28 @@
-#! /usr/bin/env python
+## deafrica_segmentation.py
 
-############################################################################
-# This is a customized version of the tiledsegsingle.py module implemented
-# through RSGISlib.  It runs a tiled image segmentation in parallel across a
-# specified number of cpus.
+"""
 
-# Example implementations of this code can be found below in the comments for the main utility function (line 263),
-# and here: https://github.com/GeoscienceAustralia/dea-notebooks/tree/chad/segmentation
-# 
-# Documentation for the RSGISlib Image Segmentation Module can be found here:
-#	https://www.rsgislib.org/rsgislib_segmentation.html
-#
-# -------------------------------------------------------------------------
-#
-#  Copyright 2016 RSGISLib.
-#
-#  RSGISLib: 'The remote sensing and GIS Software Library'
-#
-#  RSGISLib is free software: you can redistribute it and/or modify
-#  it under the terms of the GNU General Public License as published by
-#  the Free Software Foundation, either version 3 of the License, or
-#  (at your option) any later version.
-#
-#  RSGISLib is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with RSGISLib.  If not, see <http://www.gnu.org/licenses/>.
-#
-#
-# Purpose:  Provide functionality to perform the shepherd segmentation 
-#           algorithm using a tiled implementation but only with a single
-#           thread of execution (i.e., it will not used mulitple cores/processors)
-#
-# Author: Pete Bunting
-# Email: petebunting@mac.com
-# Date: 4/3/2016
-# Version: 1.1
-#
-# History:
-# Version 1.0 - Created.
-#
-###########################################################################
+Description: This is a deafrica customized version of the tiledsegsingle.py module
+implemented by the python package RSGISlib.  It has been adapted to run a tiled,
+parallel image segmentation in across a specified number of cpus.
+Documentation for the RSGISlib Image Segmentation Module can be found here:
+https://www.rsgislib.org/rsgislib_segmentation.html
+
+License: The code in this notebook is licensed under the Apache License,
+Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth 
+Africa data is licensed under the Creative Commons by Attribution 4.0 
+license (https://creativecommons.org/licenses/by/4.0/).
+
+Contact: If you need assistance, please post a question on the Open Data 
+Cube Slack channel (http://slack.opendatacube.org/) or on the GIS Stack 
+Exchange (https://gis.stackexchange.com/questions/ask?tags=open-data-cube) 
+using the `open-data-cube` tag (you can view previously asked questions 
+here: https://gis.stackexchange.com/questions/tagged/open-data-cube). 
+
+If you would like to report an issue with this script, you can file one on 
+Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new
+
+"""
 
 import glob
 import os.path
