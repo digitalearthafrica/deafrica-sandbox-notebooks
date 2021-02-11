@@ -3,6 +3,10 @@
 # Scalable Supervised Machine Learning on the Open Data Cube
 
 ## Background
+- The guiding principles/philosophy of the scripts (ie setting expectations around what they can and cannot do)
+- The order to run the scripts in (including links to each script)
+- Any prerequisites required to understand the content in these notebooks (e.g. reading material, ODC/Sandbox/notebooks/python training material)
+- Information on any set-up that might be required to run these notebooks (e.g. creating folders for outputs? Setting up a S3 bucket for intermediate files?)
 
 
 ## Description
