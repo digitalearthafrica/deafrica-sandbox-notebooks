@@ -60,7 +60,7 @@ from sklearn.model_selection import KFold, ShuffleSplit
 from sklearn.model_selection import BaseCrossValidator
 
 import warnings
-warnings.simplefilter("default")
+warnings.simplefilter("ignore")
 
 sys.path.append('../Scripts')
 from deafrica_datahandling import mostcommon_crs, load_ard
@@ -234,7 +234,7 @@ def fit_xr(model, input_xr):
 def predict_xr(model,
                input_xr,
                chunk_size=None,
-               persist=True,
+               persist=False,
                proba=False,
                clean=False,
                return_input=False):
@@ -243,9 +243,7 @@ def predict_xr(model,
     predict and predict_proba methods of sklearn
     estimators. Useful for running predictions
     on a larger-than-RAM datasets.
-
     Last modified: September 2020
-
     Parameters
     ----------
     model : scikit-learn model or compatible object
@@ -255,38 +253,40 @@ def predict_xr(model,
     chunk_size : int
         The dask chunk size to use on the flattened array. If this
         is left as None, then the chunks size is inferred from the
-        .chunks() method on the `input_xr`
+        .chunks method on the `input_xr`
     persist : bool
         If True, and proba=True, then 'input_xr' data will be
         loaded into distributed memory. This will ensure data
         is not loaded twice for the prediction of probabilities,
-        but this will only work if the data is not larger than RAM.
+        but this will only work if the data is not larger than
+        distributed RAM.
     proba : bool
-        If True, predict probabilities. This only applies if the 
-        model has a .predict_proba() method
+        If True, predict probabilities
     clean : bool
         If True, remove Infs and NaNs from input and output arrays
     return_input : bool
         If True, then the data variables in the 'input_xr' dataset will
         be appended to the output xarray dataset.
-
     Returns
     ----------
     output_xr : xarray.Dataset
-        An xarray.Dataset containing the prediction output from model
-        with input_xr as input, if proba=True then dataset will also contain
-        the prediciton probabilities. Has the same spatiotemporal structure
-        as input_xr.
-
+        An xarray.Dataset containing the prediction output from model.
+        if proba=True then dataset will also contain probabilites, and
+        if return_input=True then dataset will have the input feature layers.
+        Has the same spatiotemporal structure as input_xr.
     """
+    # if input_xr isn't dask, coerce it
+    dask = True
+    if not bool(input_xr.chunks):
+        dask = False
+        input_xr = input_xr.chunk({'x': len(input_xr.x), 'y': len(input_xr.y)})
+
+    #set chunk size if not supplied
     if chunk_size is None:
         chunk_size = int(input_xr.chunks['x'][0]) * \
                          int(input_xr.chunks['y'][0])
 
-    # convert model to dask predict
-    model = ParallelPostFit(model)
-
-    with joblib.parallel_backend('dask'):
+    def _predict_func(model, input_xr, persist, proba, clean, return_input):
         x, y, crs = input_xr.x, input_xr.y, input_xr.geobox.crs
 
         input_data = []
@@ -312,7 +312,7 @@ def predict_xr(model,
             input_data_flattened = input_data_flattened.persist()
 
         # apply the classification
-        print('   predicting...')
+        print('predicting...')
         out_class = model.predict(input_data_flattened)
 
         # Mask out NaN or Inf values in results
@@ -358,6 +358,7 @@ def predict_xr(model,
             # to the output_xr containin the predictions
             arr = input_xr.to_array()
             stacked = arr.stack(z=['y', 'x'])
+
             # handle multivariable output
             output_px_shape = ()
             if len(input_data_flattened.shape[1:]):
@@ -391,6 +392,18 @@ def predict_xr(model,
 
         return assign_crs(output_xr, str(crs))
 
+    if dask == True:
+        # convert model to dask predict
+        model = ParallelPostFit(model)
+        with joblib.parallel_backend('dask'):
+            output_xr = _predict_func(model, input_xr, persist, proba, clean,
+                                      return_input)
+
+    else:
+        output_xr = _predict_func(model, input_xr, persist, proba, clean,
+                                  return_input).compute()
+
+    return output_xr
 
 class HiddenPrints:
     """
@@ -523,7 +536,7 @@ def _get_training_data_for_shp(gdf,
                         data = method_to_call(dim='time')
 
                 elif reduce_func == 'geomedian':
-                    data = GeoMedian().compute(ds)
+                    data = GeoMedian(num_threads=1).compute(ds)
                     with HiddenPrints():
                         data = calculate_indices(data,
                                                  index=calc_indices,
@@ -550,7 +563,7 @@ def _get_training_data_for_shp(gdf,
             if len(ds.time.values) > 1:
 
                 if reduce_func == 'geomedian':
-                    data = GeoMedian().compute(ds)
+                    data = GeoMedian().compute(ds, num_threads=1)
 
                 elif reduce_func in ['mean', 'median', 'std', 'max', 'min']:
                     method_to_call = getattr(ds, reduce_func)
@@ -607,6 +620,7 @@ def _get_training_data_parallel(
     to a mulitprocessing.Pool.
     Inherits variables from 'collect_training_data()'.
     """
+    
     # Check if dask-client is running
     try:
         zx = None
@@ -798,20 +812,24 @@ def collect_training_data(gdf,
     
     # Stack the extracted training data for each feature into a single array
     model_input = np.vstack(results)
-    # this code block iteratively retries failed rows
+    
+    # this code block below iteratively retries failed rows
     # up to max_retries or until fail_threshold is
     # reached - whichever occurs first
     if ncpus > 1:
         i = 1
         while (i <= max_retries):
             
-            #find % of fails (null values) in data, regardless of
-            #zonal or all-pixel version. Use Pandas for simplicity
+            # Find % of fails (null values) in data, regardless of
+            # Use Pandas for simplicity
             df = pd.DataFrame(data=model_input[:,0:-1], index=model_input[:,-1])
+            #how many nan values per id?
             num_nans = df.isnull().sum(axis=1)
             num_nans = num_nans.groupby(num_nans.index).sum()
+            #how many valid values per id?
             num_valid = df.notnull().sum(axis=1)
             num_valid = num_valid.groupby(num_valid.index).sum()
+            #find fail rate
             perc_fail = num_nans / (num_nans+num_valid)
             fail_ids = perc_fail[perc_fail > fail_ratio]
             fail_rate = len(fail_ids) / len(gdf)
@@ -821,15 +839,17 @@ def collect_training_data(gdf,
             
             if fail_rate > fail_threshold:
                 print('Recollecting samples that failed')
-
-                #remove rows from model_input object that contain fail_ids
-                model_input = model_input[model_input[:,-1] != fail_ids.index]
                 
-                #get '_id' of NaN rows and index original gdf
-                gdf_rerun = gdf.loc[gdf['id'].isin(fail_ids.index)]
+                fail_ids = list(fail_ids.index)
+                # keep only the ids in model_input object that didn't fail
+                model_input = model_input[~np.isin(model_input[:,-1], fail_ids)]
+                
+                # index out the fail_ids from the original gdf
+                gdf_rerun = gdf.loc[gdf['id'].isin(fail_ids)]
                 gdf_rerun = gdf_rerun.reset_index(drop=True)
-
+            
                 time.sleep(5)  #sleep for 5s to rest api
+                #recollect failed rows
                 column_names_again, results_again = _get_training_data_parallel(
                     gdf=gdf_rerun,
                     products=products,
@@ -870,7 +890,7 @@ def collect_training_data(gdf,
 
     else:
         print('Returning data without cleaning')
-        print('Output shape: ', model_input.shape - 1)
+        print('Output shape: ', model_input.shape)
 
 
     return column_names[0:-1], model_input
