@@ -18,7 +18,7 @@ here: https://gis.stackexchange.com/questions/tagged/open-data-cube).
 If you would like to report an issue with this script, you can file one on
 Github https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues
 
-Last modified: November 2020
+Last modified: Feb 2020
 
 
 '''
@@ -267,6 +267,7 @@ def predict_xr(model,
     return_input : bool
         If True, then the data variables in the 'input_xr' dataset will
         be appended to the output xarray dataset.
+    
     Returns
     ----------
     output_xr : xarray.Dataset
@@ -673,8 +674,8 @@ def collect_training_data(gdf,
                           drop=True,
                           zonal_stats=None,
                           clean=True,
-                          fail_ratio=0.5,
                           fail_threshold=0.02,
+                          fail_ratio=0.5,
                           max_retries=3):
     """
     
@@ -735,15 +736,20 @@ def collect_training_data(gdf,
         Whether or not to remove missing values in the training dataset. If True,
         training labels with any NaNs or Infs in the feature layers will be dropped
         from the dataset.
-    fail_threshold : float, default 0.02
+     fail_threshold : float, default 0.02
         Silent read fails on S3 can result in some rows of the returned data containing NaN values.
-        The'fail_threshold' fraction specifies a minimum number of acceptable fails.
-        e.g. setting 'fail_threshold' to 0.05 means 5 % no-data in the returned dataset is acceptable.
-        Above this fraction the function will attempt to recollect the samples that have failed.
-        A sample is defined as having failed if it returns > 50 % NaN values.
+        The'fail_threshold' fraction specifies a % of acceptable fails.
+        e.g. setting 'fail_threshold' to 0.05 means 5 % of failed rows the returned dataset
+        is acceptable. Above this fraction the function will attempt to recollect the
+        samples that have failed. 
+    fail_ratio: float
+        A float between 0 and 1 that defines if a given traning sample has failed.
+        Default is 0.5, which mean 50 % of the measurements in the sample has returned null
+        values and will be passed to the retry queue.
     max_retries: int, default 3
         Maximum number of times to retry collecting samples. This number is invoked
         if the 'fail_threshold' is not reached
+        
         
     Returns
     --------
@@ -849,6 +855,7 @@ def collect_training_data(gdf,
                 gdf_rerun = gdf_rerun.reset_index(drop=True)
             
                 time.sleep(5)  #sleep for 5s to rest api
+                
                 #recollect failed rows
                 column_names_again, results_again = _get_training_data_parallel(
                     gdf=gdf_rerun,
@@ -1011,7 +1018,9 @@ def spatial_clusters(coordinates,
     """
     Create spatial groups on coorindate data using either KMeans clustering
     or a Gaussian Mixture model
+    
     Last modified: September 2020
+    
     Parameters
     ----------
     n_groups : int
@@ -1032,11 +1041,13 @@ def spatial_clusters(coordinates,
     **kwargs : optional,
         Additional keyword arguments to pass to sklearn.cluster.Kmeans or
         sklearn.mixture.GuassianMixture depending on the 'method' argument.
+    
     Returns
     -------
      labels : array, shape [n_samples,]
         Index of the cluster each sample belongs to.
     """
+    
     if method not in ['Hierarchical', 'KMeans', 'GMM']:
         raise ValueError(
             "method must be one of: 'Hierarchical','KMeans' or 'GMM'")
