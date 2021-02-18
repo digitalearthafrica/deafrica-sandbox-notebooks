@@ -18,7 +18,7 @@ here: https://gis.stackexchange.com/questions/tagged/open-data-cube).
 If you would like to report an issue with this script, you can file one on
 Github https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues
 
-Last modified: November 2020
+Last modified: Feb 2020
 
 
 '''
@@ -29,6 +29,7 @@ import joblib
 import datacube
 import rasterio
 import numpy as np
+import pandas as pd
 import xarray as xr
 from tqdm import tqdm
 import dask.array as da
@@ -59,7 +60,7 @@ from sklearn.model_selection import KFold, ShuffleSplit
 from sklearn.model_selection import BaseCrossValidator
 
 import warnings
-warnings.simplefilter("default")
+warnings.simplefilter("ignore")
 
 sys.path.append('../Scripts')
 from deafrica_datahandling import mostcommon_crs, load_ard
@@ -233,7 +234,7 @@ def fit_xr(model, input_xr):
 def predict_xr(model,
                input_xr,
                chunk_size=None,
-               persist=True,
+               persist=False,
                proba=False,
                clean=False,
                return_input=False):
@@ -242,9 +243,7 @@ def predict_xr(model,
     predict and predict_proba methods of sklearn
     estimators. Useful for running predictions
     on a larger-than-RAM datasets.
-
     Last modified: September 2020
-
     Parameters
     ----------
     model : scikit-learn model or compatible object
@@ -254,38 +253,41 @@ def predict_xr(model,
     chunk_size : int
         The dask chunk size to use on the flattened array. If this
         is left as None, then the chunks size is inferred from the
-        .chunks() method on the `input_xr`
+        .chunks method on the `input_xr`
     persist : bool
         If True, and proba=True, then 'input_xr' data will be
         loaded into distributed memory. This will ensure data
         is not loaded twice for the prediction of probabilities,
-        but this will only work if the data is not larger than RAM.
+        but this will only work if the data is not larger than
+        distributed RAM.
     proba : bool
-        If True, predict probabilities. This only applies if the 
-        model has a .predict_proba() method
+        If True, predict probabilities
     clean : bool
         If True, remove Infs and NaNs from input and output arrays
     return_input : bool
         If True, then the data variables in the 'input_xr' dataset will
         be appended to the output xarray dataset.
-
+    
     Returns
     ----------
     output_xr : xarray.Dataset
-        An xarray.Dataset containing the prediction output from model
-        with input_xr as input, if proba=True then dataset will also contain
-        the prediciton probabilities. Has the same spatiotemporal structure
-        as input_xr.
-
+        An xarray.Dataset containing the prediction output from model.
+        if proba=True then dataset will also contain probabilites, and
+        if return_input=True then dataset will have the input feature layers.
+        Has the same spatiotemporal structure as input_xr.
     """
+    # if input_xr isn't dask, coerce it
+    dask = True
+    if not bool(input_xr.chunks):
+        dask = False
+        input_xr = input_xr.chunk({'x': len(input_xr.x), 'y': len(input_xr.y)})
+
+    #set chunk size if not supplied
     if chunk_size is None:
         chunk_size = int(input_xr.chunks['x'][0]) * \
                          int(input_xr.chunks['y'][0])
 
-    # convert model to dask predict
-    model = ParallelPostFit(model)
-
-    with joblib.parallel_backend('dask'):
+    def _predict_func(model, input_xr, persist, proba, clean, return_input):
         x, y, crs = input_xr.x, input_xr.y, input_xr.geobox.crs
 
         input_data = []
@@ -311,7 +313,7 @@ def predict_xr(model,
             input_data_flattened = input_data_flattened.persist()
 
         # apply the classification
-        print('   predicting...')
+        print('predicting...')
         out_class = model.predict(input_data_flattened)
 
         # Mask out NaN or Inf values in results
@@ -357,6 +359,7 @@ def predict_xr(model,
             # to the output_xr containin the predictions
             arr = input_xr.to_array()
             stacked = arr.stack(z=['y', 'x'])
+
             # handle multivariable output
             output_px_shape = ()
             if len(input_data_flattened.shape[1:]):
@@ -390,6 +393,18 @@ def predict_xr(model,
 
         return assign_crs(output_xr, str(crs))
 
+    if dask == True:
+        # convert model to dask predict
+        model = ParallelPostFit(model)
+        with joblib.parallel_backend('dask'):
+            output_xr = _predict_func(model, input_xr, persist, proba, clean,
+                                      return_input)
+
+    else:
+        output_xr = _predict_func(model, input_xr, persist, proba, clean,
+                                  return_input).compute()
+
+    return output_xr
 
 class HiddenPrints:
     """
@@ -425,7 +440,6 @@ def _get_training_data_for_shp(gdf,
     geodataframe and runs the code within `_get_training_data_for_shp`.
     Parameters are inherited from `collect_training_data`.
     See that function for information on the other params not listed below.
-
     Parameters
     ----------
     index, row : iterables inherited from geopandas object
@@ -433,15 +447,14 @@ def _get_training_data_for_shp(gdf,
         An empty list into which the training data arrays are stored.
     out_vars : list
         An empty list into which the data varaible names are stored.
-
-
     Returns
     --------
     Two lists, a list of numpy.arrays containing classes and extracted data for
     each pixel or polygon, and another containing the data variable names.
-
     """
+    
     configure_s3_access(aws_unsigned=True, cloud_defaults=True)
+    
     # prevent function altering dictionary kwargs
     dc_query = deepcopy(dc_query)
 
@@ -453,8 +466,11 @@ def _get_training_data_for_shp(gdf,
     # connect to datacube
     dc = datacube.Datacube(app='training_data')
 
-    # set up query based on polygon 
-    geom = geometry.Geometry(geom=gdf.iloc[index].geometry, crs=gdf.crs)
+    # set up query based on polygon (convert to WGS84)
+    geom = geometry.Geometry(gdf.geometry.values[index].__geo_interface__,
+                             geometry.CRS('epsg:4326'))
+
+    # print(geom)
     q = {"geopolygon": geom}
 
     # merge polygon query with user supplied query params
@@ -521,7 +537,7 @@ def _get_training_data_for_shp(gdf,
                         data = method_to_call(dim='time')
 
                 elif reduce_func == 'geomedian':
-                    data = GeoMedian().compute(ds)
+                    data = GeoMedian(num_threads=1).compute(ds)
                     with HiddenPrints():
                         data = calculate_indices(data,
                                                  index=calc_indices,
@@ -548,7 +564,7 @@ def _get_training_data_for_shp(gdf,
             if len(ds.time.values) > 1:
 
                 if reduce_func == 'geomedian':
-                    data = GeoMedian().compute(ds)
+                    data = GeoMedian().compute(ds, num_threads=1)
 
                 elif reduce_func in ['mean', 'median', 'std', 'max', 'min']:
                     method_to_call = getattr(ds, reduce_func)
@@ -560,14 +576,20 @@ def _get_training_data_for_shp(gdf,
         # turn coords into a variable in the ds
         data['x_coord'] = ds.x + 0 * ds.y
         data['y_coord'] = ds.y + 0 * ds.x
-
+    
+    # append ID measurement to dataset for tracking later on
+    band = [m for m in data.data_vars][0]
+    _id = xr.zeros_like(data[band]) 
+    data['id'] = _id
+    data['id'] = data['id'] + gdf.iloc[index]['id']
+    
+    # If no zonal stats were requested then extract all pixel values
     if zonal_stats is None:
-        # If no zonal stats were requested then extract all pixel values
         flat_train = sklearn_flatten(data)
         flat_val = np.repeat(row[field], flat_train.shape[0])
         stacked = np.hstack((np.expand_dims(flat_val, axis=1), flat_train))
 
-    elif zonal_stats in ['mean', 'median', 'std', 'max', 'min']:
+    elif zonal_stats in ['mean', 'median', 'max', 'min']:
         method_to_call = getattr(data, zonal_stats)
         flat_train = method_to_call()
         flat_train = flat_train.to_array()
@@ -575,15 +597,11 @@ def _get_training_data_for_shp(gdf,
 
     else:
         raise Exception(zonal_stats + " is not one of the supported" +
-                        " reduce functions ('mean','median','std','max','min')")
+                        " reduce functions ('mean','median','max','min')")
 
-    #return unique-id so we can index if dc.load fails silently
-    _id = gdf.iloc[index]['id']
-
-    # Append training data and labels to list
-    out_arrs.append(np.append(stacked, _id))
-    out_vars.append([field] + list(data.data_vars) + ['id'])
-
+    out_arrs.append(stacked)
+    out_vars.append([field] + list(data.data_vars))
+    
 
 def _get_training_data_parallel(
     gdf,
@@ -602,8 +620,8 @@ def _get_training_data_parallel(
     Function passing the '_get_training_data_for_shp' function
     to a mulitprocessing.Pool.
     Inherits variables from 'collect_training_data()'.
-
     """
+    
     # Check if dask-client is running
     try:
         zx = None
@@ -657,6 +675,7 @@ def collect_training_data(gdf,
                           zonal_stats=None,
                           clean=True,
                           fail_threshold=0.02,
+                          fail_ratio=0.5,
                           max_retries=3):
     """
     
@@ -664,16 +683,14 @@ def collect_training_data(gdf,
     into a 'model_input' object containing stacked training data arrays
     with all NaNs & Infs removed. In the instance where ncpus > 1, a parallel version of the
     function will be run (functions are passed to a mp.Pool())
-
     This function provides a number of pre-defined feature layer methods,
     including calculating band indices, reducing time series using several summary statistics,
     and/or generating zonal statistics across polygons.  The 'custom_func' parameter provides
     a method for the user to supply a custom function for generating features rather than using the
     pre-defined methods.
-
+    
     Parameters
     ----------
-
     gdf : geopandas geodataframe
         geometry data in the form of a geopandas geodataframe
     products : list
@@ -713,27 +730,31 @@ def collect_training_data(gdf,
     zonal_stats : string, optional
         An optional string giving the names of zonal statistics to calculate
         for each polygon. Default is None (all pixel values are returned). Supported
-        values are 'mean', 'median', 'max', 'min', and 'std'. Will work in
+        values are 'mean', 'median', 'max', 'min'. Will work in
         conjuction with a 'custom_func'.
     clean : bool
         Whether or not to remove missing values in the training dataset. If True,
         training labels with any NaNs or Infs in the feature layers will be dropped
         from the dataset.
-    fail_threshold : float, default 0.02
+     fail_threshold : float, default 0.02
         Silent read fails on S3 can result in some rows of the returned data containing NaN values.
-        The'fail_threshold' fraction specifies a minimum number of acceptable fails.
-        e.g. setting 'fail_threshold' to 0.05 means 5 % no-data in the returned dataset is acceptable.
-        Above this fraction the function will attempt to recollect the samples that have failed.
-        A sample is defined as having failed if it returns > 50 % NaN values.
+        The'fail_threshold' fraction specifies a % of acceptable fails.
+        e.g. setting 'fail_threshold' to 0.05 means 5 % of failed rows the returned dataset
+        is acceptable. Above this fraction the function will attempt to recollect the
+        samples that have failed. 
+    fail_ratio: float
+        A float between 0 and 1 that defines if a given traning sample has failed.
+        Default is 0.5, which mean 50 % of the measurements in the sample has returned null
+        values and will be passed to the retry queue.
     max_retries: int, default 3
         Maximum number of times to retry collecting samples. This number is invoked
         if the 'fail_threshold' is not reached
+        
         
     Returns
     --------
     Two lists, a list of numpy.arrays containing classes and extracted data for
     each pixel or polygon, and another containing the data variable names.
-
     """
 
     # check the dtype of the class field
@@ -752,8 +773,9 @@ def collect_training_data(gdf,
     if zonal_stats is not None:
         print("Taking zonal statistic: " + zonal_stats)
 
-    #add unique id to gdf to help later with indexing failed rows
-    #during muliprocessing
+    #add unique id to gdf to help with indexing failed rows
+    # during multiprocessing
+    #if zonal_stats is not None:
     gdf['id'] = range(0, len(gdf))
 
     if ncpus == 1:
@@ -793,41 +815,48 @@ def collect_training_data(gdf,
     # column names are appended during each iteration
     # but they are identical, grab only the first instance
     column_names = column_names[0]
-
+    
     # Stack the extracted training data for each feature into a single array
     model_input = np.vstack(results)
-
-    # this code block iteratively retries failed rows
+    
+    # this code block below iteratively retries failed rows
     # up to max_retries or until fail_threshold is
     # reached - whichever occurs first
     if ncpus > 1:
         i = 1
         while (i <= max_retries):
-            # Count number of fails
-            num = np.count_nonzero(np.isnan(model_input), axis=1) > int(
-                model_input.shape[1] * 0.5)
-            num = num.sum()
-            fail_rate = num / len(gdf)
+            
+            # Find % of fails (null values) in data, regardless of
+            # Use Pandas for simplicity
+            df = pd.DataFrame(data=model_input[:,0:-1], index=model_input[:,-1])
+            #how many nan values per id?
+            num_nans = df.isnull().sum(axis=1)
+            num_nans = num_nans.groupby(num_nans.index).sum()
+            #how many valid values per id?
+            num_valid = df.notnull().sum(axis=1)
+            num_valid = num_valid.groupby(num_valid.index).sum()
+            #find fail rate
+            perc_fail = num_nans / (num_nans+num_valid)
+            fail_ids = perc_fail[perc_fail > fail_ratio]
+            fail_rate = len(fail_ids) / len(gdf)
+            
             print('Percentage of possible fails after run ' + str(i) + ' = ' +
                   str(round(fail_rate * 100, 2)) + ' %')
+            
             if fail_rate > fail_threshold:
                 print('Recollecting samples that failed')
-
-                #find rows where NaNs account for more than half the values
-                nans = model_input[np.count_nonzero(
-                    np.isnan(model_input), axis=1) > int(model_input.shape[1] *
-                                                         0.5)]
-                #remove nan rows from model_input object
-                model_input = model_input[np.count_nonzero(
-                    np.isnan(model_input), axis=1) <= int(model_input.shape[1] *
-                                                          0.5)]
-
-                #get '_id' of NaN rows and index original gdf
-                idx_nans = nans[:, [-1]].flatten()
-                gdf_rerun = gdf.loc[gdf['id'].isin(idx_nans)]
+                
+                fail_ids = list(fail_ids.index)
+                # keep only the ids in model_input object that didn't fail
+                model_input = model_input[~np.isin(model_input[:,-1], fail_ids)]
+                
+                # index out the fail_ids from the original gdf
+                gdf_rerun = gdf.loc[gdf['id'].isin(fail_ids)]
                 gdf_rerun = gdf_rerun.reset_index(drop=True)
-
-                time.sleep(30)  #sleep for 30 sec to rest api
+            
+                time.sleep(5)  #sleep for 5s to rest api
+                
+                #recollect failed rows
                 column_names_again, results_again = _get_training_data_parallel(
                     gdf=gdf_rerun,
                     products=products,
@@ -854,6 +883,11 @@ def collect_training_data(gdf,
 
     # -----------------------------------------------
 
+    # remove id column 
+    idx_var = column_names[0:-1]
+    model_col_indices = [column_names.index(var_name) for var_name in idx_var]
+    model_input = model_input[:, model_col_indices]
+    
     if clean == True:
         num = np.count_nonzero(np.isnan(model_input).any(axis=1))
         model_input = model_input[~np.isnan(model_input).any(axis=1)]
@@ -865,13 +899,9 @@ def collect_training_data(gdf,
         print('Returning data without cleaning')
         print('Output shape: ', model_input.shape)
 
-    # remove id column
-    idx_var = column_names[0:-1]
-    model_col_indices = [column_names.index(var_name) for var_name in idx_var]
-    model_input = model_input[:, model_col_indices]
 
     return column_names[0:-1], model_input
-
+    
 
 class KMeans_tree(ClusterMixin):
     """
@@ -988,7 +1018,9 @@ def spatial_clusters(coordinates,
     """
     Create spatial groups on coorindate data using either KMeans clustering
     or a Gaussian Mixture model
+    
     Last modified: September 2020
+    
     Parameters
     ----------
     n_groups : int
@@ -1009,11 +1041,13 @@ def spatial_clusters(coordinates,
     **kwargs : optional,
         Additional keyword arguments to pass to sklearn.cluster.Kmeans or
         sklearn.mixture.GuassianMixture depending on the 'method' argument.
+    
     Returns
     -------
      labels : array, shape [n_samples,]
         Index of the cluster each sample belongs to.
     """
+    
     if method not in ['Hierarchical', 'KMeans', 'GMM']:
         raise ValueError(
             "method must be one of: 'Hierarchical','KMeans' or 'GMM'")
