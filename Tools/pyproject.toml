@@ -1,11 +1,20 @@
 [tool.poetry]
-name = "Tools"
+name = "deafrica_tools"
 version = "0.1.0"
 description = ""
-authors = ["jinjun sun <jijun.sun@ga.gov.au>"]
+authors = ["Digital Earth Africa Team"]
+homepage = "https://github.com/digitalearthafrica/dea-common.git"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.6"
+joblib = "^1.0.1"
+datacube = "^1.8.3"
+tqdm = "^4.57.0"
+geopandas = "^0.8.2"
+matplotlib = "^3.3.4"
+scikit-learn = "^0.24.1"
+dask-ml = "^1.8.0"
+# datacube-stats = {git = "https://github.com/opendatacube/datacube-stats/"}
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
