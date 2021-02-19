@@ -2,7 +2,6 @@
 
 import pathlib
 import warnings
-
 warnings.warn("Scripts/deafrica_* scripts have been deprecated in favour of the deafrica-tools module. Please import deafrica_tools.bandindices instead.", DeprecationWarning)
 
 current_dir = pathlib.Path(__file__).parent.absolute()
