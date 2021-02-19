@@ -1,14 +1,18 @@
-# Scripts
+<img align="centre" src="Supplementary_data/Github_banner.jpg" width="100%">
 
-repo dependencies is being managed by [poetry](https://python-poetry.org/)
+# DE Africa Tools Package
 
-Python functions and algorithms developed to assist in analysing DE Africa data (e.g. loading data, plotting, spatial analysis)
 
-## Howw to build the package
+This folder stores the dependecies for installing the python package `deafrica_tools`, which contains a set of python functions and algorithms developed to assist in analysing DE Africa data (e.g. loading data, plotting, spatial analysis)
 
-install poetry first.
+The package is being managed by [poetry](https://python-poetry.org/)
 
-In the repo root, run
+
+## How to build the package
+
+Install poetry first.
+
+In the repo root, run:
 
 ```bash
 poetry build
