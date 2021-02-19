@@ -30,7 +30,7 @@ Use testpypi to test the releae according to the tutorial on [using-testpypi](ht
 
 You can search you packages on: [test.pypi.org](https://test.pypi.org/manage/projects/).
 
-## install the from local build
+## install the package from local build
 
 After run poetry build, you can install the deafrica_tools as bellow
 
