@@ -48,6 +48,7 @@ from rasterstats import zonal_stats
 from skimage.measure import find_contours
 from shapely.geometry import mapping, shape
 from datacube.helpers import write_geotiff
+from datacube.utils.cog import write_cog
 from datacube.utils.geometry import assign_crs
 from shapely.geometry import LineString, MultiLineString, shape
 
