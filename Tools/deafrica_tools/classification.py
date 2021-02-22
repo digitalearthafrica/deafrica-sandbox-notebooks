@@ -60,13 +60,11 @@ from sklearn.model_selection import KFold, ShuffleSplit
 from sklearn.model_selection import BaseCrossValidator
 
 import warnings
-
 warnings.simplefilter("ignore")
 
-sys.path.append("../Scripts")
-from deafrica_datahandling import mostcommon_crs, load_ard
-from deafrica_bandindices import calculate_indices
-from deafrica_spatialtools import xr_rasterize
+from deafrica_tools.datahandling import mostcommon_crs, load_ard
+from deafrica_tools.bandindices import calculate_indices
+from deafrica_tools.spatial import xr_rasterize
 
 
 def sklearn_flatten(input_xr):

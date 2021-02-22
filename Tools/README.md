@@ -20,7 +20,7 @@ Then navigate to the `"deafrica-sandbox-notebooks/Tools"` folder, and run:
 
 After the poetry build, you can install the `deafrica_tools` package by running:
 
-```pip install dist/deafrica_tools_<0.1.0>.tar.gz```
+```pip install dist/deafrica_tools-0.1.0.tar.gz```
 
 
 ## Configuring the testpypi:

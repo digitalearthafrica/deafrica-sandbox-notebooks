@@ -33,8 +33,6 @@ from scipy.signal import wiener
 from packaging import version
 from datacube.utils.geometry import assign_crs
 
-sys.path.append("../Scripts")
-
 
 def allNaN_arg(da, dim, stat):
     """
