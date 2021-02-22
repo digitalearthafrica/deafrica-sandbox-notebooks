@@ -37,5 +37,5 @@ You can search you packages on: [test.pypi.org](https://test.pypi.org/manage/pro
 After run poetry build, you can install the deafrica_tools as bellow
 
 ```bash
-pip install -e dist/deafrica_tools_<version>-none-any.whl
+pip install -e dist/deafrica_tools_<version>.tar.gz
 ```
