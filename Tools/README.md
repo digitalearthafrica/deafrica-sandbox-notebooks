@@ -14,7 +14,7 @@ In the terminal, first install poetry:
 
 ```pip install poetry```
 
-Then navigate to into `"deafrica-sandbox-notebooks/Tools"` folder, and run:
+Then navigate to the `"deafrica-sandbox-notebooks/Tools"` folder, and run:
 
 ```poetry build```
 
@@ -38,6 +38,4 @@ One published testing is on testpypi [dea-common](https://test.pypi.org/project/
 Use testpypi to test the release according to the tutorial on [using-testpypi](https://packaging.python.org/guides/using-testpypi/).
 
 You can search you packages on: [test.pypi.org](https://test.pypi.org/manage/projects/).
-
-## install the package from local build
 
