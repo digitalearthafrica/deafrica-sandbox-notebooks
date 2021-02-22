@@ -10,9 +10,7 @@ The package is being managed by [poetry](https://python-poetry.org/)
 
 ## How to build the package
 
-Install poetry first.
-
-In the repo root, run:
+Install poetry first. Then go into "Tools" folder, run:
 
 ```bash
 poetry build
