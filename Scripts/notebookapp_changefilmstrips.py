@@ -11,7 +11,6 @@ Last modified: April 2020
 
 # Load modules
 import os
-import sys
 import dask
 import datacube
 import warnings
@@ -29,11 +28,9 @@ from ipyleaflet import basemaps, basemap_to_tiles
 
 
 # Load utility functions
-sys.path.append('../Scripts')
-from deafrica_datahandling import load_ard
-from deafrica_coastaltools import tidal_tag
-from deafrica_datahandling import mostcommon_crs
-from deafrica_dask import create_local_dask_cluster
+from deafrica_tools.datahandling import load_ard, mostcommon_crs
+from deafrica_tools.coastal import tidal_tag
+from deafrica_tools.dask import create_local_dask_cluster
 
 
 def run_filmstrip_app(output_name,
