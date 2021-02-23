@@ -18,13 +18,11 @@ The repository is based around the following directory structure (from simple to
 
 1. [Beginners_guide](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Beginners_guide): *Introductory notebooks aimed at introducing Jupyter Notebooks and how to load, plot and interact with DE Africa data*
 
-2. [DCAL](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/update-readme/DCAL): *The notebooks in this folder have been transitioned from the Africa Regional Data Cube (ARDC) to work on the DE Africa platform. They retain all the functionality of the ARDC implementations of these notebooks.*
+2. [Datasets](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Datasets): *Notebooks introducing DE Africa's satellite datasets and derived products, including how to load each dataset and any special features of the data. Some external datasets that are useful for analysing and interpreting DE Africa products are also covered.*
 
-3. [Datasets](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Datasets): *Notebooks introducing DE Africa's satellite datasets and derived products, including how to load each dataset and any special features of the data. Some external datasets that are useful for analysing and interpreting DE Africa products are also covered.*
+3. [Frequently_used_code](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Frequently_used_code): *A recipe book of simple code examples demonstrating how to perform common geospatial analysis tasks using DE Africa and open-source software*
 
-4. [Frequently_used_code](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Frequently_used_code): *A recipe book of simple code examples demonstrating how to perform common geospatial analysis tasks using DE Africa and open-source software*
-
-5. [Real_world_examples](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Real_world_examples): *More complex workflows demonstrating how DE Africa can be used to address real-world problems*
+4. [Real_world_examples](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Real_world_examples): *More complex workflows demonstrating how DE Africa can be used to address real-world problems*
 
 The supporting scripts and data for the notebooks are kept in the following directories:
 
