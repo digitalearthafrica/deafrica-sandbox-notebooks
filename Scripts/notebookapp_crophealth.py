@@ -33,9 +33,9 @@ import geopandas as gpd
 from io import BytesIO
 
 # Load utility functions
-from deafrica_datahandling import load_ard
-from deafrica_spatialtools import xr_rasterize
-from deafrica_bandindices import calculate_indices
+from deafrica_tools.datahandling import load_ard
+from deafrica_tools.spatial import xr_rasterize
+from deafrica_tools.bandindices import calculate_indices
 
 
 def load_crophealth_data(lat, lon, buffer):
