@@ -1,4 +1,4 @@
-<img align="centre" src="../Supplementary_data/Github_banner.jpg" width="100%">
+<img align="centre" src="../../Supplementary_data/Github_banner.jpg" width="100%">
 
 # Scalable Supervised Machine Learning on the Open Data Cube
 
