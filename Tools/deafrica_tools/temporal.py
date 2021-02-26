@@ -1,26 +1,20 @@
-# deafrica_temporal_statistics.py
 """
-This script contains functions for calculating per-pixel
-temporal summary statistics on a timeseries stored in a
-xarray.DataArray.
+Functions for calculating per-pixel temporal summary statistics on a
+timeseries stored in a xarray.DataArray.
 
-There are two primary functions in this script:
-    1. xr_phenology: calculates land-surface phenology
-                    metrics on a time series of a vegetation index
+The key functions are:
 
-    2. temporal_statistics: calculates various generic summary
-                            statistics on any timeseries.
+.. autosummary::
+   :caption: Primary functions
+   :nosignatures:
+   :toctree: gen
 
-Other function support these two primary functions.
+   xr_phenology
+   temporal_statistics
 
-Functions:
----------
-    allNaN_arg
-    fast_completion
-    smooth
-    phenology-statistics
-    xr_phenology
-    temporal_statistics
+.. autosummary::
+   :nosignatures:
+   :toctree: gen
 
 """
 
@@ -40,16 +34,17 @@ def allNaN_arg(da, dim, stat):
     all-NaN slices. Fills all-NaN locations with an
     float and then masks the offending cells.
 
-    Params
-    ------
-    xarr : xarray.DataArray
-    dim : str,
-            Dimension over which to calculate argmax, argmin e.g. 'time'
-    stat : str,
+    Parameters
+    ----------
+    da : xarray.DataArray
+    dim : str
+        Dimension over which to calculate argmax, argmin e.g. 'time'
+    stat : str
         The statistic to calculte, either 'min' for argmin()
         or 'max' for .argmax()
+
     Returns
-    ------
+    -------
     xarray.DataArray
     """
     # generate a mask where entire axis along dimension is NaN
@@ -296,17 +291,19 @@ def xr_phenology(
         the metrics returned, all statistics are calculated
         due to inter-dependencies between metrics.
         Options include:
-            SOS = DOY of start of season
-            POS = DOY of peak of season
-            EOS = DOY of end of season
-            vSOS = Value at start of season
-            vPOS = Value at peak of season
-            vEOS = Value at end of season
-            Trough = Minimum value of season
-            LOS = Length of season (DOY)
-            AOS = Amplitude of season (in value units)
-            ROG = Rate of greening
-            ROS = Rate of senescence
+
+        * `SOS` = DOY of start of season
+        * `POS` = DOY of peak of season
+        * `EOS` = DOY of end of season
+        * `vSOS` = Value at start of season
+        * `vPOS` = Value at peak of season
+        * `vEOS` = Value at end of season
+        * `Trough` = Minimum value of season
+        * `LOS` = Length of season (DOY)
+        * `AOS` = Amplitude of season (in value units)
+        * `ROG` = Rate of greening
+        * `ROS` = Rate of senescence
+
     method_sos : str
         If 'first' then vSOS is estimated as the first positive
         slope on the greening side of the curve. If 'median',
@@ -327,9 +324,10 @@ def xr_phenology(
         then timeseries is smoothed using a rolling mean with a window size of 3.
         If set to 'linear', will be smoothed using da.resample(time='1W').interpolate('linear')
 
-    Outputs
+    Returns
     -------
-        xarray.Dataset containing variables for the selected
+    xarray.Dataset
+        Dataset containing variables for the selected
         phenology statistics
 
     """
@@ -490,7 +488,9 @@ def xr_phenology(
 
 def temporal_statistics(da, stats):
     """
-    Obtain generic temporal statistics using the hdstats temporal library:
+    Calculate various generic summary statistics on any timeseries.
+
+    This function uses the hdstats temporal library:
     https://github.com/daleroberts/hdstats/blob/master/hdstats/ts.pyx
 
     last modified June 2020
@@ -502,23 +502,26 @@ def temporal_statistics(da, stats):
     stats : list
         list of temporal statistics to calculate.
         Options include:
-            'discordance' =
-            'f_std' = std of discrete fourier transform coefficients, returns
-                      three layers: f_std_n1, f_std_n2, f_std_n3
-            'f_mean' = mean of discrete fourier transform coefficients, returns
-                       three layers: f_mean_n1, f_mean_n2, f_mean_n3
-            'f_median' = median of discrete fourier transform coefficients, returns
-                         three layers: f_median_n1, f_median_n2, f_median_n3
-            'mean_change' = mean of discrete difference along time dimension
-            'median_change' = median of discrete difference along time dimension
-            'abs_change' = mean of absolute discrete difference along time dimension
-            'complexity' =
-            'central_diff' =
-            'num_peaks' : The number of peaks in the timeseries, defined with a local
-                          window of size 10.  NOTE: This statistic is very slow
-    Outputs
+
+        * 'discordance' =
+        * 'f_std' = std of discrete fourier transform coefficients, returns
+            three layers: f_std_n1, f_std_n2, f_std_n3
+        * 'f_mean' = mean of discrete fourier transform coefficients, returns
+            three layers: f_mean_n1, f_mean_n2, f_mean_n3
+        * 'f_median' = median of discrete fourier transform coefficients, returns
+            three layers: f_median_n1, f_median_n2, f_median_n3
+        * 'mean_change' = mean of discrete difference along time dimension
+        * 'median_change' = median of discrete difference along time dimension
+        * 'abs_change' = mean of absolute discrete difference along time dimension
+        * 'complexity' =
+        * 'central_diff' =
+        * 'num_peaks' : The number of peaks in the timeseries, defined with a local
+            window of size 10.  NOTE: This statistic is very slow
+
+    Returns
     -------
-        xarray.Dataset containing variables for the selected
+    xarray.Dataset
+        Dataset containing variables for the selected
         temporal statistics
 
     """

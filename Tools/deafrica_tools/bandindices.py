@@ -1,21 +1,10 @@
-## deafrica_bandindices.py
 """
-Description: This file contains a set of python functions for computing
-remote sensing band indices on Digital Earth Africa data.
+Functions for computing remote sensing band indices on Digital Earth Africa
+data.
 
-License: The code in this notebook is licensed under the Apache License,
-Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth
-Africa data is licensed under the Creative Commons by Attribution 4.0
-license (https://creativecommons.org/licenses/by/4.0/).
-
-Contact: If you need assistance, please post a question on the Open Data
-Cube Slack channel (http://slack.opendatacube.org/) or on the GIS Stack
-Exchange (https://gis.stackexchange.com/questions/ask?tags=open-data-cube)
-using the `open-data-cube` tag (you can view previously asked questions
-here: https://gis.stackexchange.com/questions/tagged/open-data-cube).
-
-If you would like to report an issue with this script, you can file one on
-Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new
+.. autosummary::
+   :nosignatures:
+   :toctree: gen
 
 """
 
@@ -48,42 +37,46 @@ def calculate_indices(
     index : str or list of strs
         A string giving the name of the index to calculate or a list of
         strings giving the names of the indices to calculate:
-        'AWEI_ns (Automated Water Extraction Index,
-                  no shadows, Feyisa 2014)
-        'AWEI_sh' (Automated Water Extraction Index,
-                   shadows, Feyisa 2014)
-        'BAEI' (Built-Up Area Extraction Index, Bouzekri et al. 2015)
-        'BAI' (Burn Area Index, Martin 1998)
-        'BSI' (Bare Soil Index, Rikimaru et al. 2002)
-        'BUI' (Built-Up Index, He et al. 2010)
-        'CMR' (Clay Minerals Ratio, Drury 1987)
-        'EVI' (Enhanced Vegetation Index, Huete 2002)
-        'FMR' (Ferrous Minerals Ratio, Segal 1982)
-        'IOR' (Iron Oxide Ratio, Segal 1982)
-        'LAI' (Leaf Area Index, Boegh 2002)
-        'MNDWI' (Modified Normalised Difference Water Index, Xu 1996)
-        'MSAVI' (Modified Soil Adjusted Vegetation Index,
-                 Qi et al. 1994)
-        'NBI' (New Built-Up Index, Jieli et al. 2010)
-        'NBR' (Normalised Burn Ratio, Lopez Garcia 1991)
-        'NDBI' (Normalised Difference Built-Up Index, Zha 2003)
-        'NDCI' (Normalised Difference Chlorophyll Index,
-                Mishra & Mishra, 2012)
-        'NDMI' (Normalised Difference Moisture Index, Gao 1996)
-        'NDSI' (Normalised Difference Snow Index, Hall 1995)
-        'NDVI' (Normalised Difference Vegetation Index, Rouse 1973)
-        'NDWI' (Normalised Difference Water Index, McFeeters 1996)
-        'SAVI' (Soil Adjusted Vegetation Index, Huete 1988)
-        'TCB' (Tasseled Cap Brightness, Crist 1985)
-        'TCG' (Tasseled Cap Greeness, Crist 1985)
-        'TCW' (Tasseled Cap Wetness, Crist 1985)
-        'WI' (Water Index, Fisher 2016)
+
+        * ``'AWEI_ns'`` (Automated Water Extraction Index, no shadows, Feyisa 2014)
+        * ``'AWEI_sh'`` (Automated Water Extraction Index, shadows, Feyisa 2014)
+        * ``'BAEI'`` (Built-Up Area Extraction Index, Bouzekri et al. 2015)
+        * ``'BAI'`` (Burn Area Index, Martin 1998)
+        * ``'BSI'`` (Bare Soil Index, Rikimaru et al. 2002)
+        * ``'BUI'`` (Built-Up Index, He et al. 2010)
+        * ``'CMR'`` (Clay Minerals Ratio, Drury 1987)
+        * ``'EVI'`` (Enhanced Vegetation Index, Huete 2002)
+        * ``'FMR'`` (Ferrous Minerals Ratio, Segal 1982)
+        * ``'IOR'`` (Iron Oxide Ratio, Segal 1982)
+        * ``'LAI'`` (Leaf Area Index, Boegh 2002)
+        * ``'MNDWI'`` (Modified Normalised Difference Water Index, Xu 1996)
+        * ``'MSAVI'`` (Modified Soil Adjusted Vegetation Index, Qi et al. 1994)
+        * ``'NBI'`` (New Built-Up Index, Jieli et al. 2010)
+        * ``'NBR'`` (Normalised Burn Ratio, Lopez Garcia 1991)
+        * ``'NDBI'`` (Normalised Difference Built-Up Index, Zha 2003)
+        * ``'NDCI'`` (Normalised Difference Chlorophyll Index, Mishra & Mishra, 2012)
+        * ``'NDMI'`` (Normalised Difference Moisture Index, Gao 1996)
+        * ``'NDSI'`` (Normalised Difference Snow Index, Hall 1995)
+        * ``'NDVI'`` (Normalised Difference Vegetation Index, Rouse 1973)
+        * ``'NDWI'`` (Normalised Difference Water Index, McFeeters 1996)
+        * ``'SAVI'`` (Soil Adjusted Vegetation Index, Huete 1988)
+        * ``'TCB'`` (Tasseled Cap Brightness, Crist 1985)
+        * ``'TCG'`` (Tasseled Cap Greeness, Crist 1985)
+        * ``'TCW'`` (Tasseled Cap Wetness, Crist 1985)
+        * ``'WI'`` (Water Index, Fisher 2016)
+
     collection : str
         An string that tells the function what data collection is
         being used to calculate the index. This is necessary because
         different collections use different names for bands covering
-        a similar spectra. Valid options are 'c1' (for USGS Collection
-        1),  'c2' (for USGS Collection 2) and 's2' (for Sentinel-2).
+        a similar spectra.
+
+        Valid options are:
+
+         * ``'c1'`` (for USGS Collection 1)
+         * ``'c2'`` (for USGS Collection 2)
+         * ``'s2'`` (for Sentinel-2)
+
     custom_varname : str, optional
         By default, the original dataset will be returned with
         a new index variable named after `index` (e.g. 'NDVI'). To
@@ -91,23 +84,23 @@ def calculate_indices(
         `custom_varname='custom_name'`. Defaults to None, which uses
         `index` to name the variable.
     normalise : bool, optional
-        Some coefficient-based indices (e.g. 'WI', 'BAEI', 'AWEI_ns',
-        'AWEI_sh', 'TCW', 'TCG', 'TCB', 'EVI', 'LAI', 'SAVI', 'MSAVI')
+        Some coefficient-based indices (e.g. ``'WI'``, ``'BAEI'``,
+        ``'AWEI_ns'``, ``'AWEI_sh'``, ``'TCW'``, ``'TCG'``, ``'TCB'``,
+        ``'EVI'``, ``'LAI'``, ``'SAVI'``, ``'MSAVI'``)
         produce different results if surface reflectance values are not
         scaled between 0.0 and 1.0 prior to calculating the index.
         Setting `normalise=True` first scales values to a 0.0-1.0 range
         by dividing by 10000.0. Defaults to True.
     drop : bool, optional
         Provides the option to drop the original input data, thus saving
-        space. if drop = True, returns only the index and its values.
+        space. If `drop=True`, returns only the index and its values.
     deep_copy: bool, optional
-        If deep_copy=False, calculate_indices will modify the original
+        If `deep_copy=False`, calculate_indices will modify the original
         array, adding bands to the input dataset and not removing them.
         If the calculate_indices function is run more than once, variables
         may be dropped incorrectly producing unexpected behaviour. This is
         a bug and may be fixed in future releases. This is only a problem
-        when drop=True.
-
+        when `drop=True`.
 
     Returns
     -------
