@@ -1,14 +1,16 @@
-## deafrica_datahandling.py
 """
-Description: This file contains a set of python functions for handling
-Digital Earth Africa data.
+Functions for loading and handling Digital Earth Africa data.
 
-License: The code in this notebook is licensed under the Apache License,
+License
+-------
+The code in this notebook is licensed under the Apache License,
 Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth
 Africa data is licensed under the Creative Commons by Attribution 4.0
 license (https://creativecommons.org/licenses/by/4.0/).
 
-Contact: If you need assistance, please post a question on the Open Data
+Contact
+-------
+If you need assistance, please post a question on the Open Data
 Cube Slack channel (http://slack.opendatacube.org/) or on the GIS Stack
 Exchange (https://gis.stackexchange.com/questions/ask?tags=open-data-cube)
 using the `open-data-cube` tag (you can view previously asked questions
@@ -17,19 +19,9 @@ here: https://gis.stackexchange.com/questions/tagged/open-data-cube).
 If you would like to report an issue with this script, you can file one on
 Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new
 
-Functions included:
-    load_ard
-    load_masked_FC
-    array_to_geotiff
-    mostcommon_utm
-    download_unzip
-    wofs_fuser
-    dilate
-    first
-    last
-    nearest
-
-Last modified: March 2020
+.. autosummary::
+   :nosignatures:
+   :toctree: gen
 
 """
 
@@ -125,21 +117,23 @@ def load_ard(
     scaling="raw",
     **kwargs,
 ):
-
     """
+    Loads analysis ready data.
+
     Loads and combines Landsat Collections 1 or 2, and Sentinel-2 for
     multiple sensors (i.e. ls5t, ls7e and ls8c for Landsat; s2a and s2b for Sentinel-2),
     optionally applies pixel quality masks, and drops time steps that
     contain greater than a minimum proportion of good quality (e.g. non-
     cloudy or shadowed) pixels.
+
     The function supports loading the following DE Africa products:
 
-        ls5_usgs_sr_scene
-        ls7_usgs_sr_scene
-        ls8_usgs_sr_scene
-        usgs_ls8c_level2_2
-        ga_ls8c_fractional_cover_2
-        s2_l2a
+        * ls5_usgs_sr_scene
+        * ls7_usgs_sr_scene
+        * ls8_usgs_sr_scene
+        * usgs_ls8c_level2_2
+        * ga_ls8c_fractional_cover_2
+        * s2_l2a
 
     Last modified: March 2020
 
@@ -149,10 +143,12 @@ def load_ard(
         The Datacube to connect to, i.e. `dc = datacube.Datacube()`.
         This allows you to also use development datacubes if required.
     products : list
-        A list of product names to load data from. Valid options are
-        Landsat C1: ['ls5_usgs_sr_scene', 'ls7_usgs_sr_scene', 'ls8_usgs_sr_scene'],
-        Landsat C2: ['usgs_ls8c_level2_2']
-        Sentinel-2: ['s2_l2a']
+        A list of product names to load data from. Valid options are:
+
+        * Landsat C1: `['ls5_usgs_sr_scene', 'ls7_usgs_sr_scene', 'ls8_usgs_sr_scene']`
+        * Landsat C2: `['usgs_ls8c_level2_2']`
+        * Sentinel-2: `['s2_l2a']`
+
     min_gooddata : float, optional
         An optional float giving the minimum percentage of good quality
         pixels required for a satellite observation to be loaded.
@@ -172,11 +168,20 @@ def load_ard(
         USGS Collection 2). This mask is used for both masking out low
         quality pixels (e.g. cloud or shadow), and for dropping
         observations entirely based on the above `min_gooddata`
-        calculation. Default is None, which will apply the following mask
-        for USGS Collection 1: `{'cloud': 'no_cloud', 'cloud_shadow':
-        'no_cloud_shadow', 'nodata': False}`, and for USGS Collection 2:
-        `{'cloud_shadow': 'not_cloud_shadow', 'cloud_or_cirrus':
-        'not_cloud_or_cirrus', 'nodata': False}.
+        calculation. Default is None, which will apply the following masks:
+
+        For USGS Collection 1:
+
+        >>> {'cloud': 'no_cloud',
+        ...  'cloud_shadow': 'no_cloud_shadow',
+        ...  'nodata': False}
+
+        for USGS Collection 2:
+
+        >>> {'cloud_shadow': 'not_cloud_shadow',
+        ...  'cloud_or_cirrus': 'not_cloud_or_cirrus',
+        ...  'nodata': False}
+
     mask_pixel_quality : bool, optional
         An optional boolean indicating whether to apply the good data
         mask to all observations that were not filtered out for having
@@ -583,20 +588,21 @@ def array_to_geotiff(
     Create a single band GeoTIFF file with data from an array.
 
     Because this works with simple arrays rather than xarray datasets
-    from DEA, it requires geotransform info ("(upleft_x, x_size,
-    x_rotation, upleft_y, y_rotation, y_size)") and projection data
+    from DEA, it requires geotransform info (`(upleft_x, x_size,
+    x_rotation, upleft_y, y_rotation, y_size)`) and projection data
     (in "WKT" format) for the output raster. These are typically
     obtained from an existing raster using the following GDAL calls:
 
-        import gdal
-        gdal_dataset = gdal.Open(raster_path)
-        geotrans = gdal_dataset.GetGeoTransform()
-        prj = gdal_dataset.GetProjection()
+    >>> import gdal
+    >>> gdal_dataset = gdal.Open(raster_path)
+    >>> geotrans = gdal_dataset.GetGeoTransform()
+    >>> prj = gdal_dataset.GetProjection()
 
-    ...or alternatively, directly from an xarray dataset:
+    or alternatively, directly from an xarray dataset:
 
-        geotrans = xarraydataset.geobox.transform.to_gdal()
-        prj = xarraydataset.geobox.crs.wkt
+    >>> geotrans = xarraydataset.geobox.transform.to_gdal()
+    >>> prj = xarraydataset.geobox.crs.wkt
+
 
     Parameters
     ----------
@@ -605,8 +611,8 @@ def array_to_geotiff(
     data : numpy array
         Input array to export as a geotiff
     geo_transform : tuple
-        Geotransform for output raster; e.g. "(upleft_x, x_size,
-        x_rotation, upleft_y, y_rotation, y_size)"
+        Geotransform for output raster; e.g. `(upleft_x, x_size,
+        x_rotation, upleft_y, y_rotation, y_size)`
     projection : str
         Projection for output raster (in "WKT" format)
     nodata_val : int, optional
@@ -614,7 +620,7 @@ def array_to_geotiff(
     dtype : gdal dtype object, optional
         Optionally set the dtype of the output raster; can be
         useful when exporting an array of float or integer values.
-        Defaults to gdal.GDT_Float32
+        Defaults to `gdal.GDT_Float32`
 
     """
 
@@ -656,8 +662,9 @@ def mostcommon_crs(dc, product, query):
 
     Returns
     -------
-    A EPSG string giving the most common CRS from all datasets returned
-    by the query above
+    str
+        A EPSG string giving the most common CRS from all datasets returned
+        by the query above
 
     """
 
@@ -746,7 +753,7 @@ def download_unzip(url, output_dir=None, remove_zip=True):
 
 def wofs_fuser(dest, src):
     """
-    Fuse two WOfS water measurements represented as `ndarray`s.
+    Fuse two WOfS water measurements represented as `ndarray` objects.
 
     Note: this is a copy of the function located here:
     https://github.com/GeoscienceAustralia/digitalearthau/blob/develop/digitalearthau/utils.py
@@ -781,8 +788,9 @@ def dilate(array, dilation=10, invert=True):
 
     Returns
     -------
-    An array of the same shape as `array`, with valid data pixels
-    dilated by the number of pixels specified by `dilation`.
+    array
+        An array of the same shape as `array`, with valid data pixels
+        dilated by the number of pixels specified by `dilation`.
     """
 
     y, x = np.ogrid[

@@ -1,15 +1,19 @@
-# deafrica_classificationtools.py
 """
-Description: This file contains a set of python functions for conducting
-machine learning classification on remote sensing data from Digital Earth
-Africa's Open Data Cube
+This module contains functions for conducting machine learning
+classification on remote sensing data from Digital Earth
+Africa's Open Data Cube.
 
-License: The code in this notebook is licensed under the Apache License,
-Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth
-Africa data is licensed under the Creative Commons by Attribution 4.0
-license (https://creativecommons.org/licenses/by/4.0/).
+License
+-------
+The code in this notebook is licensed under the Apache License,
+Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
 
-Contact: If you need assistance, please post a question on the Open Data
+Digital Earth Africa data is licensed under the Creative Commons by
+Attribution 4.0 license (https://creativecommons.org/licenses/by/4.0/).
+
+Contact
+-------
+If you need assistance, please post a question on the Open Data
 Cube Slack channel (http://slack.opendatacube.org/) or on the GIS Stack
 Exchange (https://gis.stackexchange.com/questions/ask?tags=open-data-cube)
 using the `open-data-cube` tag (you can view previously asked questions
@@ -18,8 +22,9 @@ here: https://gis.stackexchange.com/questions/tagged/open-data-cube).
 If you would like to report an issue with this script, you can file one on
 Github https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues
 
-Last modified: Feb 2020
-
+.. autosummary::
+   :nosignatures:
+   :toctree: gen
 
 """
 import os
@@ -59,8 +64,8 @@ from sklearn.cluster import AgglomerativeClustering
 from sklearn.model_selection import KFold, ShuffleSplit
 from sklearn.model_selection import BaseCrossValidator
 
-import warnings
-warnings.simplefilter("ignore")
+# import warnings
+# warnings.simplefilter("ignore")
 
 from deafrica_tools.datahandling import mostcommon_crs, load_ard
 from deafrica_tools.bandindices import calculate_indices
@@ -134,7 +139,7 @@ def sklearn_unflatten(output_np, input_xr):
     """
     Reshape a numpy array with no 'missing' elements (NaNs) and
     'flattened' spatiotemporal structure into a DataArray matching the
-    spatiotemporal structure of the DataArray
+    spatiotemporal structure of the DataArray.
 
     This enables an sklearn model's prediction to be remapped to the
     correct pixels in the input DataArray or Dataset.
@@ -219,8 +224,9 @@ def fit_xr(model, input_xr):
 
     Returns
     ----------
-    model : a scikit-learn model which has been fitted to the data in
-    the pixels of input_xr.
+    model
+        a scikit-learn model which has been fitted to the data in
+        the pixels of input_xr.
 
     """
 
@@ -238,23 +244,27 @@ def predict_xr(
     return_input=False,
 ):
     """
-    Using dask-ml ParallelPostfit(), runs  the parallel
+    Using dask-ml `ParallelPostfit()`, runs the parallel
     predict and predict_proba methods of sklearn
-    estimators. Useful for running predictions
+    estimators.
+
+    Useful for running predictions
     on a larger-than-RAM datasets.
+
     Last modified: September 2020
+
     Parameters
     ----------
     model : scikit-learn model or compatible object
         Must have a .predict() method that takes numpy arrays.
     input_xr : xarray.DataArray or xarray.Dataset.
-        Must have dimensions 'x' and 'y'
+        Must have dimensions `x` and `y`
     chunk_size : int
         The dask chunk size to use on the flattened array. If this
         is left as None, then the chunks size is inferred from the
         .chunks method on the `input_xr`
     persist : bool
-        If True, and proba=True, then 'input_xr' data will be
+        If True, and proba=True, then `input_xr` data will be
         loaded into distributed memory. This will ensure data
         is not loaded twice for the prediction of probabilities,
         but this will only work if the data is not larger than
@@ -751,7 +761,7 @@ def collect_training_data(
         Whether or not to remove missing values in the training dataset. If True,
         training labels with any NaNs or Infs in the feature layers will be dropped
         from the dataset.
-     fail_threshold : float, default 0.02
+    fail_threshold : float, default 0.02
         Silent read fails on S3 can result in some rows of the returned data containing NaN values.
         The'fail_threshold' fraction specifies a % of acceptable fails.
         e.g. setting 'fail_threshold' to 0.05 means 5 % of failed rows the returned dataset
@@ -765,11 +775,13 @@ def collect_training_data(
         Maximum number of times to retry collecting samples. This number is invoked
         if the 'fail_threshold' is not reached
 
-
     Returns
     --------
-    Two lists, a list of numpy.arrays containing classes and extracted data for
-    each pixel or polygon, and another containing the data variable names.
+    list
+        A list of numpy.arrays containing classes and extracted data for
+        each pixel or polygon
+    list
+        A list containing the data variable names
     """
 
     # check the dtype of the class field
@@ -1067,11 +1079,13 @@ def spatial_clusters(
     n_groups : int
         The number of groups to create. This is passed as 'n_clusters=n_groups'
         for the KMeans algo, and 'n_components=n_groups' for the GMM. If using
-        method='Hierarchical' then this paramter is ignored.
+        method='Hierarchical' then this parameter is ignored.
     coordinates : np.array
         A numpy array of coordinate values e.g.
-        np.array([[3337270.,  262400.],
-                  [3441390., -273060.], ...])
+
+        >>> np.array([[3337270.,  262400.],
+        ...           [3441390., -273060.], ...])
+
     method : str
         Which algorithm to use to seperate data points. Either 'KMeans', 'GMM', or
         'Hierarchical'. If using 'Hierarchical' then must set max_distance.
@@ -1151,8 +1165,10 @@ def SKCV(
     ----------
     coordinates : np.array
         A numpy array of coordinate values e.g.
-        np.array([[3337270.,  262400.],
-                  [3441390., -273060.], ...])
+
+        >>> np.array([[3337270.,  262400.],
+        ...           [3441390., -273060.], ...])
+
     n_splits : int
         The number of test-train cross validation splits to generate.
     cluster_method : str
@@ -1169,15 +1185,17 @@ def SKCV(
         complement of the train size. If ``train_size`` is also None, it will
         be set to 0.15.
     balance : int or bool
-        if setting kfold_method to 'SpatialShuffleSplit': int
+        if ``kfold_method='SpatialShuffleSplit'``: int
             The number of splits generated per iteration to try to balance the
             amount of data in each set so that *test_size* and *train_size* are
             respected. If 1, then no extra splits are generated (essentially
             disabling the balacing). Must be >= 1.
-         if setting kfold_method to 'SpatialKFold': bool
-             Whether or not to split clusters into fold with approximately equal
+
+        if ``kfold_method='SpatialKFold'``: bool
+            Whether or not to split clusters into fold with approximately equal
             number of data points. If False, each fold will have the same number of
             clusters (which can have different number of data points in them).
+
     n_groups : int
         The number of groups to create. This is passed as 'n_clusters=n_groups'
         for the KMeans algo, and 'n_components=n_groups' for the GMM. If using
@@ -1251,8 +1269,9 @@ def spatial_train_test_split(
     **kwargs
 ):
     """
-    Split arrays into random train and test subsets. Similar to
-    `sklearn.model_selection.train_test_split` but instead works on
+    Split arrays into random train and test subsets.
+
+    Similar to `sklearn.model_selection.train_test_split` but instead works on
     spatial coordinate data. Coordinate data is grouped according
     to either a KMeans, Gaussain Mixture, or Agglomerative Clustering algorthim.
     Grouping by spatial clusters is preferred over plain random splits for
@@ -1267,8 +1286,10 @@ def spatial_train_test_split(
         Training data labels
     coordinates : np.array
         A numpy array of coordinate values e.g.
-        np.array([[3337270.,  262400.],
-                  [3441390., -273060.], ...])
+
+        >>> np.array([[3337270.,  262400.],
+        ...           [3441390., -273060.], ...])
+
     cluster_method : str
         Which algorithm to use to seperate data points. Either 'KMeans', 'GMM', or
         'Hierarchical'
@@ -1277,20 +1298,22 @@ def spatial_train_test_split(
         under class:_SpatialShuffleSplit and class: _SpatialKFold for more
         information on these options.
     balance : int or bool
-        if setting kfold_method to 'SpatialShuffleSplit': int
+        if `kfold_method='SpatialShuffleSplit'`: int
             The number of splits generated per iteration to try to balance the
             amount of data in each set so that *test_size* and *train_size* are
             respected. If 1, then no extra splits are generated (essentially
-            disabling the balacing). Must be >= 1.
-         if setting kfold_method to 'SpatialKFold': bool
+            disabling the balancing). Must be >= 1.
+
+        if `kfold_method='SpatialKFold'`: bool
             Whether or not to split clusters into fold with approximately equal
             number of data points. If False, each fold will have the same number of
             clusters (which can have different number of data points in them).
+
     test_size : float, int, None
         If float, should be between 0.0 and 1.0 and represent the proportion
         of the dataset to include in the test split. If int, represents the
         absolute number of test samples. If None, the value is set to the
-        complement of the train size. If ``train_size`` is also None, it will
+        complement of the train size. If `train_size` is also None, it will
         be set to 0.15.
     n_splits : int
         This parameter is invoked for the 'SpatialKFold' folding method, use this
@@ -1309,21 +1332,23 @@ def spatial_train_test_split(
         proportion of the dataset to include in the train split. If
         int, represents the absolute number of train samples. If None,
         the value is automatically set to the complement of the test size.
-    random_state : int,
-        RandomState instance or None, optional
-        If int, random_state is the seed used by the random number generator;
-        If RandomState instance, random_state is the random number generator;
-        If None, the random number generator is the RandomState instance used
+    random_state : int, RandomState instance or None, optional
+        If ``int``, random_state is the seed used by the random number generator;
+
+        If ``RandomState`` instance, random_state is the random number generator;
+
+        If ``None``, the random number generator is the RandomState instance used
         by `np.random`.
-    **kwargs : optional,
+    **kwargs : optional
         Additional keyword arguments to pass to sklearn.cluster.Kmeans or
         sklearn.mixture.GuassianMixture depending on the cluster_method argument.
 
     Returns
     -------
-    Tuple :
-        Contains four arrays in the following order:
-            X_train, X_test, y_train, y_test
+    X_train : array
+    X_test : array
+    y_train : array
+    y_test : array
 
     """
 
@@ -1378,6 +1403,7 @@ def _partition_by_sum(array, parts):
     Does not change the order of the array elements.
     Produces the partition indices on the array. Use :func:`numpy.split` to
     divide the array along these indices.
+
     Parameters
     ----------
     array : array or array-like
@@ -1386,10 +1412,12 @@ def _partition_by_sum(array, parts):
     parts : int
         Number of parts to split the array. Can be at most the number of
         elements in the array.
+
     Returns
     -------
     indices : array
         The indices in which the array should be split.
+
     Notes
     -----
     Solution from https://stackoverflow.com/a/54024280

@@ -1,14 +1,17 @@
-## deafrica_coastaltools.py
 """
-Description: This file contains a set of python functions for conducting
-coastal analyses on Digital Earth Africa data.
+This module contains functions for conducting coastal analyses on Digital
+Earth Africa data.
 
-License: The code in this notebook is licensed under the Apache License,
+License
+-------
+The code in this notebook is licensed under the Apache License,
 Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth
 Africa data is licensed under the Creative Commons by Attribution 4.0
 license (https://creativecommons.org/licenses/by/4.0/).
 
-Contact: If you need assistance, post a question on the Open Data Cube
+Contact
+-------
+If you need assistance, post a question on the Open Data Cube
 Slack channel (http://slack.opendatacube.org/) or the GIS Stack Exchange
 (https://gis.stackexchange.com/questions/ask?tags=open-data-cube) using
 the `open-data-cube` tag (you can view previously asked questions here:
@@ -17,11 +20,9 @@ https://gis.stackexchange.com/questions/tagged/open-data-cube).
 If you would like to report an issue with this script, you can file one
 on Github (https://github.com/GeoscienceAustralia/dea-notebooks/issues/new).
 
-Functions included:
-    tidal_tag
-    tidal_stats
-
-Last modified: February 2020
+.. autosummary::
+   :nosignatures:
+   :toctree: gen
 
 """
 
@@ -86,12 +87,13 @@ def tidal_tag(
 
     Returns
     -------
-    The original xarray.Dataset with a new `tide_height` variable giving
-    the height of the tide (and optionally, its ebb-flow phase) at the
-    exact moment of each satellite acquisition.
+    xarray.Dataset
+        The original xarray.Dataset with a new `tide_height` variable giving
+        the height of the tide (and optionally, its ebb-flow phase) at the
+        exact moment of each satellite acquisition.
 
-    (if `return_tideposts=True`, the function will also return the
-    `tidepost_lon` and `tidepost_lat` location used in the analysis)
+        (if `return_tideposts=True`, the function will also return the
+        `tidepost_lon` and `tidepost_lat` location used in the analysis)
 
     """
 
@@ -190,7 +192,9 @@ def tidal_stats(
     """
     Takes an xarray.Dataset and statistically compares the tides
     modelled for each satellite observation against the full modelled
-    tidal range. This comparison can be used to evaluate whether the
+    tidal range.
+
+    This comparison can be used to evaluate whether the
     tides observed by satellites (e.g. Landsat) are biased compared to
     the natural tidal range (e.g. fail to observe either the highest or
     lowest tides etc).
@@ -232,30 +236,37 @@ def tidal_stats(
 
     Returns
     -------
-    A pandas.Series object containing the following statistics:
+    pandas.Series
+        A pandas.Series object containing the following statistics:
 
-        tidepost_lat: latitude used for modelling tide heights
-        tidepost_lon: longitude used for modelling tide heights
-        observed_min_m: minimum tide height observed by the satellite
-        all_min_m: minimum tide height from full modelled tidal range
-        observed_max_m: maximum tide height observed by the satellite
-        all_max_m: maximum tide height from full modelled tidal range
-        observed_range_m: tidal range observed by the satellite
-        all_range_m: full modelled tidal range
-        spread_m: proportion of the full modelled tidal range observed
-                  by the satellite (see Bishop-Taylor et al. 2018)
-        low_tide_offset: proportion of the lowest tides never observed
-                  by the satellite (see Bishop-Taylor et al. 2018)
-        high_tide_offset: proportion of the highest tides never observed
-                  by the satellite (see Bishop-Taylor et al. 2018)
-        observed_slope: slope of any relationship between observed tide
-                  heights and time
-        all_slope: slope of any relationship between all modelled tide
-                  heights and time
-        observed_pval: significance/p-value of any relationship between
-                  observed tide heights and time
-        all_pval: significance/p-value of any relationship between
-                  all modelled tide heights and time
+        * tidepost_lat: latitude used for modelling tide heights
+        * tidepost_lon: longitude used for modelling tide heights
+        * observed_min_m: minimum tide height observed by the satellite
+        * all_min_m: minimum tide height from full modelled tidal range
+        * observed_max_m: maximum tide height observed by the satellite
+        * all_max_m: maximum tide height from full modelled tidal range
+        * observed_range_m: tidal range observed by the satellite
+        * all_range_m: full modelled tidal range
+        * spread_m: proportion of the full modelled tidal range observed
+            by the satellite (see Bishop-Taylor et al. 2018)
+
+        * low_tide_offset: proportion of the lowest tides never observed
+            by the satellite (see Bishop-Taylor et al. 2018)
+
+        * high_tide_offset: proportion of the highest tides never observed
+            by the satellite (see Bishop-Taylor et al. 2018)
+
+        * observed_slope: slope of any relationship between observed tide
+            heights and time
+
+        * all_slope: slope of any relationship between all modelled tide
+            heights and time
+
+        * observed_pval: significance/p-value of any relationship between
+            observed tide heights and time
+
+        * all_pval: significance/p-value of any relationship between
+            all modelled tide heights and time
 
     """
 
