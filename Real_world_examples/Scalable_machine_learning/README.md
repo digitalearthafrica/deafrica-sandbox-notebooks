@@ -2,6 +2,8 @@
 
 # Scalable Supervised Machine Learning on the Open Data Cube
 
+* **Prerequisites:** This notebook series assumes some familiarity with machine learning, statistical concepts, and python programming. Beginners should consider working through the earlier notebooks in the [deafrica-sandbox-notebooks](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks) repository before attempting to run through this notebook series.
+
 ## Background
 
 Classification of satellite images using supervised machine learning (ML) techniques has become a common occurence in the remote sensing literature. Machine learning offers an effective means for identifying complex land cover classes in a relatively efficient manner. However, sensibly implementing machine learning classifiers is not always straighforward owing to the training data requirements, the computational requirements, and the challenge of sorting through a proliferating number of software libraries. Add to this the complexity of handling large volumes of satellite data and the task can become unwieldy at best. 
@@ -53,5 +55,3 @@ Digital Earth Africa data is licensed under the [Creative Commons by Attribution
 
 **Contact:** If you need assistance, please post a question on the [Open Data Cube Slack channel](http://slack.opendatacube.org/) or on the [GIS Stack Exchange](https://gis.stackexchange.com/questions/ask?tags=open-data-cube) using the `open-data-cube` tag (you can view previously asked questions [here](https://gis.stackexchange.com/questions/tagged/open-data-cube)).
 If you would like to report an issue with this notebook, you can file one on [Github](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks).
-
-**Last modified:** Feb 2021

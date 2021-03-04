@@ -3,7 +3,7 @@
 
 Description: This is a deafrica customized version of the tiledsegsingle.py module
 implemented by the python package RSGISlib.  It has been adapted to run a tiled,
-parallel image segmentation in across a specified number of cpus.
+parallel image segmentation across a specified number of cpus.
 
 NOTE: the only function that 99% of users will need to call is "performTiledSegmentation"
 
@@ -49,7 +49,7 @@ class RSGISTiledShepherdSegmentationSingleThread(object):
     This can process larger images than the single scene version with a smaller
     memory footprint.
 
-    This version can only used a single thread for execution. 
+    This version has been adapted to run over multiple cpus. 
 
     It is not intended that this class will be directly used. Please use the 
     function performTiledSegmentation to call this functionality. 
@@ -375,8 +375,9 @@ def performTiledSegmentation(inputImage,
                              ncpus=1):
     """
     Utility function to call the segmentation algorithm of Shepherd et al. (2014)
-    using the tiled process outlined in Clewley et al (2015). Adapted here to tiles
-    across multiple cpus.
+    using the tiled process outlined in Clewley et al (2015). Adapted here to run tiles
+    across multiple cpus. Use this function to conduct image segmentation on very large
+    geotiffs.
 
     Parameters
     ----------
@@ -408,7 +409,10 @@ def performTiledSegmentation(inputImage,
     kmMaxIter : 
         maximum iterations for KMeans (Default 200).
 
-
+    Returns
+    -------
+    Segmented .kea file stored on disk at the location of 'clumpsImage'
+    
     """
     createdTmp = False
     if not os.path.exists(tmpDIR):
