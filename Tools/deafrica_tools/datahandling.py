@@ -457,7 +457,7 @@ def load_ard(
             pq_mask.shape[1] * pq_mask.shape[2]
         )
 
-        keep = data_perc >= min_gooddata.persist()
+        keep = (data_perc >= min_gooddata).persist()
 
         # Filter by `min_gooddata` to drop low quality observations
         total_obs = len(ds.time)
