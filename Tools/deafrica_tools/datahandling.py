@@ -236,7 +236,7 @@ def load_ard(
     # We deal with `dask_chunks` separately
     dask_chunks = kwargs.pop("dask_chunks", None)
     requested_measurements = kwargs.pop("measurements", None)
-    
+
     # Warn user if they combine lazy load with min_gooddata
     if verbose:
         if (min_gooddata > 0.0) and dask_chunks is not None:
@@ -259,17 +259,17 @@ def load_ard(
         product_type = "ls"
     elif all(["s2" in product for product in products]):
         product_type = "s2"
-    
-    #Check some parameters before proceeding
-    if (product_type=="ls") & (dtype=='native'):
+
+    # Check some parameters before proceeding
+    if (product_type == "ls") & (dtype == 'native'):
         raise ValueError("Cannot load Landsat bands in native dtype "
                          "as values require rescaling which converts to float")
-        
-    if (product_type=="ls") & (pq_categories_ls is not None):
-        if any(k in pq_categories_ls for k in ("cirrus","cirrus_confidence")):
+
+    if (product_type == "ls") & (pq_categories_ls is not None):
+        if any(k in pq_categories_ls for k in ("cirrus", "cirrus_confidence")):
             raise ValueError("'cirrus' categories for the pixel quality mask"
                              " are not supported by load_ard")
-    
+
     # If `measurements` are specified but do not include pixel quality bands,
     #  add these to `measurements` according to collection
     if product_type == "ls":
@@ -281,33 +281,34 @@ def load_ard(
         if verbose:
             print("Using pixel quality parameters for Sentinel 2")
         fmask_band = "SCL"
-    
+
     measurements = requested_measurements.copy() if requested_measurements else None
-    
-    #define a lits of acceptable aliases to load landsat. We can't rely on 'common'
-    #measurements as native band names have same name for different measurements.
-    ls_aliases = ['red','green','blue','nir', 'swir_1','swir_2','surface_temperature',
-                  'thermal_radiance','upwell_radiance','downwell_radiance',
-                  'atmospheric_transmittance','emissivity','emissivity_stddev',
-                  'pixel_quality','radiometric_saturation', 'cloud_distance',
+
+    # define a lits of acceptable aliases to load landsat. We can't rely on 'common'
+    # measurements as native band names have same name for different measurements.
+    ls_aliases = ['red', 'green', 'blue', 'nir', 'swir_1', 'swir_2', 'surface_temperature',
+                  'thermal_radiance', 'upwell_radiance', 'downwell_radiance',
+                  'atmospheric_transmittance', 'emissivity', 'emissivity_stddev',
+                  'pixel_quality', 'radiometric_saturation', 'cloud_distance',
                   'surface_temperature_quality']
-    
+
     if measurements is not None:
         if product_type == "ls":
-            
-            #check we aren't loading aerosol bands from LS8
-            aerosol_bands = ['aerosol_qa','qa_aerosol','coastal_aerosol','SR_QA_AEROSOL']
+
+            # check we aren't loading aerosol bands from LS8
+            aerosol_bands = ['aerosol_qa', 'qa_aerosol',
+                             'coastal_aerosol', 'SR_QA_AEROSOL']
             if any(b in aerosol_bands for b in measurements):
-                raise ValueError("load_ard doesn't support loading aerosol related bands" 
+                raise ValueError("load_ard doesn't support loading aerosol related bands"
                                  " for Landsat-8, instead use dc.load()")
-            
-            #check measurements are in acceptable aliases list for landsat
+
+            # check measurements are in acceptable aliases list for landsat
             if set(measurements).issubset(ls_aliases):
                 pass
             else:
                 raise ValueError("load_ard does not support all band aliases for Landsat, "
-                            "use the following band names to load Landsat data: "
-                            + str(ls_aliases))
+                                 "use the following band names to load Landsat data: "
+                                 + str(ls_aliases))
 
     # Deal with "load all" case: pick a set of bands common across
     # all products
@@ -316,7 +317,7 @@ def load_ard(
             measurements = ls_aliases
         else:
             measurements = _common_bands(dc, products)
-    
+
     # If `measurements` are specified but do not include pq, add.
     if measurements:
         if fmask_band not in measurements:
@@ -329,7 +330,7 @@ def load_ard(
 
     #################
     # Find datasets #
-    #################l
+    # l
 
     # Pull out query params only to pass to dc.find_datasets
     query = _dc_query_only(**kwargs)
@@ -377,7 +378,8 @@ def load_ard(
 
     # Raise exception if filtering removes all datasets
     if len(dataset_list) == 0:
-        raise ValueError("No data available after filtering with " "filter function")
+        raise ValueError(
+            "No data available after filtering with " "filter function")
 
     #############
     # Load data #
@@ -495,41 +497,44 @@ def load_ard(
         ds = ds[requested_measurements]
 
     # Collection 2 Landsat raw values aren't useful so always rescale,
-    # need different factors for surface-temp and SR
+    # need different factors for different bands, and then need to convery
+    # back to float32 as rescaling converts into float64
     if product_type == "ls":
         if verbose:
             print("Re-scaling Landsat C2 data")
-        
-        sr_bands = ['red','green','blue','nir', 'swir_1','swir_2']
-        radiance_bands = ['thermal_radiance','upwell_radiance','downwell_radiance']
-        trans_emiss = ['atmospheric_transmittance','emissivity','emissivity_stddev']
+
+        sr_bands = ['red', 'green', 'blue', 'nir', 'swir_1', 'swir_2']
+        radiance_bands = ['thermal_radiance',
+                          'upwell_radiance', 'downwell_radiance']
+        trans_emiss = ['atmospheric_transmittance',
+                       'emissivity', 'emissivity_stddev']
         qa = ['pixel_quality', 'radiometric_saturation']
-        
+
         for band in ds.data_vars:
             if band == 'cloud_distance':
-                ds[band] =  0.01 * ds[band]
+                ds[band] = 0.01 * ds[band]
                 ds[band] = odc.algo.to_float(ds[band], dtype='float32')
-            
+
             if band == 'surface_temperature_quality':
-                ds[band] =  0.01 * ds[band]
+                ds[band] = 0.01 * ds[band]
                 ds[band] = odc.algo.to_float(ds[band], dtype='float32')
-            
+
             if band in radiance_bands:
-                ds[band] =  0.001 * ds[band]
+                ds[band] = 0.001 * ds[band]
                 ds[band] = odc.algo.to_float(ds[band], dtype='float32')
-            
+
             if band in trans_emiss:
-                ds[band] =  0.0001 * ds[band]
+                ds[band] = 0.0001 * ds[band]
                 ds[band] = odc.algo.to_float(ds[band], dtype='float32')
-            
+
             if band in sr_bands:
-                ds[band] =  2.75e-5 * ds[band] - 0.2
+                ds[band] = 2.75e-5 * ds[band] - 0.2
                 ds[band] = odc.algo.to_float(ds[band], dtype='float32')
-            
+
             if band == 'surface_temperature':
                 ds[band] = ds[band] * 0.00341802 + 149.0
                 ds[band] = odc.algo.to_float(ds[band], dtype='float32')
-                
+
     # If user supplied dask_chunks, return data as a dask array without
     # actually loading it in
     if dask_chunks is not None:
@@ -540,7 +545,7 @@ def load_ard(
         if verbose:
             print(f"Loading {len(ds.time)} time steps")
         return ds.compute()
-    
+
 
 def array_to_geotiff(
     fname, data, geo_transform, projection, nodata_val=0, dtype=gdal.GDT_Float32
@@ -755,8 +760,8 @@ def dilate(array, dilation=10, invert=True):
     """
 
     y, x = np.ogrid[
-        -dilation : (dilation + 1),
-        -dilation : (dilation + 1),
+        -dilation: (dilation + 1),
+        -dilation: (dilation + 1),
     ]
 
     # disk-like radial dilation
@@ -799,7 +804,8 @@ def first(array: xr.DataArray, dim: str, index_name: str = None) -> xr.DataArray
     axis = array.get_axis_num(dim)
     idx_first = np.argmax(~pd.isnull(array), axis=axis)
     reduced = array.reduce(_select_along_axis, idx=idx_first, axis=axis)
-    reduced[dim] = array[dim].isel({dim: xr.DataArray(idx_first, dims=reduced.dims)})
+    reduced[dim] = array[dim].isel(
+        {dim: xr.DataArray(idx_first, dims=reduced.dims)})
     if index_name is not None:
         reduced[index_name] = xr.DataArray(idx_first, dims=reduced.dims)
     return reduced
@@ -831,7 +837,8 @@ def last(array: xr.DataArray, dim: str, index_name: str = None) -> xr.DataArray:
     rev = (slice(None),) * axis + (slice(None, None, -1),)
     idx_last = -1 - np.argmax(~pd.isnull(array)[rev], axis=axis)
     reduced = array.reduce(_select_along_axis, idx=idx_last, axis=axis)
-    reduced[dim] = array[dim].isel({dim: xr.DataArray(idx_last, dims=reduced.dims)})
+    reduced[dim] = array[dim].isel(
+        {dim: xr.DataArray(idx_last, dims=reduced.dims)})
     if index_name is not None:
         reduced[index_name] = xr.DataArray(idx_last, dims=reduced.dims)
     return reduced
@@ -881,8 +888,10 @@ def nearest(
     da_before = array.sel({dim: before_target})
     da_after = array.sel({dim: after_target})
 
-    da_before = last(da_before, dim, index_name) if da_before[dim].shape[0] else None
-    da_after = first(da_after, dim, index_name) if da_after[dim].shape[0] else None
+    da_before = last(
+        da_before, dim, index_name) if da_before[dim].shape[0] else None
+    da_after = first(
+        da_after, dim, index_name) if da_after[dim].shape[0] else None
 
     if da_before is None and da_after is not None:
         return da_after
@@ -890,9 +899,11 @@ def nearest(
         return da_before
 
     target = array[dim].dtype.type(target)
-    is_before_closer = abs(target - da_before[dim]) < abs(target - da_after[dim])
+    is_before_closer = abs(
+        target - da_before[dim]) < abs(target - da_after[dim])
     nearest_array = xr.where(is_before_closer, da_before, da_after)
-    nearest_array[dim] = xr.where(is_before_closer, da_before[dim], da_after[dim])
+    nearest_array[dim] = xr.where(
+        is_before_closer, da_before[dim], da_after[dim])
     if index_name is not None:
         nearest_array[index_name] = xr.where(
             is_before_closer, da_before[index_name], da_after[index_name]
