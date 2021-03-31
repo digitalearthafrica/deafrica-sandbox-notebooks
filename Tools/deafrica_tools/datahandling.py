@@ -263,7 +263,7 @@ def load_ard(
     # Check some parameters before proceeding
     if (product_type == "ls") & (dtype == 'native'):
         raise ValueError("Cannot load Landsat bands in native dtype "
-                         "as values require rescaling which converts to float")
+                         "as values require rescaling which converts dtype to float")
 
     if (product_type == "ls") & (pq_categories_ls is not None):
         if any(k in pq_categories_ls for k in ("cirrus", "cirrus_confidence")):
@@ -284,7 +284,7 @@ def load_ard(
 
     measurements = requested_measurements.copy() if requested_measurements else None
 
-    # define a lits of acceptable aliases to load landsat. We can't rely on 'common'
+    # define a list of acceptable aliases to load landsat. We can't rely on 'common'
     # measurements as native band names have same name for different measurements.
     ls_aliases = ['red', 'green', 'blue', 'nir', 'swir_1', 'swir_2', 'surface_temperature',
                   'thermal_radiance', 'upwell_radiance', 'downwell_radiance',
@@ -307,7 +307,7 @@ def load_ard(
                 pass
             else:
                 raise ValueError("load_ard does not support all band aliases for Landsat, "
-                                 "use the following band names to load Landsat data: "
+                                 "use only the following band names to load Landsat data: "
                                  + str(ls_aliases))
 
     # Deal with "load all" case: pick a set of bands common across
@@ -324,14 +324,14 @@ def load_ard(
             measurements.append(fmask_band)
 
     # Get list of data and mask bands so that we can later exclude
-    # mask bands from being masked themselves
-    data_bands = [band for band in measurements if band not in (fmask_band)]
+    # mask bands from being masked themselves (also handle the case of rad_sat)
+    data_bands = [band for band in measurements if band not in (fmask_band, 'radiometric_saturation')]
     mask_bands = [band for band in measurements if band not in data_bands]
-
+    
     #################
     # Find datasets #
-    # l
-
+    #################
+    
     # Pull out query params only to pass to dc.find_datasets
     query = _dc_query_only(**kwargs)
 
@@ -384,6 +384,7 @@ def load_ard(
     #############
     # Load data #
     #############
+    
     # Note we always load using dask here so that
     # we can lazy load data before filtering by good data
     ds = dc.load(
@@ -497,42 +498,39 @@ def load_ard(
         ds = ds[requested_measurements]
 
     # Collection 2 Landsat raw values aren't useful so always rescale,
-    # need different factors for different bands, and then need to convery
+    # need different factors for different bands, and then need to convert
     # back to float32 as rescaling converts into float64
     if product_type == "ls":
         if verbose:
             print("Re-scaling Landsat C2 data")
 
         sr_bands = ['red', 'green', 'blue', 'nir', 'swir_1', 'swir_2']
-        radiance_bands = ['thermal_radiance',
-                          'upwell_radiance', 'downwell_radiance']
-        trans_emiss = ['atmospheric_transmittance',
-                       'emissivity', 'emissivity_stddev']
+        radiance_bands = ['thermal_radiance','upwell_radiance', 'downwell_radiance']
+        trans_emiss = ['atmospheric_transmittance','emissivity', 'emissivity_stddev']
         qa = ['pixel_quality', 'radiometric_saturation']
 
         for band in ds.data_vars:
             if band == 'cloud_distance':
                 ds[band] = 0.01 * ds[band]
-                ds[band] = odc.algo.to_float(ds[band], dtype='float32')
 
             if band == 'surface_temperature_quality':
                 ds[band] = 0.01 * ds[band]
-                ds[band] = odc.algo.to_float(ds[band], dtype='float32')
 
             if band in radiance_bands:
                 ds[band] = 0.001 * ds[band]
-                ds[band] = odc.algo.to_float(ds[band], dtype='float32')
 
             if band in trans_emiss:
                 ds[band] = 0.0001 * ds[band]
-                ds[band] = odc.algo.to_float(ds[band], dtype='float32')
 
             if band in sr_bands:
                 ds[band] = 2.75e-5 * ds[band] - 0.2
-                ds[band] = odc.algo.to_float(ds[band], dtype='float32')
 
             if band == 'surface_temperature':
                 ds[band] = ds[band] * 0.00341802 + 149.0
+        
+        #convert back to float32
+        for band in ds.data_vars:
+            if band not in qa:
                 ds[band] = odc.algo.to_float(ds[band], dtype='float32')
 
     # If user supplied dask_chunks, return data as a dask array without
@@ -545,7 +543,7 @@ def load_ard(
         if verbose:
             print(f"Loading {len(ds.time)} time steps")
         return ds.compute()
-
+    
 
 def array_to_geotiff(
     fname, data, geo_transform, projection, nodata_val=0, dtype=gdal.GDT_Float32
