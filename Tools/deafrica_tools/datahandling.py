@@ -143,7 +143,7 @@ def load_ard(
     products : list
         A list of product names to load data from. Valid options are:
 
-        * Landsat C1: `['ls5_c2l2', 'ls7_c2l2', 'ls8_c2l2']`
+        * Landsat C2: `['ls5_c2l2', 'ls7_c2l2', 'ls8_c2l2']`
         * Sentinel-2: `['s2_l2a']`
 
     min_gooddata : float, optional
@@ -206,8 +206,8 @@ def load_ard(
         (typically -999), not NaN. NOTE: If loading Landsat, the data is
         automatically rescaled so 'native' dtype will return a value error.
     verbose : bool, optional
-        If True, print progress statements during data load
-    **kwargs :
+        If True, print progress statements during loading
+    **kwargs : dict, optional
         A set of keyword arguments to `dc.load` that define the
         spatiotemporal query used to extract data. This typically
         includes `measurements`, `x`, `y`, `time`, `resolution`,
@@ -252,9 +252,21 @@ def load_ard(
     # or Landsat data is being loaded
     if not products:
         raise ValueError(
-            f"Please provide a list of product names " f"to load data from."
+            "Please provide a list of product names to load data from. "
+            "Valid options are: Landsat C2: ['ls5_c2l2', 'ls7_c2l2', 'ls8_c2l2'], or "
+            "Sentinel-2: ['s2_l2a']"
         )
-
+    
+    #--TEMPORARY---
+    #check the user hasn't asked for the old landsat products
+    ls_c1=['ls5_usgs_sr_scene', 'ls7_usgs_sr_scene', 'ls8_usgs_sr_scene']
+    if any(i in products for i in ls_c1):
+        raise ValueError(
+            "DE AFrica's Landsat collection has been upgraded, use the Landsat Collection 2 "
+            "product names: ['ls5_c2l2', 'ls7_c2l2', 'ls8_c2l2']"
+        )
+    #-------------
+    
     elif all(["ls" in product for product in products]):
         product_type = "ls"
     elif all(["s2" in product for product in products]):
