@@ -7,7 +7,7 @@ Available functions:
     load_crophealth_data
     run_crophelath_app
 
-Last modified: January 2020
+Last modified: April 2021
 '''
 
 # Load modules
@@ -40,7 +40,7 @@ from deafrica_tools.bandindices import calculate_indices
 
 def load_crophealth_data(lat, lon, buffer):
     """
-    Loads Landsat 8 analysis-ready data (ARD) product for the crop health
+    Loads Sentinel-2 analysis-ready data (ARD) product for the crop health
     case-study area over the last two years.
     Last modified: April 2020
     
@@ -80,7 +80,7 @@ def load_crophealth_data(lat, lon, buffer):
     time = (start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
 
     # Construct the data cube query
-    products = ["ls8_usgs_sr_scene"]
+    products = ["s2_l2a"]
     
     query = {
         'x': longitude,
@@ -91,10 +91,10 @@ def load_crophealth_data(lat, lon, buffer):
             'green',
             'blue',
             'nir',
-            'swir2'
+            'swir_2'
         ],
         'output_crs': 'EPSG:6933',
-        'resolution': (-30, 30)
+        'resolution': (-20, 20)
     }
 
     # Load the data and mask out bad quality pixels
@@ -291,7 +291,7 @@ def run_crophealth_app(ds, lat, lon, buffer):
             )
 
             # reset titles back to custom
-            ax.set_title("Average NDVI from Landsat 8")
+            ax.set_title("Average NDVI from Sentinel-2")
             ax.set_xlabel("Date")
             ax.set_ylabel("NDVI")
 
