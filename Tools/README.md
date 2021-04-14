@@ -14,13 +14,15 @@ To work with this module on the Digital Earth Africa Sandbox from within the `de
        sys.path.insert(1, '../Tools/')
        import dea_tools.datahandling  # or some other submodule
 
-You can also `pip install` the module. To do this on the Digital Earth Africa Sandbox, run `pip` from the terminal:
+This module is automatically installed on the Sandbox. If for some reason the module isn't avilable, you can also `pip install` the module.
+To do this on the Digital Earth Africa Sandbox, run `pip` from the terminal:
 
        pip install -e Tools/
 
-Install from the source on any other system with `pip`:
+To install this module from the source on any other system with `pip`:
 
     pip install --extra-index-url="https://packages.dea.ga.gov.au" git+https://github.com/digitalearthafrica/deafrica-sandbox-notebooks.git#subdirectory=Tools
+
 
 Citing DE Africa Tools
 ----------------------
