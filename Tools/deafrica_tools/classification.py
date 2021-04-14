@@ -481,22 +481,14 @@ def _get_training_data_for_shp(
     # merge polygon query with user supplied query params
     dc_query.update(q)
 
-    # load_ard doesn't handle geomedians
-    # TODO: Add support for other sensors
-    if "ga_ls8c_gm_2_annual" in products:
-        ds = dc.load(product="ga_ls8c_gm_2_annual", **dc_query)
-        ds = ds.where(ds != 0, np.nan)
-        ds = ds * 2.75e-5 - 0.2
-
-    # handle s2 gm
-    if "ga_s2_gm" in products:
-        ds = dc.load(product="ga_s2_gm", **dc_query)
+    # handle s2 geomedians
+    #TODO handle Landsat GMs when they exist
+    if "gm" in products[0]:
+        ds = dc.load(product=products[0], **dc_query)
         ds = ds.where(ds != 0, np.nan)
 
     else:
-        # load data
-        with HiddenPrints():
-            ds = load_ard(dc=dc, products=products, **dc_query)
+        ds = load_ard(dc=dc, products=products, verbose=False, **dc_query)
 
     # create polygon mask
     with HiddenPrints():
