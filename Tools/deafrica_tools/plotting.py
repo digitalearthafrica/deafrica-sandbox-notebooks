@@ -83,7 +83,7 @@ def rgb(
     This function was designed to work as an easier-to-use wrapper
     around xarray's `.plot.imshow()` functionality.
 
-    Last modified: February 2020
+    Last modified: April 2021
 
     Parameters
     ----------
@@ -96,7 +96,9 @@ def rgb(
         `col="time"`.
     bands : list of strings, optional
         A list of three strings giving the band names to plot. Defaults
-        to '['red', 'green', 'blue']'.
+        to '['red', 'green', 'blue']'. If the dataset does not contain
+        bands named `'red', 'green', 'blue'`, then `bands` must be 
+        specified.
     index : integer or list of integers, optional
         `index` can be used to select one (`index=0`) or multiple
         observations (`index=[0, 1]`) from the input dataset for
@@ -148,6 +150,12 @@ def rgb(
 
     """
 
+    # If bands are not in the dataset
+    ds_vars = list(ds.data_vars)
+    if set(bands).issubset(ds_vars) == False:
+        raise ValueError("rgb() bands do not match band names in dataset. "
+                        "Note the default rgb() bands are ['red', 'green', 'blue'].")
+    
     # If ax is supplied via kwargs, ignore aspect and size
     if "ax" in kwargs:
 
