@@ -10,6 +10,7 @@ data.
 
 # Import required packages
 import warnings
+import numpy as np
 
 # Define custom functions
 def calculate_indices(
@@ -45,6 +46,7 @@ def calculate_indices(
         * ``'BSI'`` (Bare Soil Index, Rikimaru et al. 2002)
         * ``'BUI'`` (Built-Up Index, He et al. 2010)
         * ``'CMR'`` (Clay Minerals Ratio, Drury 1987)
+        * ``'ENDISI'`` (Enhanced Normalised Difference for Impervious Surfaces Index, Chen et al. 2019)
         * ``'EVI'`` (Enhanced Vegetation Index, Huete 2002)
         * ``'FMR'`` (Ferrous Minerals Ratio, Segal 1982)
         * ``'IOR'`` (Iron Oxide Ratio, Segal 1982)
@@ -221,6 +223,21 @@ def calculate_indices(
         # Iron Oxide Ratio, Segal 1982
         "IOR": lambda ds: (ds.red / ds.blue),
     }
+    
+    # Enhanced Normalised Difference Impervious Surfaces Index, Chen et al. 2019
+    def mndwi(ds):
+        return (ds.green - ds.swir_1) / (ds.green + ds.swir_1)
+    def swir_diff(ds):
+        return ds.swir_1/ds.swir_2
+    def alpha(ds):
+        return (2*(np.nanmean(ds.blue)))/(np.nanmean(swir_diff(ds)) + np.nanmean(mndwi(ds)**2))
+    def ENDISI(ds):
+        m = mndwi(ds)
+        s = swir_diff(ds)
+        a = alpha(ds)
+        return (ds.blue - (a)*(s + m**2))/(ds.blue + (a)*(s + m**2))
+    
+    index_dict["ENDISI"] = ENDISI
 
     # If index supplied is not a list, convert to list. This allows us to
     # iterate through either multiple or single indices in the loop below
