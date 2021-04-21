@@ -18,7 +18,7 @@ the `open-data-cube` tag (you can view previously asked questions here:
 https://gis.stackexchange.com/questions/tagged/open-data-cube).
 
 If you would like to report an issue with this script, you can file one
-on Github (https://github.com/GeoscienceAustralia/dea-notebooks/issues/new).
+on Github (https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new/).
 
 .. autosummary::
    :nosignatures:
@@ -60,7 +60,7 @@ def tidal_tag(
     using `tidepost_lat` and `tidepost_lon`.
 
     Tides are modelled using the OTPS tidal modelling software based on
-    the TPXO8 tidal model: http://volkov.oce.orst.edu/tides/tpxo8_atlas.html
+    the TPXO8 tidal model: https://www.tpxo.net/global/tpxo8-atlas
 
     Parameters
     ----------
@@ -204,7 +204,7 @@ def tidal_stats(
     using `tidepost_lat` and `tidepost_lon`.
 
     Tides are modelled using the OTPS tidal modelling software based on
-    the TPXO8 tidal model: http://volkov.oce.orst.edu/tides/tpxo8_atlas.html
+    the TPXO8 tidal model: https://www.tpxo.net/global/tpxo8-atlas
 
     For more information about the tidal statistics computed by this
     function, refer to Figure 8 in Bishop-Taylor et al. 2018:
