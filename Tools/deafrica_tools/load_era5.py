@@ -124,7 +124,9 @@ def load_era5(
     month = date_from.astype('datetime64[M]')
     while month <= date_to.astype('datetime64[M]'):
         url = f"s3://era5-pds/zarr/{month.astype(object).year:04}/{month.astype(object).month:02}/data/{var}.zarr"
-        ds = xr.open_zarr(fsspec.get_mapper(url, anon=True), consolidated=True)
+        ds = xr.open_zarr(fsspec.get_mapper(url, anon=True, 
+                                            client_kwargs={'region_name':'us-east-1'}),
+                          consolidated=True)
     
         # re-order along longitude to go from -180 to 180 if needed
         if min(lon) < 0:
