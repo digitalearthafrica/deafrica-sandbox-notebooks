@@ -1,7 +1,9 @@
 """
 Functions to retrieve ERA5 gridded climate data.
 
-Adpated from scripts by Andrew Cherry and Brian Killough.
+Updated Apr 2020 to directly access Zarr format data in PDS
+
+Pervious code for downloading and loading netcdf adpated from scripts by Andrew Cherry and Brian Killough.
 
 License
 -------
@@ -30,13 +32,135 @@ Github https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues
 import os
 import datetime
 import numpy as np
+import xarray as xr
+import fsspec
+
+# only used for netcdf access
 from dateutil.parser import parse
 import boto3
 import botocore
-import xarray as xr
 import warnings
 
-ERA5_VARS = [
+
+ERA5_VARS = ['air_pressure_at_mean_sea_level',
+ 'air_temperature_at_2_metres',
+ 'air_temperature_at_2_metres_1hour_Maximum',
+ 'air_temperature_at_2_metres_1hour_Minimum',
+ 'dew_point_temperature_at_2_metres',
+ 'eastward_wind_at_100_metres',
+ 'eastward_wind_at_10_metres',
+ 'integral_wrt_time_of_surface_direct_downwelling_shortwave_flux_in_air_1hour_Accumulation',
+ 'lwe_thickness_of_surface_snow_amount',
+ 'northward_wind_at_100_metres',
+ 'northward_wind_at_10_metres',
+ 'precipitation_amount_1hour_Accumulation',
+ 'sea_surface_temperature',
+ 'snow_density',
+ 'surface_air_pressure']
+
+
+def load_era5(
+    var, lat, lon, time,
+    reduce_func=None,
+    resample="1D",
+):
+    """
+    Download and return an ERA5 variable for a defined time window.
+
+    Parameters
+    ----------
+    var : string
+        Name of the ERA5 climate variable to download, e.g "air_temperature_at_2_metres"
+
+    lat: tuple or list
+        Latitude range for query.
+
+    lon: tuple or list
+        Longitude range for query.
+
+    time: string or datetime object or a list or tuple of strings or datetime objects
+        Used to define starting and end date dates of the time window.
+
+    reduce_func: numpy function
+        lets you specify a function to apply to each day's worth of data.
+        The default is np.mean, which computes daily average. To get a sum, use np.sum.
+
+    resample: string
+        Temporal resampling frequency to be used for xarray's resample function.
+        The default is '1D', which is daily.
+        Since this is applied on monthly ERA5 data, maximum resampling period is '1M'.
+
+    Returns
+    -------
+    A lazy-loaded xarray dataset containing an ERA5 variable for the selected region and time window.
+
+    """
+
+    # constrain query to available variables
+    assert var in ERA5_VARS, "var must be one of [{}] (got {})".format(
+        ",".join(ERA5_VARS), var
+    )
+    
+    # set default reduction function
+    if reduce_func is None:
+        reduce_func = np.mean
+        
+    # process date range
+    if type(time) in [list, tuple]:
+        date_from = np.datetime64(min(time)).astype('datetime64[D]')
+        date_to = (np.datetime64(max(time))+1).astype('datetime64[D]')-np.timedelta64(1,'D')
+    elif type(time) in [str, np.datetime64]:
+        date_from = np.datetime64(time).astype('datetime64[D]')
+        date_to = (np.datetime64(time)+1).astype('datetime64[D]')-np.timedelta64(1,'D')
+    else:
+        raise(ValueError)
+
+    # actual lat lon ranges will be infered from nearest match to data
+    lat_range = None
+    lon_range = None
+    
+    datasets = []
+    # Loop through month and year to access ERA5 zarr
+    month = date_from.astype('datetime64[M]')
+    while month <= date_to.astype('datetime64[M]'):
+        url = f"s3://era5-pds/zarr/{month.astype(object).year:04}/{month.astype(object).month:02}/data/{var}.zarr"
+        ds = xr.open_zarr(fsspec.get_mapper(url, anon=True, 
+                                            client_kwargs={'region_name':'us-east-1'}),
+                          consolidated=True)
+    
+        # re-order along longitude to go from -180 to 180 if needed
+        if min(lon) < 0:
+            ds = ds.assign_coords({"lon": (((ds.lon + 180) % 360) - 180)})
+            ds = ds.reindex({"lon": np.sort(ds.lon)})
+
+        if lat_range is None:
+            # find the nearest lat lon boundary points
+            test = ds.sel(lat=lat, lon=lon, method="nearest")
+            # define the lat/lon grid
+            lat_range = slice(test.lat.max().values, test.lat.min().values)
+            lon_range = slice(test.lon.min().values, test.lon.max().values)
+       
+        if "time0" in ds.dims:
+            ds = ds.rename({"time0": "time"})
+        if "time1" in ds.dims:
+            ds = ds.rename(
+                {"time1": "time"}
+            )  # This should INTENTIONALLY error if both times are defined
+        
+        output = ds[[var]].sel(lat=lat_range, lon=lon_range, time=slice(date_from, date_to)).resample(time=resample).reduce(reduce_func)
+        output.attrs = ds.attrs
+        for v in output.data_vars:
+            output[v].attrs = ds[v].attrs
+            
+        datasets.append(output)
+        month += np.timedelta64(1,'M')
+
+    return xr.combine_by_coords(datasets)
+
+
+# older version of scripts to download and use netcdf
+
+ERA5_VARS_NC = [
     "air_pressure_at_mean_sea_level",
     "air_temperature_at_2_metres",
     "air_temperature_at_2_metres_1hour_Maximum",
@@ -100,8 +224,8 @@ def get_era5_daily(
     """
 
     # Massage input data
-    assert var in ERA5_VARS, "var must be one of [{}] (got {})".format(
-        ",".join(ERA5_VARS), var
+    assert var in ERA5_VARS_NC, "var must be one of [{}] (got {})".format(
+        ",".join(ERA5_VARS_NC), var
     )
     if not os.path.exists(cache_dir):
         os.mkdir(cache_dir)
@@ -273,7 +397,7 @@ def era5_area_nearest(ds, lat, lon):
     return output
 
 
-def load_era5(var, lat, lon, time, grid="nearest", **kwargs):
+def load_era5_netcdf(var, lat, lon, time, grid="nearest", **kwargs):
     """
     Returns a ERA5 variable for a selected location and time window.
 
