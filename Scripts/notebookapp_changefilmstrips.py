@@ -151,7 +151,7 @@ def run_filmstrip_app(output_name,
         
         # Obtain native CRS 
         crs = mostcommon_crs(dc=dc, 
-                             product='ls8_c2l2', 
+                             product='ls8_sr', 
                              query={'time': '2014', 
                                     'geopolygon': geopolygon})
         
@@ -169,9 +169,9 @@ def run_filmstrip_app(output_name,
                       measurements=['red', 
                                     'green', 
                                     'blue'],  
-                      products=['ls5_c2l2', 
-                                'ls7_c2l2', 
-                                'ls8_c2l2'], 
+                      products=['ls5_sr', 
+                                'ls7_sr', 
+                                'ls8_sr'], 
                       min_gooddata=max_cloud,
                       ls7_slc_off=ls7_slc_off,
                       **query)
