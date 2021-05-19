@@ -86,3 +86,33 @@ def create_local_dask_cluster(
     # Show the dask cluster settings
     if display_client:
         display(client)
+
+try:
+    from dask_gateway import Gateway
+
+    def create_dask_gateway_cluster(profile='XL', workers=2):
+        """
+        Create a cluster in our internal dask cluster.
+
+        Parameters
+        ----------
+        profile : str
+            Possible values are: XL (2 cores, 15GB memory), 2XL (4 cores, 31GB memory), 4XL (8 cores, 62GB memory)
+        workers : int
+            Number of workers in the cluster.
+
+        """
+        gateway = Gateway()
+
+        options = gateway.cluster_options()
+        options['profile'] = profile
+        ## This Configuration is used for dask-worker pod labels
+        options['jupyterhub_user'] = os.getenv('JUPYTERHUB_USER')
+
+        cluster = gateway.new_cluster(options)
+        cluster.scale(workers)
+        return cluster
+
+except ImportError:
+    def create_dask_gateway_cluster(*args, **kwargs):
+        raise NotImplementedError
