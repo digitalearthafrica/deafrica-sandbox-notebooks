@@ -369,15 +369,15 @@ def load_ard_sar(
             print(f"    {product}")
         datasets = dc.find_datasets(product=product, **query)
 
-        # Remove Landsat 7 SLC-off observations if ls7_slc_off=False
-        if not ls7_slc_off and product in ["ls7_c2l2"]:
-            if verbose:
-                print("    Ignoring SLC-off observations for ls7")
-            datasets = [
-                i
-                for i in datasets
-                if i.time.begin < datetime.datetime(2003, 5, 31, tzinfo=pytz.UTC)
-            ]
+#         # Remove Landsat 7 SLC-off observations if ls7_slc_off=False
+#         if not ls7_slc_off and product in ["ls7_c2l2"]:
+#             if verbose:
+#                 print("    Ignoring SLC-off observations for ls7")
+#             datasets = [
+#                 i
+#                 for i in datasets
+#                 if i.time.begin < datetime.datetime(2003, 5, 31, tzinfo=pytz.UTC)
+#             ]
 
         # Add any returned datasets to list
         dataset_list.extend(datasets)
