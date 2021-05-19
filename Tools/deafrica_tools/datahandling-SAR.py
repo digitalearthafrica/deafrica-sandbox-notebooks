@@ -95,42 +95,24 @@ def _common_bands(dc, products):
         else:
             common = common.intersection(set(p.measurements))
     return [band for band in bands if band in common]
-
-def load_ard(
-    dc,
-    products=None,
-    min_gooddata=0.0,
-    pq_categories_s2=[
-        "vegetation",
-        "snow or ice",
-        "water",
-        "bare soils",
-        "unclassified",
-        "dark area pixels",
-    ],
-    pq_categories_ls=None,
-    mask_pixel_quality=True,
-    ls7_slc_off=True,
-    predicate=None,
-    dtype="auto",
-    verbose=True,
-    **kwargs,
-):
     
 def load_ard_sar(
     dc,
     products=None,
     min_gooddata=0.0,
-    mask=1.0,
-    ls7_slc_off=True,
+    pq_categories_s1=[
+        "valid data",
+        "no data",
+        "invalid data",
+    ],
+    pq_categories_ls=None,
+    pq_categories_s2=None,
+    mask_pixel_quality=True,
     predicate=None,
     dtype="auto",
     verbose=True,
     **kwargs,
 ):
-    
-
-
 
     """
     Loads analysis ready data.
@@ -147,6 +129,7 @@ def load_ard_sar(
         * ls7_c2l2
         * ls8_c2l2
         * s2_l2a
+        * s1_rtc
 
     Last modified: March 2021
 
@@ -269,8 +252,8 @@ def load_ard_sar(
     if not products:
         raise ValueError(
             "Please provide a list of product names to load data from. "
-            "Valid options are: Landsat C2: ['ls5_c2l2', 'ls7_c2l2', 'ls8_c2l2'], or "
-            "Sentinel-2: ['s2_l2a']"
+            "Valid options are: Landsat C2: ['ls5_c2l2', 'ls7_c2l2', 'ls8_c2l2'], "
+            "Sentinel-2: ['s2_l2a'],Sentinel-1:['s1_rtc']"
         )
     
     #--TEMPORARY---
@@ -287,6 +270,8 @@ def load_ard_sar(
         product_type = "ls"
     elif all(["s2" in product for product in products]):
         product_type = "s2"
+    elif all(["s1" in product for product in products]):
+        product_type = "s1"
 
     # Check some parameters before proceeding
     if (product_type == "ls") & (dtype == 'native'):
@@ -295,6 +280,10 @@ def load_ard_sar(
 
     if (product_type == "ls") & (pq_categories_ls is not None):
         if any(k in pq_categories_ls for k in ("cirrus", "cirrus_confidence")):
+            raise ValueError("'cirrus' categories for the pixel quality mask"
+                             " are not supported by load_ard")
+    if (product_type == 's1') & (pq_categories_ls is not None):
+        if any(k in pq_categories_s1 for k in ("cirrus")):
             raise ValueError("'cirrus' categories for the pixel quality mask"
                              " are not supported by load_ard")
 
@@ -309,6 +298,10 @@ def load_ard_sar(
         if verbose:
             print("Using pixel quality parameters for Sentinel 2")
         fmask_band = "SCL"
+    elif product_type == 's1':
+        if verbose:
+            print("Using pixel quality parameters for Sentinel 1")
+        fmask_band = "mask"
 
     measurements = requested_measurements.copy() if requested_measurements else None
 
@@ -454,6 +447,15 @@ def load_ard_sar(
         )
         pq_mask = ds[fmask_band].isin(
             [int(k) for k, v in flags_s2.items() if v in pq_categories_s2]
+        )
+        
+    if product_type =='s1':
+        flags_s1 = (
+            dc.list_measurements()
+            .loc[products[0]]
+            .loc[fmask_band]["flags_definition"]["qa"]["values"])
+        pq_mask = ds[fmask_band].isin(
+            [int(k) for k,v in flags_s1.items() if v in pq_categories_s1]
         )
 
     # The good data percentage calculation has to load in all `fmask`
