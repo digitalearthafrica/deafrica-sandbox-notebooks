@@ -34,6 +34,7 @@ import datetime
 import numpy as np
 import xarray as xr
 import fsspec
+from datacube.utils.geometry import assign_crs
 
 # only used for netcdf access
 from dateutil.parser import parse
@@ -154,8 +155,8 @@ def load_era5(
             
         datasets.append(output)
         month += np.timedelta64(1,'M')
-
-    return xr.combine_by_coords(datasets)
+    
+    return assign_crs(xr.combine_by_coords(datasets), 'EPSG:4326')
 
 
 # older version of scripts to download and use netcdf
