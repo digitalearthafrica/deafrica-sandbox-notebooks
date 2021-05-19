@@ -102,8 +102,6 @@ def load_ard_sar(
     min_gooddata=0.0,
     pq_categories_s1=[
         "valid data",
-        "no data",
-        "invalid data",
     ],
     pq_categories_ls=None,
     pq_categories_s2=None,
@@ -282,10 +280,6 @@ def load_ard_sar(
         if any(k in pq_categories_ls for k in ("cirrus", "cirrus_confidence")):
             raise ValueError("'cirrus' categories for the pixel quality mask"
                              " are not supported by load_ard")
-    if (product_type == 's1') & (pq_categories_ls is not None):
-        if any(k in pq_categories_s1 for k in ("cirrus")):
-            raise ValueError("'cirrus' categories for the pixel quality mask"
-                             " are not supported by load_ard")
 
     # If `measurements` are specified but do not include pixel quality bands,
     #  add these to `measurements` according to collection
@@ -370,14 +364,14 @@ def load_ard_sar(
         datasets = dc.find_datasets(product=product, **query)
 
 #         # Remove Landsat 7 SLC-off observations if ls7_slc_off=False
-#         if not ls7_slc_off and product in ["ls7_c2l2"]:
-#             if verbose:
-#                 print("    Ignoring SLC-off observations for ls7")
-#             datasets = [
-#                 i
-#                 for i in datasets
-#                 if i.time.begin < datetime.datetime(2003, 5, 31, tzinfo=pytz.UTC)
-#             ]
+        if not ls7_slc_off and product in ["ls7_c2l2"]:
+            if verbose:
+                print("    Ignoring SLC-off observations for ls7")
+            datasets = [
+                i
+                for i in datasets
+                if i.time.begin < datetime.datetime(2003, 5, 31, tzinfo=pytz.UTC)
+            ]
 
         # Add any returned datasets to list
         dataset_list.extend(datasets)
