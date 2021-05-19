@@ -149,7 +149,7 @@ def load_ard(
         The Datacube to connect to, i.e. `dc = datacube.Datacube()`.
         This allows you to also use development datacubes if required.
     products : list
-        A list of product names to load data from. Valid options are:
+        A list of product names to load data from. For example:
 
         * Landsat C2: `['ls5_sr', 'ls7_sr', 'ls8_sr']`
         * Sentinel-2: `['s2_l2a']`
