@@ -49,7 +49,9 @@ import dask.array as da
 
 
 def _dc_query_only(**kw):
-    """Remove load-only parameters, the rest can be passed to Query
+    """
+    Remove load-only parameters, the rest
+    can be passed to Query
 
     Returns
     =======
@@ -127,13 +129,19 @@ def load_ard(
     cloudy or shadowed) pixels.
 
     The function supports loading the following DE Africa products:
-
-        * ls5_c2l2
-        * ls7_c2l2
-        * ls8_c2l2
+    
+    Landsat:
+        * ls5_sr ('sr' denotes surface reflectance)
+        * ls7_sr
+        * ls8_sr
+        * ls5_st ('st' denotes surface temperature)
+        * ls7_st
+        * ls8_st
+    
+    Sentinel-2:
         * s2_l2a
 
-    Last modified: March 2021
+    Last modified: May 2021
 
     Parameters
     ----------
@@ -143,7 +151,7 @@ def load_ard(
     products : list
         A list of product names to load data from. Valid options are:
 
-        * Landsat C2: `['ls5_c2l2', 'ls7_c2l2', 'ls8_c2l2']`
+        * Landsat C2: `['ls5_sr', 'ls7_sr', 'ls8_sr']`
         * Sentinel-2: `['s2_l2a']`
 
     min_gooddata : float, optional
@@ -253,7 +261,8 @@ def load_ard(
     if not products:
         raise ValueError(
             "Please provide a list of product names to load data from. "
-            "Valid options are: Landsat C2: ['ls5_c2l2', 'ls7_c2l2', 'ls8_c2l2'], or "
+            "Valid options are: Landsat C2 SR: ['ls5_sr', 'ls7_sr', 'ls8_sr'], or "
+            "Landsat C2 ST: ['ls5_st', 'ls7_st', 'ls8_st'], or "
             "Sentinel-2: ['s2_l2a']"
         )
     
@@ -263,7 +272,7 @@ def load_ard(
     if any(i in products for i in ls_c1):
         raise ValueError(
             "DE AFrica's Landsat collection has been upgraded, use the Landsat Collection 2 "
-            "product names: ['ls5_c2l2', 'ls7_c2l2', 'ls8_c2l2']"
+            "product names: ['ls5_sr', 'ls7_sr', 'ls8_sr']"
         )
     #-------------
     
@@ -271,7 +280,12 @@ def load_ard(
         product_type = "ls"
     elif all(["s2" in product for product in products]):
         product_type = "s2"
-
+    
+    #check if the landsat product is surface temperature
+    st=False
+    if (product_type=='ls') & (all(["st" in product for product in products])):
+        st = True
+        
     # Check some parameters before proceeding
     if (product_type == "ls") & (dtype == 'native'):
         raise ValueError("Cannot load Landsat bands in native dtype "
@@ -297,22 +311,26 @@ def load_ard(
     measurements = requested_measurements.copy() if requested_measurements else None
 
     # define a list of acceptable aliases to load landsat. We can't rely on 'common'
-    # measurements as native band names have same name for different measurements.
-    ls_aliases = ['red', 'green', 'blue', 'nir', 'swir_1', 'swir_2', 'surface_temperature',
-                  'thermal_radiance', 'upwell_radiance', 'downwell_radiance',
-                  'atmospheric_transmittance', 'emissivity', 'emissivity_stddev',
-                  'pixel_quality', 'radiometric_saturation', 'cloud_distance',
-                  'surface_temperature_quality']
-
+    # measurements as native band names have the same name for different measurements.
+    ls_aliases = ['pixel_quality','radiometric_saturation']
+    if st:
+        ls_aliases = ['surface_temperature','surface_temperature_quality',
+                      'atmospheric_transmittance', 'thermal_radiance',
+                      'emissivity', 'emissivity_stddev', 'cloud_distance',
+                      'upwell_radiance', 'downwell_radiance']+ls_aliases
+    else:
+        ls_aliases = ['red', 'green', 'blue', 'nir', 'swir_1', 'swir_2']+ls_aliases
+        
     if measurements is not None:
         if product_type == "ls":
 
             # check we aren't loading aerosol bands from LS8
-            aerosol_bands = ['aerosol_qa', 'qa_aerosol',
+            aerosol_bands = ['aerosol_qa', 'qa_aerosol', 'atmos_opacity',
                              'coastal_aerosol', 'SR_QA_AEROSOL']
             if any(b in aerosol_bands for b in measurements):
-                raise ValueError("load_ard doesn't support loading aerosol related bands"
-                                 " for Landsat-8, instead use dc.load()")
+                raise ValueError("load_ard doesn't support loading aerosol or "
+                                 "atmospeheric opacity related bands "
+                                 "for Landsat, instead use dc.load()")
 
             # check measurements are in acceptable aliases list for landsat
             if set(measurements).issubset(ls_aliases):
