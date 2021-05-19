@@ -111,6 +111,8 @@ def load_ard(
         "unclassified",
         "dark area pixels",
     ],
+    pq_categories_s1=["valid data",
+    ],
     pq_categories_ls=None,
     mask_pixel_quality=True,
     ls7_slc_off=True,
@@ -140,6 +142,8 @@ def load_ard(
     
     Sentinel-2:
         * s2_l2a
+    Sentinel-1:
+        * s1_rtc
 
     Last modified: May 2021
 
@@ -153,6 +157,7 @@ def load_ard(
 
         * Landsat C2: `['ls5_sr', 'ls7_sr', 'ls8_sr']`
         * Sentinel-2: `['s2_l2a']`
+        * Sentinel-1: `['s1_rtc']`
 
     min_gooddata : float, optional
         An optional float giving the minimum percentage of good quality
@@ -166,6 +171,10 @@ def load_ard(
         calculation. The default is ['vegetation','snow or ice','water',
         'bare soils','unclassified', 'dark area pixels'] which will return
         non-cloudy or non-shadowed land, snow, water, veg, and non-veg pixels.
+    pq_categories_s1 : list, optional
+        An optional list of Sentinel-1 mask namesto treat as good quality
+        observations in the above `min_gooddata`calculation. The default is ['valid'] 
+        which will return valid pixels and remove the ones with in/near radar shadow pixels.
     pq_categories_ls : dict, optional
         An optional dictionary that is used to generate a good quality
         pixel mask from the selected USGS product's pixel quality band.
@@ -263,7 +272,8 @@ def load_ard(
             "Please provide a list of product names to load data from. "
             "Valid options are: Landsat C2 SR: ['ls5_sr', 'ls7_sr', 'ls8_sr'], or "
             "Landsat C2 ST: ['ls5_st', 'ls7_st', 'ls8_st'], or "
-            "Sentinel-2: ['s2_l2a']"
+            "Sentinel-2: ['s2_l2a'], or"
+            "Sentinel-1: ['s1_rtc'], or"
         )
     
     #--TEMPORARY---
@@ -280,6 +290,8 @@ def load_ard(
         product_type = "ls"
     elif all(["s2" in product for product in products]):
         product_type = "s2"
+    elif all(["s1" in product for product in products]):
+        product_type = "s1"
     
     #check if the landsat product is surface temperature
     st=False
@@ -307,6 +319,11 @@ def load_ard(
         if verbose:
             print("Using pixel quality parameters for Sentinel 2")
         fmask_band = "SCL"
+        
+    elif product_type == 's1':
+        if verbose:
+            print("Using pixel quality parameters for Sentinel 1")
+        fmask_band = "mask"
 
     measurements = requested_measurements.copy() if requested_measurements else None
 
@@ -456,6 +473,16 @@ def load_ard(
         )
         pq_mask = ds[fmask_band].isin(
             [int(k) for k, v in flags_s2.items() if v in pq_categories_s2]
+        )
+        
+    # sentinel 1
+    if product_type =='s1':
+        flags_s1 = (
+            dc.list_measurements()
+            .loc[products[0]]
+            .loc[fmask_band]["flags_definition"]["qa"]["values"])
+        pq_mask = ds[fmask_band].isin(
+            [int(k) for k,v in flags_s1.items() if v in pq_categories_s1]
         )
 
     # The good data percentage calculation has to load in all `fmask`
