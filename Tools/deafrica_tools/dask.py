@@ -30,6 +30,7 @@ import os
 import dask
 from datacube.utils.dask import start_local_dask
 from datacube.utils.rio import configure_s3_access
+from aiohttp import ClientConnectionError
 
 
 def create_local_dask_cluster(
@@ -102,16 +103,21 @@ try:
             Number of workers in the cluster.
 
         """
-        gateway = Gateway()
+        try:
+            gateway = Gateway()
 
-        options = gateway.cluster_options()
-        options['profile'] = profile
-        ## This Configuration is used for dask-worker pod labels
-        options['jupyterhub_user'] = os.getenv('JUPYTERHUB_USER')
+            options = gateway.cluster_options()
+            options['profile'] = profile
+            ## This Configuration is used for dask-worker pod labels
+            options['jupyterhub_user'] = os.getenv('JUPYTERHUB_USER')
 
-        cluster = gateway.new_cluster(options)
-        cluster.scale(workers)
-        return cluster
+            cluster = gateway.new_cluster(options)
+            cluster.scale(workers)
+            return cluster
+
+        except ClientConnectionError:
+            raise ConnectionError("access to dask gateway cluster unauthorized")
+
 
 except ImportError:
     def create_dask_gateway_cluster(*args, **kwargs):
