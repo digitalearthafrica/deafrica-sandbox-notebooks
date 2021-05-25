@@ -1,0 +1,43 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.4.0
+    hooks:
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: https://github.com/psf/black
+    rev: 20.8b1
+    hooks:
+      - id: black
+
+#  - repo: local
+#    hooks:
+#      - id: pylint-dags
+#        name: pylint-dags
+#        entry: env PYTHONPATH=plugins pylint
+#        language: system
+#        files: dags/
+#        types: [ python ]
+#        args: [ "--load-plugins=pylint_airflow", "--disable=C,W", "--disable=similarities" ]
+#
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: 'v0.800'  # Use the sha / tag you want to point at
+    hooks:
+      - id: mypy
+        entry: mypy
+        args: [ --no-strict-optional, --ignore-missing-imports ]
+
+#  - repo: https://github.com/PyCQA/prospector
+#    rev: 1.1.7 # The version of Prospector to use, at least 1.1.7
+#    hooks:
+#      - id: prospector
+#
+#  - repo: local
+#    hooks:
+#      - id: wily
+#        name: wily
+#        entry: wily diff
+#        verbose: true
+#        language: python
+#        additional_dependencies: [ wily ]
