@@ -374,7 +374,7 @@ def predict_xr(
     if dask == True:
         # convert model to dask predict
         model = ParallelPostFit(model)
-        with joblib.parallel_backend("dask"):
+        with joblib.parallel_backend("dask", wait_for_workers_timeout=20):
             output_xr = _predict_func(
                 model, input_xr, persist, proba, clean, return_input
             )
