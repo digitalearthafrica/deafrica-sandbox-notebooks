@@ -603,7 +603,7 @@ def collect_training_data(
         A function for generating feature layers that is applied to the data within
         the bounds of the input geometry. The 'feature_func' must accept a 'dc_query'
         object, and return a single xarray.Dataset or xarray.DataArray containing
-        2D coordinates (i.e x, y - no time dimension).
+        2D coordinates (i.e x and y, without a third dimension).
         e.g.
             def feature_function(query):
                 dc = datacube.Datacube(app='feature_layers')
@@ -622,24 +622,27 @@ def collect_training_data(
         training labels with any NaNs or Infs in the feature layers will be dropped
         from the dataset.
     fail_threshold : float, default 0.02
-        Silent read fails on S3 can result in some rows of the returned data containing NaN values.
+        Silent read fails on S3 during mulitprocessing can result in some rows
+        of the returned data containing NaN values.
         The'fail_threshold' fraction specifies a % of acceptable fails.
         e.g. Setting 'fail_threshold' to 0.05 means if >5% of the samples in the training dataset
-        fail then those samples will be reutnred to the multiprocessing queue. Below this fraction
+        fail then those samples will be returned to the multiprocessing queue. Below this fraction
         the function will accept the failures and return the results.
     fail_ratio: float
         A float between 0 and 1 that defines if a given training sample has failed.
         Default is 0.5, which means if 50 % of the measurements in a given sample return null
-        values, and the number of total fails is more than the fail_threshold, the samplewill be
-        passed to the retry queue.
+        values, and the number of total fails is more than the 'fail_threshold', the sample
+        will be passed to the retry queue.
     max_retries: int, default 3
         Maximum number of times to retry collecting samples. This number is invoked
         if the 'fail_threshold' is not reached.
 
     Returns
     --------
-    Two lists, a list of numpy.arrays containing classes and extracted data for
-    each pixel or polygon, and another containing the data variable names.
+    Two objects are returned:
+    `columns_names`: a list of variable (feature) names
+    `model_input`: a numpy.array containing the data values for each feature extracted
+    
     """
 
     # check the dtype of the class field
