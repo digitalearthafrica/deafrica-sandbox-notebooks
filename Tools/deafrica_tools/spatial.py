@@ -32,6 +32,7 @@ Last modified: November 2020
 '''
 
 # Import required packages
+import fiona
 import collections
 import numpy as np
 import xarray as xr
