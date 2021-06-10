@@ -36,6 +36,8 @@ import fiona
 import collections
 import numpy as np
 import xarray as xr
+from osgeo import osr
+from osgeo import ogr
 import geopandas as gpd
 import rasterio.features
 import scipy.interpolate
@@ -44,6 +46,7 @@ from scipy import ndimage as nd
 from skimage.measure import label
 from rasterstats import zonal_stats
 from skimage.measure import find_contours
+from shapely.geometry import mapping, shape
 from datacube.utils.cog import write_cog
 from datacube.helpers import write_geotiff
 from datacube.utils.geometry import assign_crs
