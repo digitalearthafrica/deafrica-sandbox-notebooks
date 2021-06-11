@@ -11,6 +11,7 @@ Classification of satellite images using supervised machine learning (ML) techni
 This series of notebooks aims to lessen the difficulty of running machine learning classifiers on satellite imagery by guiding the user through the steps necessary to classify satellite data using the [Open Data Cube](https://www.opendatacube.org/) (ODC). This is achieved in two ways. Firstly, the critical steps in a ML workflow (in the context of the ODC) are broken down into discrete notebooks which are extensively documented. And secondly, a number of custom python functions have been written to ease the complexity of running ML on the ODC. These include (among others) `collect_training_data`, `spatial_cluster`, `SKCV`, and `predict_xr`, all of which are contained in the [deafrica_tools.classificationtools](../../Scripts/deafrica_classificationtools.py) package. These functions are introduced and explained further in the relevant sections of the notebooks.
 
 There are four primary notebooks in this notebook series (along with an optional fifth notebook), that each represent a critical step in a ML workflow. 
+
 1. `Extracting_training_data.ipynb` explores how to extract training data (feature layers) from the ODC using geometries within a shapefile (or geojson). The goal of this notebook is to familarise users with the `collect_training_data` function so you can extract the appropriate data for your use-case.
 2. `Inspect_training_data.ipynb`: After having extracted training data from the ODC, its important to inspect the data using a number of statistical methods to aid in understanding if our feature layers are useful for distinguishing between classes.
 3. `Evaluate_optimize_fit_classifier.ipynb`: Using the training data extracted in the first notebook, this notebook first evaluates the accuracy of a given ML model (using nested, spatial k-fold cross validation), performs a hyperparameter optimization, and then fits a model on the training data.
@@ -22,16 +23,16 @@ The default example in the notebooks uses a training dataset containing "crop" a
 If you wish to begin running your own classification workflow, the first step is to replace this training data with your own in the `Extract_training_data.ipynb` notebook. Though of course its best to run through the default example first to ensure you understand the content before altering the notebooks for your specific use case. 
 
 **Important notes**
+
 * There are many different methods for running ML models and the approach used here may not suit your own classification problem. This is especially true for the `Evaluate_optimize_fit_classifier.ipynb` notebook, which has been crafted to suit the default training data. It's advisable to research the different methods for evaluating and training a model to determine which approach is best for you. Remember, the first step of any scientific pursuit is to precisely define the problem. 
 * The word "**Scalable**" in the title _Scalable ML on the ODC_ refers to scalability within the contraints of the machine you're running. These notebooks rely on [dask](https://dask.org/) (and [dask-ml](https://ml.dask.org/)) to manage memory and distribute the computations across mulitple cores. However, the notebooks are set up for the case of running on a single machine. For example, if your machine has 2 cores and 16 Gb of RAM (these are the specs on the default Sandbox), then you'll only be able to load and classify data up to that 16 Gb limit (and parallelization will be limited to 2 cores). Access to larger machines is required to scale analyses to very large areas. Its unlikley you'll be able to use these notebooks to classify satellite data at the country-level scale using laptop sized machines.  To better understand how we use dask, have a look at the [dask notebook](../Beginners_guide/08_Parallel_processing_with_dask.ipynb).
 
-
 **Helpful Resources**
+
 * There are many online courses that can help you understand the fundamentals of machine learning with python e.g. [edX](https://www.edx.org/course/machine-learning-with-python-a-practical-introduct), [coursera](https://www.coursera.org/learn/machine-learning-with-python). 
 * The [Scikit-learn](https://scikit-learn.org/stable/supervised_learning.html) documentation provides information on the available models and their parameters.
 * This [review article](https://www.tandfonline.com/doi/full/10.1080/01431161.2018.1433343) provides a nice overview of machine learning in the context of remote sensing.
 * The stand alone notebook, [Machine_learning_with_ODC.ipynb](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/blob/master/Real_world_examples/Machine_learning_with_ODC.ipynb), in the `Real_world_examples/` folder is a companion piece to these notebooks and provides a more succint (but less descriptive) version of the workflow demonstrated here.
-
 ___
 
 
