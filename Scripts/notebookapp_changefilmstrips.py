@@ -6,12 +6,11 @@ change filmstrips notebook, inside the Real_world_examples folder.
 Available functions:
     run_filmstrip_app
 
-Last modified: April 2020
+Last modified: April 2021
 '''
 
 # Load modules
 import os
-import sys
 import dask
 import datacube
 import warnings
@@ -27,14 +26,10 @@ from datacube.utils.rio import configure_s3_access
 from datacube.utils.dask import start_local_dask
 from ipyleaflet import basemaps, basemap_to_tiles
 
-
 # Load utility functions
-sys.path.append('../Scripts')
-from deafrica_datahandling import load_ard
-from deafrica_coastaltools import tidal_tag
-from deafrica_datahandling import mostcommon_crs
-from deafrica_dask import create_local_dask_cluster
-
+from deafrica_tools.datahandling import load_ard, mostcommon_crs
+from deafrica_tools.coastal import tidal_tag
+from deafrica_tools.dask import create_local_dask_cluster
 
 def run_filmstrip_app(output_name,
                       time_range,
@@ -156,8 +151,8 @@ def run_filmstrip_app(output_name,
         
         # Obtain native CRS 
         crs = mostcommon_crs(dc=dc, 
-                             product='ls5_usgs_sr_scene', 
-                             query={'time': '1990', 
+                             product='ls8_sr', 
+                             query={'time': '2014', 
                                     'geopolygon': geopolygon})
         
         # Create query based on time range, area selected, custom params
@@ -174,9 +169,9 @@ def run_filmstrip_app(output_name,
                       measurements=['red', 
                                     'green', 
                                     'blue'],  
-                      products=['ls5_usgs_sr_scene', 
-                                'ls7_usgs_sr_scene', 
-                                'ls8_usgs_sr_scene'], 
+                      products=['ls5_sr', 
+                                'ls7_sr', 
+                                'ls8_sr'], 
                       min_gooddata=max_cloud,
                       ls7_slc_off=ls7_slc_off,
                       **query)
