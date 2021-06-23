@@ -1,4 +1,4 @@
-# notebookapp_crophealth.py
+# notebookapp_spectraltemporal.py
 '''
 This file contains functions for loading and interacting with data in the
 spectral temporal widget notebook in the Frequently used code folder.
