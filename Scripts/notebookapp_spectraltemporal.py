@@ -4,10 +4,10 @@ This file contains functions for loading and interacting with data in the
 spectral temporal widget notebook in the Frequently used code folder.
 
 Available functions:
-    load_crophealth_data
-    run_crophelath_app
+    load_spectraltemporal_data
+    run_spectraltemporal_app
 
-Last modified: April 2021
+Last modified: June 2021
 '''
 
 # Load modules
@@ -38,11 +38,10 @@ from deafrica_tools.spatial import xr_rasterize
 from deafrica_tools.bandindices import calculate_indices
 
 
-def load_crophealth_data(lat, lon, buffer):
+def load_spectraltemporal_data(lat, lon, buffer):
     """
-    Loads Sentinel-2 analysis-ready data (ARD) product for the crop health
-    case-study area over the last two years.
-    Last modified: April 2020
+    Loads Sentinel-2 analysis-ready data (ARD) product for the case-study area over the last two years.
+    Last modified: June 2021
     
     Parameters
     ----------
@@ -65,7 +64,7 @@ def load_crophealth_data(lat, lon, buffer):
     warnings.filterwarnings('ignore')
 
     # Initialise the data cube. 'app' argument is used to identify this app
-    dc = datacube.Datacube(app='Crophealth-app')
+    dc = datacube.Datacube(app='spectraltemporal_app')
     
     # Define area to load
     latitude = (lat - buffer, lat + buffer)
@@ -109,12 +108,12 @@ def load_crophealth_data(lat, lon, buffer):
     return(ds)
 
 
-def run_crophealth_app(ds, lat, lon, buffer):
+def run_spectraltemporal_app(ds, lat, lon, buffer):
     """
-    Plots an interactive map of the crop health case-study area and allows
+    Plots an interactive map of the case-study area and allows
     the user to draw polygons. This returns a plot of the average NDVI value
     in the polygon area.
-    Last modified: January 2020
+    Last modified: June 2021
     
     Parameters
     ----------
