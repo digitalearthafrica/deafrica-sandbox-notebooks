@@ -91,7 +91,7 @@ def create_local_dask_cluster(
 try:
     from dask_gateway import Gateway
 
-    def create_dask_gateway_cluster(profile='XL', workers=2):
+    def create_dask_gateway_cluster(profile='r5_XL', workers=2):
         """
         Create a cluster in our internal dask cluster.
 
