@@ -27,7 +27,7 @@ def calculate_indices(
     a set of remote sensing indices, and adds the resulting array as a
     new variable in the original dataset.
 
-    Last modified: October 2019
+    Last modified: July 2021
 
     Parameters
     ----------
@@ -75,9 +75,11 @@ def calculate_indices(
 
         Valid options are:
 
-         * ``'c1'`` (for USGS Collection 1)
-         * ``'c2'`` (for USGS Collection 2)
+         * ``'c2'`` (for USGS Landsat Collection 2)
          * ``'s2'`` (for Sentinel-2)
+         As of July 2021, options for ``'c1'`` (USGS Landsat Collection 1)
+         have been removed as Collection 1 data has been archived. The 
+         improved version of Landsat data can be accessed through Collection 2.
 
     custom_varname : str, optional
         By default, the original dataset will be returned with
@@ -303,23 +305,10 @@ def calculate_indices(
 
             raise ValueError(
                 "No `collection` was provided. Please specify "
-                "either 'c1', 'c2' or 's2' to ensure the \nfunction "
+                "either 'c2' or 's2' to ensure the \nfunction "
                 "calculates indices using the correct spectral "
                 "bands"
             )
-
-        elif collection == "c1":
-            sr_max = 10000
-            # Dictionary mapping full data names to simpler alias names
-            bandnames_dict = {
-                "swir1": "swir_1",
-                "swir2": "swir_2",
-            }
-
-            # Rename bands in dataset to use simple names (e.g. 'red')
-            bands_to_rename = {
-                a: b for a, b in bandnames_dict.items() if a in ds.variables
-            }
 
         elif collection == "c2":
             sr_max = 1.0
@@ -352,7 +341,7 @@ def calculate_indices(
             raise ValueError(
                 f"'{collection}' is not a valid option for "
                 "`collection`. Please specify either \n"
-                "'c1', 'c2' or 's2'"
+                "'c2' or 's2'"
             )
 
         # Apply index function
@@ -364,10 +353,7 @@ def calculate_indices(
         except AttributeError:
             raise ValueError(
                 f"Please verify that all bands required to "
-                f"compute {index} are present in `ds`. \n"
-                f"These bands may vary depending on the `collection` "
-                f"(e.g. the USGS Collection 1 `swir1` band \n"
-                f"is equivelent to `swir_1` for Collection 2)"
+                f"compute {index} are present in `ds`."
             )
 
         # Add as a new variable in dataset
