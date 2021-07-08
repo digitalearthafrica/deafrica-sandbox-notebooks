@@ -313,7 +313,14 @@ def calculate_indices(
         elif collection == "c2":
             sr_max = 1.0
             # Pass an empty dict as no bands need renaming
-            bands_to_rename = {}
+            bands_to_rename = {
+                "SR_B1": "blue",
+                "SR_B2": "green",
+                "SR_B3": "red",
+                "SR_B4": "nir",
+                "SR_B5": "swir_1",
+                "SR_B7": "swir_2",
+            }
 
         elif collection == "s2":
             sr_max = 10000
