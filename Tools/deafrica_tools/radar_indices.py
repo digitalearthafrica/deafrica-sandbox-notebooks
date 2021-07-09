@@ -55,6 +55,7 @@ def dualpol_indices(
         * ``'theta'`` (pseudo scattering-type, Bhogapurapu et al. 2021)
         * ``'entropy'`` (pseudo scattering entropy, Bhogapurapu et al. 2021)
         * ``'purity'`` (co-pol purity, Bhogapurapu et al. 2021)
+        * ``'ratio'`` (cross-pol/co-pol ratio)
 
     custom_varname : str, optional
         By default, the original dataset will be returned with
