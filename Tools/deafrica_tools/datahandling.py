@@ -119,6 +119,7 @@ def load_ard(
     predicate=None,
     dtype="auto",
     verbose=True,
+    collection_category="T1", 
     **kwargs,
 ):
     """
@@ -142,10 +143,11 @@ def load_ard(
     
     Sentinel-2:
         * s2_l2a
+    
     Sentinel-1:
         * s1_rtc
 
-    Last modified: May 2021
+    Last modified: July 2021
 
     Parameters
     ----------
@@ -224,6 +226,12 @@ def load_ard(
         automatically rescaled so 'native' dtype will return a value error.
     verbose : bool, optional
         If True, print progress statements during loading
+    collection_category: str, optional
+        Landsat data has a data quality metadata field that denotes the
+        'Tier' the imagery is assigned too. 'T1'= High quality data that is suitable
+        for use in a stacked time-series of images. 'T2' = Data of poorer quality where
+        pixel alignment is off by > 12m and/or there may be other issues with the data.
+        Tier 2 data should not be used in a stacked time-series with Tier 1 data.
     **kwargs : dict, optional
         A set of keyword arguments to `dc.load` that define the
         spatiotemporal query used to extract data. This typically
@@ -393,7 +401,14 @@ def load_ard(
         # Obtain list of datasets for product
         if verbose:
             print(f"    {product}")
-        datasets = dc.find_datasets(product=product, **query)
+        
+        if product_type == "ls":
+            #handle LS seperately to S2/S1 due to collection_category
+            datasets = dc.find_datasets(product=product,
+                                    collection_category=collection_category,
+                                    **query)
+        else:
+            datasets = dc.find_datasets(product=product,**query)
 
         # Remove Landsat 7 SLC-off observations if ls7_slc_off=False
         if not ls7_slc_off and product in ["ls7_c2l2"]:
