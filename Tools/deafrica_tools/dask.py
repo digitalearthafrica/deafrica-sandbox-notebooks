@@ -42,9 +42,7 @@ def create_local_dask_cluster(
 
     Example use :
 
-        import sys
-        sys.path.append("../Scripts")
-        from deafrica_dask import create_local_dask_cluster
+        from deafrica_tools.dask import create_local_dask_cluster
 
         create_local_dask_cluster(spare_mem='4Gb')
 
