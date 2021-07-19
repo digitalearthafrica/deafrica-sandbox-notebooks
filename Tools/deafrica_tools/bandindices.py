@@ -309,18 +309,11 @@ def calculate_indices(
                 "calculates indices using the correct spectral "
                 "bands"
             )
-
+            
         elif collection == "c2":
             sr_max = 1.0
             # Pass an empty dict as no bands need renaming
-            bandnames_dict = {
-                "SR_B1": "blue",
-                "SR_B2": "green",
-                "SR_B3": "red",
-                "SR_B4": "nir",
-                "SR_B5": "swir_1",
-                "SR_B7": "swir_2",
-            }
+            bands_to_rename = {}
 
         elif collection == "s2":
             sr_max = 10000
@@ -336,7 +329,7 @@ def calculate_indices(
                 "B08": "nir",
                 "B11": "swir_1",
                 "B12": "swir_2",
-            }
+                }
 
             # Rename bands in dataset to use simple names (e.g. 'red')
             bands_to_rename = {
