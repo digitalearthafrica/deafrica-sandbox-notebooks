@@ -82,7 +82,7 @@ def process_data(dc, gdf, geom, start_year, end_year):
     """
 
     #Create a query object
-    product = ['s2_l2a']
+    product = 's2_l2a'
 
     query = {
         'group_by': 'solar_day',
@@ -93,7 +93,7 @@ def process_data(dc, gdf, geom, start_year, end_year):
     output_crs = mostcommon_crs(dc=dc, product=product, query=query)
 
     ds_s2 = load_ard(dc=dc,
-                     products=product,
+                     products=[product],
                      output_crs=output_crs,
                      dask_chunks={'time':1,'x':2000,'y':2000},
                      measurements=["red","green","blue","nir"],
@@ -101,7 +101,7 @@ def process_data(dc, gdf, geom, start_year, end_year):
                      resolution = (-10, 10),
                      **query)
     
-    ds_wofs = dc.load(product=["ga_ls8c_wofs_2_annual_summary"],
+    ds_wofs = dc.load(product="ga_ls8c_wofs_2_annual_summary",
                       time=(f'{start_year}', f'{end_year}'),
                       output_crs=output_crs,
                       resolution = (-10, 10),
