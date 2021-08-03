@@ -232,7 +232,7 @@ def calculate_indices(
     def swir_diff(ds):
         return ds.swir_1/ds.swir_2
     def alpha(ds):
-        return (2*(np.nanmean(ds.blue)))/(np.nanmean(swir_diff(ds)) + np.nanmean(mndwi(ds)**2))
+        return (2*(np.mean(ds.blue)))/(np.mean(swir_diff(ds)) + np.mean(mndwi(ds)**2))
     def ENDISI(ds):
         m = mndwi(ds)
         s = swir_diff(ds)
@@ -309,17 +309,26 @@ def calculate_indices(
                 "calculates indices using the correct spectral "
                 "bands"
             )
-
+            
         elif collection == "c2":
             sr_max = 1.0
-            # Pass an empty dict as no bands need renaming
-            bands_to_rename = {
+            # Dictionary mapping full data names to simpler alias names
+            # This only applies to properly-scaled C2 data i.e. from
+            # the Landsat geomedians. calculate_indices will not show 
+            # correct output for raw (unscaled) Landsat data (i.e. default
+            # outputs from dc.load)
+            bandnames_dict = {
                 "SR_B1": "blue",
                 "SR_B2": "green",
                 "SR_B3": "red",
                 "SR_B4": "nir",
                 "SR_B5": "swir_1",
                 "SR_B7": "swir_2",
+                }
+            
+            # Rename bands in dataset to use simple names (e.g. 'red')
+            bands_to_rename = {
+                a: b for a, b in bandnames_dict.items() if a in ds.variables
             }
 
         elif collection == "s2":
@@ -336,7 +345,7 @@ def calculate_indices(
                 "B08": "nir",
                 "B11": "swir_1",
                 "B12": "swir_2",
-            }
+                }
 
             # Rename bands in dataset to use simple names (e.g. 'red')
             bands_to_rename = {
