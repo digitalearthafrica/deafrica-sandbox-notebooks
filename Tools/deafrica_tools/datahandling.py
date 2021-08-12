@@ -40,6 +40,7 @@ import pytz
 from collections import Counter
 from datacube.utils import masking
 from scipy.ndimage import binary_dilation
+from odc.algo import mask_cleanup
 from copy import deepcopy
 import odc.algo
 from random import randint
@@ -104,16 +105,19 @@ def load_ard(
     products=None,
     min_gooddata=0.0,
     pq_categories_s2=[
-        "vegetation",
-        "snow or ice",
-        "water",
-        "bare soils",
-        "unclassified",
-        "dark area pixels",
-    ],
-    pq_categories_s1=["valid data",
-    ],
-    pq_categories_ls=None,
+        "Cloud high probability",
+        "Cloud medium probability"
+        "Thin cirrus",
+        "Cloud shadows",
+        "Saturated or defective",
+        "No data"],
+    pq_categories_s1=["Invalid", 'Nodata'],
+    pq_categories_ls=dict(
+                cloud="high_confidence",
+                cirrus="high_confidence",
+                cloud_shadow="high_confidence",
+                nodata=True),
+    mask_filters=None,
     mask_pixel_quality=True,
     ls7_slc_off=True,
     predicate=None,
@@ -463,18 +467,11 @@ def load_ard(
     # need to distinguish between products due to different
     # pq band properties
 
-    # collection 2 USGS or FC
+    # collection 2 USGS
     if product_type == "ls":
-        if pq_categories_ls is None:
-            quality_flags_prod = {
-                "clear": True,
-                "cloud_shadow": "not_high_confidence",
-                "nodata": False
-            }
-        else:
-            quality_flags_prod = pq_categories_ls
-
-        pq_mask = masking.make_mask(ds[fmask_band], **quality_flags_prod)
+        quality_flags_prod = pq_categories_ls
+        mask, _ = masking.create_mask_value(flags_def, **quality_flags)
+        pq_mask = (ds[fmask_band] & mask) != 0
 
     # sentinel 2
     if product_type == "s2":
@@ -509,7 +506,7 @@ def load_ard(
         # Compute good data for each observation as % of total pixels
         if verbose:
             print("Counting good quality pixels for each time step")
-        data_perc = pq_mask.sum(axis=[1, 2], dtype="int32") / (
+        data_perc = ~pq_mask.sum(axis=[1, 2], dtype="int32") / (
             pq_mask.shape[1] * pq_mask.shape[2]
         )
 
@@ -525,6 +522,11 @@ def load_ard(
                 f"time steps with at least {min_gooddata:.1%} "
                 f"good quality pixels"
             )
+
+    #morpholigcal filtering on cloud masks
+    if mask_filters is not None:
+            pq_mask = mask_cleanup(pq_mask, mask_filters=mask_filters)
+
 
     ###############
     # Apply masks #
@@ -544,7 +546,7 @@ def load_ard(
 
     # Mask data if either of the above masks were generated
     if mask is not None:
-        ds_data = odc.algo.keep_good_only(ds_data, where=mask)
+        ds_data = odc.algo.erase_bad(ds_data, where=mask)
 
     # Automatically set dtype to either native or float32 depending
     # on whether masking was requested
