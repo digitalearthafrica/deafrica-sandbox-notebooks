@@ -104,19 +104,18 @@ def load_ard(
     dc,
     products=None,
     min_gooddata=0.0,
-    pq_categories_s2=[
-        "Cloud high probability",
-        "Cloud medium probability"
-        "Thin cirrus",
-        "Cloud shadows",
-        "Saturated or defective",
-        "No data"],
-    pq_categories_s1=["Invalid", 'Nodata'],
     pq_categories_ls=dict(
                 cloud="high_confidence",
-                cirrus="high_confidence",
                 cloud_shadow="high_confidence",
                 nodata=True),
+    pq_categories_s2=[
+        "cloud high probability",
+        "cloud medium probability"
+        "thin cirrus",
+        "cloud shadows",
+        "saturated or defective",
+        "no data"],
+    pq_categories_s1=["invalid data", "no data"],
     mask_filters=None,
     mask_pixel_quality=True,
     ls7_slc_off=True,
@@ -171,31 +170,28 @@ def load_ard(
         Defaults to 0.0 which will return all observations regardless of
         pixel quality (set to e.g. 0.99 to return only observations with
         more than 99% good quality pixels).
-    pq_categories_s2 : list, optional
-        An optional list of Sentinel-2 Scene Classification Layer (SCL) names
-        to treat as good quality observations in the above `min_gooddata`
-        calculation. The default is ['vegetation','snow or ice','water',
-        'bare soils','unclassified', 'dark area pixels'] which will return
-        non-cloudy or non-shadowed land, snow, water, veg, and non-veg pixels.
-    pq_categories_s1 : list, optional
-        An optional list of Sentinel-1 mask namesto treat as good quality
-        observations in the above `min_gooddata`calculation. The default is ['valid'] 
-        which will return valid pixels and remove the ones with in/near radar shadow pixels.
     pq_categories_ls : dict, optional
-        An optional dictionary that is used to generate a good quality
-        pixel mask from the selected USGS product's pixel quality band.
-        This mask is used for both masking out low
+        An optional dictionary that is used to identify poor quality pixels 
+        for masking. This mask is used for both masking out low
         quality pixels (e.g. cloud or shadow), and for dropping
         observations entirely based on the above `min_gooddata`
-        calculation. Default is None, which will apply the following masks:
-
-        for USGS Collection 2:
-        {
-         "clear": True,
-         "cloud_shadow": "not_high_confidence",
-         "nodata": False
-         }
-
+        calculation.
+    pq_categories_s2 : list, optional
+        An optional list of Sentinel-2 Scene Classification Layer (SCL) names
+        that identify poor quality pixels for masking.
+    pq_categories_s1 : list, optional
+        An optional list of Sentinel-1 mask name that identify poor
+        quality pixels for masking.
+    mask_filters : iterable of tuples, optional
+        Iterable tuples of morphological operations - ("<operation>", <radius>)
+        to apply on mask, where
+        operation: string, can be one of these morphological operations:
+                closing  = remove small holes in cloud - morphological closing
+                opening  = shrinks away small areas of the mask
+                dilation = adds padding to the mask
+                erosion  = shrinks bright regions and enlarges dark regions
+        radius: int
+        e.g. mask_filters=[('erosion', 5),("opening", 2),("dilation", 2)]
     mask_pixel_quality : bool, optional
         An optional boolean indicating whether to apply the good data
         mask to all observations that were not filtered out for having
@@ -314,12 +310,12 @@ def load_ard(
     if (product_type == "ls") & (dtype == 'native'):
         raise ValueError("Cannot load Landsat bands in native dtype "
                          "as values require rescaling which converts dtype to float")
-
-    if (product_type == "ls") & (pq_categories_ls is not None):
+    
+    if product_type == "ls":
         if any(k in pq_categories_ls for k in ("cirrus", "cirrus_confidence")):
             raise ValueError("'cirrus' categories for the pixel quality mask"
                              " are not supported by load_ard")
-
+            
     # If `measurements` are specified but do not include pixel quality bands,
     #  add these to `measurements` according to collection
     if product_type == "ls":
@@ -469,20 +465,18 @@ def load_ard(
 
     # collection 2 USGS
     if product_type == "ls":
-        quality_flags_prod = pq_categories_ls
-        mask, _ = masking.create_mask_value(flags_def, **quality_flags)
+        mask, _ = masking.create_mask_value(ds[fmask_band].attrs["flags_definition"], 
+                                            **pq_categories_ls)
         pq_mask = (ds[fmask_band] & mask) != 0
 
     # sentinel 2
     if product_type == "s2":
-        # currently broken for mask band values >=8
-        # pq_mask = odc.algo.fmask_to_bool(ds[fmask_band],
-        #                             categories=pq_categories_s2)
         flags_s2 = (
             dc.list_measurements()
             .loc[products[0]]
             .loc[fmask_band]["flags_definition"]["qa"]["values"]
         )
+        
         pq_mask = ds[fmask_band].isin(
             [int(k) for k, v in flags_s2.items() if v in pq_categories_s2]
         )
@@ -493,20 +487,23 @@ def load_ard(
             dc.list_measurements()
             .loc[products[0]]
             .loc[fmask_band]["flags_definition"]["qa"]["values"])
+        
         pq_mask = ds[fmask_band].isin(
             [int(k) for k,v in flags_s1.items() if v in pq_categories_s1]
         )
-
+    
     # The good data percentage calculation has to load in all `fmask`
     # data, which can be slow. If the user has chosen no filtering
     # by using the default `min_gooddata = 0`, we can skip this step
     # completely to save processing time
     if min_gooddata > 0.0:
 
-        # Compute good data for each observation as % of total pixels
+        # Compute good data for each observation as % of total pixels.
+        # Inveerting the pq_mask for this because cloud=True in pq_mask
+        # and we want to sum good pixels
         if verbose:
             print("Counting good quality pixels for each time step")
-        data_perc = ~pq_mask.sum(axis=[1, 2], dtype="int32") / (
+        data_perc = (~pq_mask).sum(axis=[1, 2], dtype="int32") / (
             pq_mask.shape[1] * pq_mask.shape[2]
         )
 
@@ -525,7 +522,10 @@ def load_ard(
 
     #morpholigcal filtering on cloud masks
     if mask_filters is not None:
-            pq_mask = mask_cleanup(pq_mask, mask_filters=mask_filters)
+        if (product_type == "ls") | (product_type == "s2"):
+            if verbose:
+                print(f"Applying morphological filters to pq mask {mask_filters}")
+                pq_mask = mask_cleanup(pq_mask, mask_filters=mask_filters)
 
 
     ###############
