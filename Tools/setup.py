@@ -10,7 +10,7 @@ package_data = \
 install_requires = \
 ['dask-ml>=1.8.0,<2.0.0',
  'datacube>=1.8.3,<2.0.0',
- 'geopandas>=0.8.2,<0.9.0',
+ 'geopandas>=0.8.2,<=0.9.0',
  'joblib>=1.0.1,<2.0.0',
  'matplotlib>=3.3.4,<4.0.0',
  'scikit-learn>=0.24.1,<0.25.0',
