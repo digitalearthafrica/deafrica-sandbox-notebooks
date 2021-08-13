@@ -525,7 +525,7 @@ def load_ard(
         if (product_type == "ls") | (product_type == "s2"):
             if verbose:
                 print(f"Applying morphological filters to pq mask {mask_filters}")
-                pq_mask = mask_cleanup(pq_mask, mask_filters=mask_filters)
+            pq_mask = mask_cleanup(pq_mask, mask_filters=mask_filters)
 
 
     ###############
