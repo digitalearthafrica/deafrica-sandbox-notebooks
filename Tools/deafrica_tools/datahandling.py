@@ -40,6 +40,7 @@ import pytz
 from collections import Counter
 from datacube.utils import masking
 from scipy.ndimage import binary_dilation
+from datacube.storage.masking import mask_invalid_data
 from odc.algo import mask_cleanup
 from copy import deepcopy
 import odc.algo
@@ -174,13 +175,12 @@ def load_ard(
         An optional dictionary that is used to identify poor quality pixels 
         for masking. This mask is used for both masking out low
         quality pixels (e.g. cloud or shadow), and for dropping
-        observations entirely based on the above `min_gooddata`
-        calculation.
+        observations entirely based on the `min_gooddata` calculation.
     pq_categories_s2 : list, optional
         An optional list of Sentinel-2 Scene Classification Layer (SCL) names
         that identify poor quality pixels for masking.
     pq_categories_s1 : list, optional
-        An optional list of Sentinel-1 mask name that identify poor
+        An optional list of Sentinel-1 mask names that identify poor
         quality pixels for masking.
     mask_filters : iterable of tuples, optional
         Iterable tuples of morphological operations - ("<operation>", <radius>)
@@ -521,7 +521,7 @@ def load_ard(
             )
 
     #morpholigcal filtering on cloud masks
-    if mask_filters is not None:
+    if (mask_filters is not None) & (mask_pixel_quality):
         if (product_type == "ls") | (product_type == "s2"):
             if verbose:
                 print(f"Applying morphological filters to pq mask {mask_filters}")
@@ -538,7 +538,7 @@ def load_ard(
         if verbose:
             print("Applying pixel quality/cloud mask")
         mask = pq_mask
-
+    
     # Split into data/masks bands, as conversion to float and masking
     # should only be applied to data bands
     ds_data = ds[data_bands]
@@ -562,7 +562,7 @@ def load_ard(
     attrs = ds.attrs
     ds = xr.merge([ds_data, ds_masks])
     ds.attrs.update(attrs)
-
+    
     ###############
     # Return data #
     ###############
@@ -570,10 +570,11 @@ def load_ard(
     # Drop bands not originally requested by user
     if requested_measurements:
         ds = ds[requested_measurements]
-
-    # Collection 2 Landsat raw values aren't useful so always rescale,
-    # need different factors for different bands, and then need to convert
-    # back to float32 as rescaling converts into float64
+           
+    # Apply the scale and offset factors to Collection 2 Landsat. We need
+    # different factors for different bands. Also handle the case where
+    # masking_pixel_quaity = False, in which case the dtype is still
+    # in int, so we convert it to float
     if product_type == "ls":
         if verbose:
             print("Re-scaling Landsat C2 data")
@@ -582,7 +583,14 @@ def load_ard(
         radiance_bands = ['thermal_radiance','upwell_radiance', 'downwell_radiance']
         trans_emiss = ['atmospheric_transmittance','emissivity', 'emissivity_stddev']
         qa = ['pixel_quality', 'radiometric_saturation']
-
+        
+        if mask_pixel_quality == False:
+            # set nodata to NaNs before rescaling
+            # in the case where masking hasn't already done this
+            for band in ds.data_vars:
+                if band not in qa:
+                    ds[band] = odc.algo.to_f32(ds[band])
+        
         for band in ds.data_vars:
             if band == 'cloud_distance':
                 ds[band] = 0.01 * ds[band]
@@ -601,11 +609,10 @@ def load_ard(
 
             if band == 'surface_temperature':
                 ds[band] = ds[band] * 0.00341802 + 149.0
-        
-        #convert back to float32
+                
+        # add back attrs that are lost during scaling calcs
         for band in ds.data_vars:
-            if band not in qa:
-                ds[band] = odc.algo.to_float(ds[band], dtype='float32')
+                ds[band].attrs.update(attrs)
 
     # If user supplied dask_chunks, return data as a dask array without
     # actually loading it in
