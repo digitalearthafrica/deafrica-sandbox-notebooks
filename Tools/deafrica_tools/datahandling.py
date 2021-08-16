@@ -629,7 +629,7 @@ def array_to_geotiff(
     (in "WKT" format) for the output raster. These are typically
     obtained from an existing raster using the following GDAL calls:
 
-    >>> import gdal
+    >>> from osgeo import gdal
     >>> gdal_dataset = gdal.Open(raster_path)
     >>> geotrans = gdal_dataset.GetGeoTransform()
     >>> prj = gdal_dataset.GetProjection()
