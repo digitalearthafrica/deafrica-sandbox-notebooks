@@ -110,7 +110,8 @@ def load_ard(
     ),
     pq_categories_s2=[
         "cloud high probability",
-        "cloud medium probability" "thin cirrus",
+        "cloud medium probability",
+        "thin cirrus",
         "cloud shadows",
         "saturated or defective",
         "no data",
@@ -494,27 +495,23 @@ def load_ard(
 
     # sentinel 2
     if product_type == "s2":
-        flags_s2 = (
-            dc.list_measurements()
-            .loc[products[0]]
-            .loc[fmask_band]["flags_definition"]["qa"]["values"]
-        )
-
-        pq_mask = ds[fmask_band].isin(
-            [int(k) for k, v in flags_s2.items() if v in pq_categories_s2]
-        )
-
+        pq_mask = odc.algo.enum_to_bool(mask=ds[fmask_band],
+                                        categories=pq_categories_s2)
+        
     # sentinel 1
     if product_type == "s1":
-        flags_s1 = (
-            dc.list_measurements()
-            .loc[products[0]]
-            .loc[fmask_band]["flags_definition"]["qa"]["values"]
-        )
+        pq_mask = odc.algo.enum_to_bool(mask=ds[fmask_band],
+                                        categories=pq_categories_s1)
 
-        pq_mask = ds[fmask_band].isin(
-            [int(k) for k, v in flags_s1.items() if v in pq_categories_s1]
-        )
+#         flags_s1 = (
+#             dc.list_measurements()
+#             .loc[products[0]]
+#             .loc[fmask_band]["flags_definition"]["qa"]["values"]
+#         )
+
+#         pq_mask = ds[fmask_band].isin(
+#             [int(k) for k, v in flags_s1.items() if v in pq_categories_s1]
+#         )
 
     # The good data percentage calculation has to load in all `fmask`
     # data, which can be slow. If the user has chosen no filtering
