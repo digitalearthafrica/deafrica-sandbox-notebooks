@@ -276,8 +276,12 @@ def load_ard(
             "Sentinel-2: ['s2_l2a'], or"
             "Sentinel-1: ['s1_rtc'], or"
         )
-
-    elif all(["ls" in product for product in products]):
+    
+    # convert products to list if user passed as a string
+    if type(products) == str:
+        products=[products]
+    
+    if all(["ls" in product for product in products]):
         product_type = "ls"
     elif all(["s2" in product for product in products]):
         product_type = "s2"
