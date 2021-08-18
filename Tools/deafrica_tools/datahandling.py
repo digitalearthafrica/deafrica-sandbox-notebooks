@@ -105,10 +105,10 @@ def load_ard(
     dc,
     products=None,
     min_gooddata=0.0,
-    pq_categories_ls=dict(
+    categories_to_mask_ls=dict(
         cloud="high_confidence", cloud_shadow="high_confidence", nodata=True
     ),
-    pq_categories_s2=[
+    categories_to_mask_s2=[
         "cloud high probability",
         "cloud medium probability",
         "thin cirrus",
@@ -116,14 +116,13 @@ def load_ard(
         "saturated or defective",
         "no data",
     ],
-    pq_categories_s1=["invalid data", "no data"],
+    categories_to_mask_s1=["invalid data", "no data"],
     mask_filters=None,
     mask_pixel_quality=True,
     ls7_slc_off=True,
     predicate=None,
     dtype="auto",
     verbose=True,
-    collection_category="T1",
     **kwargs,
 ):
     """
@@ -171,15 +170,15 @@ def load_ard(
         Defaults to 0.0 which will return all observations regardless of
         pixel quality (set to e.g. 0.99 to return only observations with
         more than 99% good quality pixels).
-    pq_categories_ls : dict, optional
+    categories_to_mask_ls : dict, optional
         An optional dictionary that is used to identify poor quality pixels
         for masking. This mask is used for both masking out low
         quality pixels (e.g. cloud or shadow), and for dropping
         observations entirely based on the `min_gooddata` calculation.
-    pq_categories_s2 : list, optional
+    categories_to_mask_s2 : list, optional
         An optional list of Sentinel-2 Scene Classification Layer (SCL) names
         that identify poor quality pixels for masking.
-    pq_categories_s1 : list, optional
+    categories_to_mask_s1 : list, optional
         An optional list of Sentinel-1 mask names that identify poor
         quality pixels for masking.
     mask_filters : iterable of tuples, optional
@@ -226,12 +225,6 @@ def load_ard(
         automatically rescaled so 'native' dtype will return a value error.
     verbose : bool, optional
         If True, print progress statements during loading
-    collection_category: str, optional
-        Landsat data has a data quality metadata field that denotes the
-        'Tier' the imagery is assigned too. 'T1'= High quality data that is suitable
-        for use in a stacked time-series of images. 'T2' = Data of poorer quality where
-        pixel alignment is off by > 12m and/or there may be other issues with the data.
-        Tier 2 data should not be used in a stacked time-series with Tier 1 data.
     **kwargs : dict, optional
         A set of keyword arguments to `dc.load` that define the
         spatiotemporal query used to extract data. This typically
@@ -284,16 +277,6 @@ def load_ard(
             "Sentinel-1: ['s1_rtc'], or"
         )
 
-    # --TEMPORARY---
-    # check the user hasn't asked for the old landsat products
-    ls_c1 = ["ls5_usgs_sr_scene", "ls7_usgs_sr_scene", "ls8_usgs_sr_scene"]
-    if any(i in products for i in ls_c1):
-        raise ValueError(
-            "DE AFrica's Landsat collection has been upgraded, use the Landsat Collection 2 "
-            "product names: ['ls5_sr', 'ls7_sr', 'ls8_sr']"
-        )
-    # -------------
-
     elif all(["ls" in product for product in products]):
         product_type = "ls"
     elif all(["s2" in product for product in products]):
@@ -314,7 +297,7 @@ def load_ard(
         )
 
     if product_type == "ls":
-        if any(k in pq_categories_ls for k in ("cirrus", "cirrus_confidence")):
+        if any(k in categories_to_mask_ls for k in ("cirrus", "cirrus_confidence")):
             raise ValueError(
                 "'cirrus' categories for the pixel quality mask"
                 " are not supported by load_ard"
@@ -428,8 +411,9 @@ def load_ard(
 
         if product_type == "ls":
             # handle LS seperately to S2/S1 due to collection_category
+            #force the user to load Tier 1
             datasets = dc.find_datasets(
-                product=product, collection_category=collection_category, **query
+                product=product, collection_category='T1', **query
             )
         else:
             datasets = dc.find_datasets(product=product, **query)
@@ -489,29 +473,19 @@ def load_ard(
     # collection 2 USGS
     if product_type == "ls":
         mask, _ = masking.create_mask_value(
-            ds[fmask_band].attrs["flags_definition"], **pq_categories_ls
+            ds[fmask_band].attrs["flags_definition"], **categories_to_mask_ls
         )
         pq_mask = (ds[fmask_band] & mask) != 0
 
     # sentinel 2
     if product_type == "s2":
         pq_mask = odc.algo.enum_to_bool(mask=ds[fmask_band],
-                                        categories=pq_categories_s2)
+                                        categories=categories_to_mask_s2)
         
     # sentinel 1
     if product_type == "s1":
         pq_mask = odc.algo.enum_to_bool(mask=ds[fmask_band],
-                                        categories=pq_categories_s1)
-
-#         flags_s1 = (
-#             dc.list_measurements()
-#             .loc[products[0]]
-#             .loc[fmask_band]["flags_definition"]["qa"]["values"]
-#         )
-
-#         pq_mask = ds[fmask_band].isin(
-#             [int(k) for k, v in flags_s1.items() if v in pq_categories_s1]
-#         )
+                                        categories=categories_to_mask_s1)
 
     # The good data percentage calculation has to load in all `fmask`
     # data, which can be slow. If the user has chosen no filtering
