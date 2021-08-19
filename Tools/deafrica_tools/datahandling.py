@@ -106,7 +106,7 @@ def load_ard(
     products=None,
     min_gooddata=0.0,
     categories_to_mask_ls=dict(
-        cloud="high_confidence", cloud_shadow="high_confidence", nodata=True
+        cloud="high_confidence", cloud_shadow="high_confidence"
     ),
     categories_to_mask_s2=[
         "cloud high probability",
@@ -114,7 +114,6 @@ def load_ard(
         "thin cirrus",
         "cloud shadows",
         "saturated or defective",
-        "no data",
     ],
     categories_to_mask_s1=["invalid data"],
     mask_filters=None,
