@@ -116,7 +116,7 @@ def load_ard(
         "saturated or defective",
         "no data",
     ],
-    categories_to_mask_s1=["invalid data", "no data"],
+    categories_to_mask_s1=["invalid data"],
     mask_filters=None,
     mask_pixel_quality=True,
     ls7_slc_off=True,
@@ -521,10 +521,9 @@ def load_ard(
 
     # morpholigcal filtering on cloud masks
     if (mask_filters is not None) & (mask_pixel_quality):
-        if (product_type == "ls") | (product_type == "s2"):
-            if verbose:
-                print(f"Applying morphological filters to pq mask {mask_filters}")
-            pq_mask = mask_cleanup(pq_mask, mask_filters=mask_filters)
+        if verbose:
+            print(f"Applying morphological filters to pq mask {mask_filters}")
+        pq_mask = mask_cleanup(pq_mask, mask_filters=mask_filters)
 
     ###############
     # Apply masks #
