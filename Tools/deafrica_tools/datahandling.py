@@ -40,6 +40,8 @@ import pytz
 from collections import Counter
 from datacube.utils import masking
 from scipy.ndimage import binary_dilation
+from datacube.storage.masking import mask_invalid_data
+from odc.algo import mask_cleanup
 from copy import deepcopy
 import odc.algo
 from random import randint
@@ -103,36 +105,36 @@ def load_ard(
     dc,
     products=None,
     min_gooddata=0.0,
-    pq_categories_s2=[
-        "vegetation",
-        "snow or ice",
-        "water",
-        "bare soils",
-        "unclassified",
-        "dark area pixels",
+    categories_to_mask_ls=dict(
+        cloud="high_confidence", cloud_shadow="high_confidence"
+    ),
+    categories_to_mask_s2=[
+        "cloud high probability",
+        "cloud medium probability",
+        "thin cirrus",
+        "cloud shadows",
+        "saturated or defective",
     ],
-    pq_categories_s1=["valid data",
-    ],
-    pq_categories_ls=None,
+    categories_to_mask_s1=["invalid data"],
+    mask_filters=None,
     mask_pixel_quality=True,
     ls7_slc_off=True,
     predicate=None,
     dtype="auto",
     verbose=True,
-    collection_category="T1", 
     **kwargs,
 ):
     """
     Loads analysis ready data.
 
-    Loads and combines Landsat Collections 1 or 2, and Sentinel-2 for
+    Loads and combines Landsat USGS Collections 2, Sentinel-2, and Sentinel-1 for
     multiple sensors (i.e. ls5t, ls7e and ls8c for Landsat; s2a and s2b for Sentinel-2),
     optionally applies pixel quality masks, and drops time steps that
     contain greater than a minimum proportion of good quality (e.g. non-
     cloudy or shadowed) pixels.
 
     The function supports loading the following DE Africa products:
-    
+
     Landsat:
         * ls5_sr ('sr' denotes surface reflectance)
         * ls7_sr
@@ -140,14 +142,14 @@ def load_ard(
         * ls5_st ('st' denotes surface temperature)
         * ls7_st
         * ls8_st
-    
+
     Sentinel-2:
         * s2_l2a
-    
+
     Sentinel-1:
         * s1_rtc
 
-    Last modified: July 2021
+    Last modified: August 2021
 
     Parameters
     ----------
@@ -167,39 +169,35 @@ def load_ard(
         Defaults to 0.0 which will return all observations regardless of
         pixel quality (set to e.g. 0.99 to return only observations with
         more than 99% good quality pixels).
-    pq_categories_s2 : list, optional
-        An optional list of Sentinel-2 Scene Classification Layer (SCL) names
-        to treat as good quality observations in the above `min_gooddata`
-        calculation. The default is ['vegetation','snow or ice','water',
-        'bare soils','unclassified', 'dark area pixels'] which will return
-        non-cloudy or non-shadowed land, snow, water, veg, and non-veg pixels.
-    pq_categories_s1 : list, optional
-        An optional list of Sentinel-1 mask namesto treat as good quality
-        observations in the above `min_gooddata`calculation. The default is ['valid'] 
-        which will return valid pixels and remove the ones with in/near radar shadow pixels.
-    pq_categories_ls : dict, optional
-        An optional dictionary that is used to generate a good quality
-        pixel mask from the selected USGS product's pixel quality band.
-        This mask is used for both masking out low
+    categories_to_mask_ls : dict, optional
+        An optional dictionary that is used to identify poor quality pixels
+        for masking. This mask is used for both masking out low
         quality pixels (e.g. cloud or shadow), and for dropping
-        observations entirely based on the above `min_gooddata`
-        calculation. Default is None, which will apply the following masks:
-
-        for USGS Collection 2:
-        {
-         "clear": True,
-         "cloud_shadow": "not_high_confidence",
-         "nodata": False
-         }
-
+        observations entirely based on the `min_gooddata` calculation.
+    categories_to_mask_s2 : list, optional
+        An optional list of Sentinel-2 Scene Classification Layer (SCL) names
+        that identify poor quality pixels for masking.
+    categories_to_mask_s1 : list, optional
+        An optional list of Sentinel-1 mask names that identify poor
+        quality pixels for masking.
+    mask_filters : iterable of tuples, optional
+        Iterable tuples of morphological operations - ("<operation>", <radius>)
+        to apply on mask, where:
+        operation: string, can be one of these morphological operations:
+                closing  = remove small holes in cloud - morphological closing
+                opening  = shrinks away small areas of the mask
+                dilation = adds padding to the mask
+                erosion  = shrinks bright regions and enlarges dark regions
+        radius: int
+        e.g. mask_filters=[('erosion', 5),("opening", 2),("dilation", 2)]
     mask_pixel_quality : bool, optional
-        An optional boolean indicating whether to apply the good data
+        An optional boolean indicating whether to apply the poor data
         mask to all observations that were not filtered out for having
         less good quality pixels than `min_gooddata`. E.g. if
         `min_gooddata=0.99`, the filtered observations may still contain
         up to 1% poor quality pixels. The default of False simply
         returns the resulting observations without masking out these
-        pixels; True masks them and sets them to NaN using the good data
+        pixels; True masks them and sets them to NaN using the poor data
         mask. This will convert numeric values to floating point values
         which can cause memory issues, set to False to prevent this.
     ls7_slc_off : bool, optional
@@ -226,12 +224,6 @@ def load_ard(
         automatically rescaled so 'native' dtype will return a value error.
     verbose : bool, optional
         If True, print progress statements during loading
-    collection_category: str, optional
-        Landsat data has a data quality metadata field that denotes the
-        'Tier' the imagery is assigned too. 'T1'= High quality data that is suitable
-        for use in a stacked time-series of images. 'T2' = Data of poorer quality where
-        pixel alignment is off by > 12m and/or there may be other issues with the data.
-        Tier 2 data should not be used in a stacked time-series with Tier 1 data.
     **kwargs : dict, optional
         A set of keyword arguments to `dc.load` that define the
         spatiotemporal query used to extract data. This typically
@@ -284,37 +276,35 @@ def load_ard(
             "Sentinel-1: ['s1_rtc'], or"
         )
     
-    #--TEMPORARY---
-    #check the user hasn't asked for the old landsat products
-    ls_c1=['ls5_usgs_sr_scene', 'ls7_usgs_sr_scene', 'ls8_usgs_sr_scene']
-    if any(i in products for i in ls_c1):
-        raise ValueError(
-            "DE AFrica's Landsat collection has been upgraded, use the Landsat Collection 2 "
-            "product names: ['ls5_sr', 'ls7_sr', 'ls8_sr']"
-        )
-    #-------------
+    # convert products to list if user passed as a string
+    if type(products) == str:
+        products=[products]
     
-    elif all(["ls" in product for product in products]):
+    if all(["ls" in product for product in products]):
         product_type = "ls"
     elif all(["s2" in product for product in products]):
         product_type = "s2"
     elif all(["s1" in product for product in products]):
         product_type = "s1"
-    
-    #check if the landsat product is surface temperature
-    st=False
-    if (product_type=='ls') & (all(["st" in product for product in products])):
-        st = True
-        
-    # Check some parameters before proceeding
-    if (product_type == "ls") & (dtype == 'native'):
-        raise ValueError("Cannot load Landsat bands in native dtype "
-                         "as values require rescaling which converts dtype to float")
 
-    if (product_type == "ls") & (pq_categories_ls is not None):
-        if any(k in pq_categories_ls for k in ("cirrus", "cirrus_confidence")):
-            raise ValueError("'cirrus' categories for the pixel quality mask"
-                             " are not supported by load_ard")
+    # check if the landsat product is surface temperature
+    st = False
+    if (product_type == "ls") & (all(["st" in product for product in products])):
+        st = True
+
+    # Check some parameters before proceeding
+    if (product_type == "ls") & (dtype == "native"):
+        raise ValueError(
+            "Cannot load Landsat bands in native dtype "
+            "as values require rescaling which converts dtype to float"
+        )
+
+    if product_type == "ls":
+        if any(k in categories_to_mask_ls for k in ("cirrus", "cirrus_confidence")):
+            raise ValueError(
+                "'cirrus' categories for the pixel quality mask"
+                " are not supported by load_ard"
+            )
 
     # If `measurements` are specified but do not include pixel quality bands,
     #  add these to `measurements` according to collection
@@ -327,8 +317,8 @@ def load_ard(
         if verbose:
             print("Using pixel quality parameters for Sentinel 2")
         fmask_band = "SCL"
-        
-    elif product_type == 's1':
+
+    elif product_type == "s1":
         if verbose:
             print("Using pixel quality parameters for Sentinel 1")
         fmask_band = "mask"
@@ -337,33 +327,49 @@ def load_ard(
 
     # define a list of acceptable aliases to load landsat. We can't rely on 'common'
     # measurements as native band names have the same name for different measurements.
-    ls_aliases = ['pixel_quality','radiometric_saturation']
+    ls_aliases = ["pixel_quality", "radiometric_saturation"]
     if st:
-        ls_aliases = ['surface_temperature','surface_temperature_quality',
-                      'atmospheric_transmittance', 'thermal_radiance',
-                      'emissivity', 'emissivity_stddev', 'cloud_distance',
-                      'upwell_radiance', 'downwell_radiance']+ls_aliases
+        ls_aliases = [
+            "surface_temperature",
+            "surface_temperature_quality",
+            "atmospheric_transmittance",
+            "thermal_radiance",
+            "emissivity",
+            "emissivity_stddev",
+            "cloud_distance",
+            "upwell_radiance",
+            "downwell_radiance",
+        ] + ls_aliases
     else:
-        ls_aliases = ['red', 'green', 'blue', 'nir', 'swir_1', 'swir_2']+ls_aliases
-        
+        ls_aliases = ["red", "green", "blue", "nir", "swir_1", "swir_2"] + ls_aliases
+
     if measurements is not None:
         if product_type == "ls":
 
             # check we aren't loading aerosol bands from LS8
-            aerosol_bands = ['aerosol_qa', 'qa_aerosol', 'atmos_opacity',
-                             'coastal_aerosol', 'SR_QA_AEROSOL']
+            aerosol_bands = [
+                "aerosol_qa",
+                "qa_aerosol",
+                "atmos_opacity",
+                "coastal_aerosol",
+                "SR_QA_AEROSOL",
+            ]
             if any(b in aerosol_bands for b in measurements):
-                raise ValueError("load_ard doesn't support loading aerosol or "
-                                 "atmospeheric opacity related bands "
-                                 "for Landsat, instead use dc.load()")
+                raise ValueError(
+                    "load_ard doesn't support loading aerosol or "
+                    "atmospeheric opacity related bands "
+                    "for Landsat, instead use dc.load()"
+                )
 
             # check measurements are in acceptable aliases list for landsat
             if set(measurements).issubset(ls_aliases):
                 pass
             else:
-                raise ValueError("load_ard does not support all band aliases for Landsat, "
-                                 "use only the following band names to load Landsat data: "
-                                 + str(ls_aliases))
+                raise ValueError(
+                    "load_ard does not support all band aliases for Landsat, "
+                    "use only the following band names to load Landsat data: "
+                    + str(ls_aliases)
+                )
 
     # Deal with "load all" case: pick a set of bands common across
     # all products
@@ -380,13 +386,17 @@ def load_ard(
 
     # Get list of data and mask bands so that we can later exclude
     # mask bands from being masked themselves (also handle the case of rad_sat)
-    data_bands = [band for band in measurements if band not in (fmask_band, 'radiometric_saturation')]
+    data_bands = [
+        band
+        for band in measurements
+        if band not in (fmask_band, "radiometric_saturation")
+    ]
     mask_bands = [band for band in measurements if band not in data_bands]
-    
+
     #################
     # Find datasets #
     #################
-    
+
     # Pull out query params only to pass to dc.find_datasets
     query = _dc_query_only(**kwargs)
 
@@ -401,14 +411,15 @@ def load_ard(
         # Obtain list of datasets for product
         if verbose:
             print(f"    {product}")
-        
+
         if product_type == "ls":
-            #handle LS seperately to S2/S1 due to collection_category
-            datasets = dc.find_datasets(product=product,
-                                    collection_category=collection_category,
-                                    **query)
+            # handle LS seperately to S2/S1 due to collection_category
+            #force the user to load Tier 1
+            datasets = dc.find_datasets(
+                product=product, collection_category='T1', **query
+            )
         else:
-            datasets = dc.find_datasets(product=product,**query)
+            datasets = dc.find_datasets(product=product, **query)
 
         # Remove Landsat 7 SLC-off observations if ls7_slc_off=False
         if not ls7_slc_off and product in ["ls7_c2l2"]:
@@ -440,13 +451,12 @@ def load_ard(
 
     # Raise exception if filtering removes all datasets
     if len(dataset_list) == 0:
-        raise ValueError(
-            "No data available after filtering with " "filter function")
+        raise ValueError("No data available after filtering with " "filter function")
 
     #############
     # Load data #
     #############
-    
+
     # Note we always load using dask here so that
     # we can lazy load data before filtering by good data
     ds = dc.load(
@@ -463,42 +473,22 @@ def load_ard(
     # need to distinguish between products due to different
     # pq band properties
 
-    # collection 2 USGS or FC
+    # collection 2 USGS
     if product_type == "ls":
-        if pq_categories_ls is None:
-            quality_flags_prod = {
-                "clear": True,
-                "cloud_shadow": "not_high_confidence",
-                "nodata": False
-            }
-        else:
-            quality_flags_prod = pq_categories_ls
-
-        pq_mask = masking.make_mask(ds[fmask_band], **quality_flags_prod)
+        mask, _ = masking.create_mask_value(
+            ds[fmask_band].attrs["flags_definition"], **categories_to_mask_ls
+        )
+        pq_mask = (ds[fmask_band] & mask) != 0
 
     # sentinel 2
     if product_type == "s2":
-        # currently broken for mask band values >=8
-        # pq_mask = odc.algo.fmask_to_bool(ds[fmask_band],
-        #                             categories=pq_categories_s2)
-        flags_s2 = (
-            dc.list_measurements()
-            .loc[products[0]]
-            .loc[fmask_band]["flags_definition"]["qa"]["values"]
-        )
-        pq_mask = ds[fmask_band].isin(
-            [int(k) for k, v in flags_s2.items() if v in pq_categories_s2]
-        )
+        pq_mask = odc.algo.enum_to_bool(mask=ds[fmask_band],
+                                        categories=categories_to_mask_s2)
         
     # sentinel 1
-    if product_type =='s1':
-        flags_s1 = (
-            dc.list_measurements()
-            .loc[products[0]]
-            .loc[fmask_band]["flags_definition"]["qa"]["values"])
-        pq_mask = ds[fmask_band].isin(
-            [int(k) for k,v in flags_s1.items() if v in pq_categories_s1]
-        )
+    if product_type == "s1":
+        pq_mask = odc.algo.enum_to_bool(mask=ds[fmask_band],
+                                        categories=categories_to_mask_s1)
 
     # The good data percentage calculation has to load in all `fmask`
     # data, which can be slow. If the user has chosen no filtering
@@ -506,10 +496,12 @@ def load_ard(
     # completely to save processing time
     if min_gooddata > 0.0:
 
-        # Compute good data for each observation as % of total pixels
+        # Compute good data for each observation as % of total pixels.
+        # Inveerting the pq_mask for this because cloud=True in pq_mask
+        # and we want to sum good pixels
         if verbose:
             print("Counting good quality pixels for each time step")
-        data_perc = pq_mask.sum(axis=[1, 2], dtype="int32") / (
+        data_perc = (~pq_mask).sum(axis=[1, 2], dtype="int32") / (
             pq_mask.shape[1] * pq_mask.shape[2]
         )
 
@@ -525,6 +517,12 @@ def load_ard(
                 f"time steps with at least {min_gooddata:.1%} "
                 f"good quality pixels"
             )
+
+    # morpholigcal filtering on cloud masks
+    if (mask_filters is not None) & (mask_pixel_quality):
+        if verbose:
+            print(f"Applying morphological filters to pq mask {mask_filters}")
+        pq_mask = mask_cleanup(pq_mask, mask_filters=mask_filters)
 
     ###############
     # Apply masks #
@@ -544,7 +542,7 @@ def load_ard(
 
     # Mask data if either of the above masks were generated
     if mask is not None:
-        ds_data = odc.algo.keep_good_only(ds_data, where=mask)
+        ds_data = odc.algo.erase_bad(ds_data, where=mask)
 
     # Automatically set dtype to either native or float32 depending
     # on whether masking was requested
@@ -569,23 +567,31 @@ def load_ard(
     if requested_measurements:
         ds = ds[requested_measurements]
 
-    # Collection 2 Landsat raw values aren't useful so always rescale,
-    # need different factors for different bands, and then need to convert
-    # back to float32 as rescaling converts into float64
+    # Apply the scale and offset factors to Collection 2 Landsat. We need
+    # different factors for different bands. Also handle the case where
+    # masking_pixel_quaity = False, in which case the dtype is still
+    # in int, so we convert it to float
     if product_type == "ls":
         if verbose:
             print("Re-scaling Landsat C2 data")
 
-        sr_bands = ['red', 'green', 'blue', 'nir', 'swir_1', 'swir_2']
-        radiance_bands = ['thermal_radiance','upwell_radiance', 'downwell_radiance']
-        trans_emiss = ['atmospheric_transmittance','emissivity', 'emissivity_stddev']
-        qa = ['pixel_quality', 'radiometric_saturation']
+        sr_bands = ["red", "green", "blue", "nir", "swir_1", "swir_2"]
+        radiance_bands = ["thermal_radiance", "upwell_radiance", "downwell_radiance"]
+        trans_emiss = ["atmospheric_transmittance", "emissivity", "emissivity_stddev"]
+        qa = ["pixel_quality", "radiometric_saturation"]
+
+        if mask_pixel_quality == False:
+            # set nodata to NaNs before rescaling
+            # in the case where masking hasn't already done this
+            for band in ds.data_vars:
+                if band not in qa:
+                    ds[band] = odc.algo.to_f32(ds[band])
 
         for band in ds.data_vars:
-            if band == 'cloud_distance':
+            if band == "cloud_distance":
                 ds[band] = 0.01 * ds[band]
 
-            if band == 'surface_temperature_quality':
+            if band == "surface_temperature_quality":
                 ds[band] = 0.01 * ds[band]
 
             if band in radiance_bands:
@@ -597,13 +603,12 @@ def load_ard(
             if band in sr_bands:
                 ds[band] = 2.75e-5 * ds[band] - 0.2
 
-            if band == 'surface_temperature':
+            if band == "surface_temperature":
                 ds[band] = ds[band] * 0.00341802 + 149.0
-        
-        #convert back to float32
+
+        # add back attrs that are lost during scaling calcs
         for band in ds.data_vars:
-            if band not in qa:
-                ds[band] = odc.algo.to_float(ds[band], dtype='float32')
+            ds[band].attrs.update(attrs)
 
     # If user supplied dask_chunks, return data as a dask array without
     # actually loading it in
@@ -615,7 +620,7 @@ def load_ard(
         if verbose:
             print(f"Loading {len(ds.time)} time steps")
         return ds.compute()
-    
+
 
 def array_to_geotiff(
     fname, data, geo_transform, projection, nodata_val=0, dtype=gdal.GDT_Float32
@@ -830,8 +835,8 @@ def dilate(array, dilation=10, invert=True):
     """
 
     y, x = np.ogrid[
-        -dilation: (dilation + 1),
-        -dilation: (dilation + 1),
+        -dilation : (dilation + 1),
+        -dilation : (dilation + 1),
     ]
 
     # disk-like radial dilation
@@ -874,8 +879,7 @@ def first(array: xr.DataArray, dim: str, index_name: str = None) -> xr.DataArray
     axis = array.get_axis_num(dim)
     idx_first = np.argmax(~pd.isnull(array), axis=axis)
     reduced = array.reduce(_select_along_axis, idx=idx_first, axis=axis)
-    reduced[dim] = array[dim].isel(
-        {dim: xr.DataArray(idx_first, dims=reduced.dims)})
+    reduced[dim] = array[dim].isel({dim: xr.DataArray(idx_first, dims=reduced.dims)})
     if index_name is not None:
         reduced[index_name] = xr.DataArray(idx_first, dims=reduced.dims)
     return reduced
@@ -907,8 +911,7 @@ def last(array: xr.DataArray, dim: str, index_name: str = None) -> xr.DataArray:
     rev = (slice(None),) * axis + (slice(None, None, -1),)
     idx_last = -1 - np.argmax(~pd.isnull(array)[rev], axis=axis)
     reduced = array.reduce(_select_along_axis, idx=idx_last, axis=axis)
-    reduced[dim] = array[dim].isel(
-        {dim: xr.DataArray(idx_last, dims=reduced.dims)})
+    reduced[dim] = array[dim].isel({dim: xr.DataArray(idx_last, dims=reduced.dims)})
     if index_name is not None:
         reduced[index_name] = xr.DataArray(idx_last, dims=reduced.dims)
     return reduced
@@ -958,10 +961,8 @@ def nearest(
     da_before = array.sel({dim: before_target})
     da_after = array.sel({dim: after_target})
 
-    da_before = last(
-        da_before, dim, index_name) if da_before[dim].shape[0] else None
-    da_after = first(
-        da_after, dim, index_name) if da_after[dim].shape[0] else None
+    da_before = last(da_before, dim, index_name) if da_before[dim].shape[0] else None
+    da_after = first(da_after, dim, index_name) if da_after[dim].shape[0] else None
 
     if da_before is None and da_after is not None:
         return da_after
@@ -969,11 +970,9 @@ def nearest(
         return da_before
 
     target = array[dim].dtype.type(target)
-    is_before_closer = abs(
-        target - da_before[dim]) < abs(target - da_after[dim])
+    is_before_closer = abs(target - da_before[dim]) < abs(target - da_after[dim])
     nearest_array = xr.where(is_before_closer, da_before, da_after)
-    nearest_array[dim] = xr.where(
-        is_before_closer, da_before[dim], da_after[dim])
+    nearest_array[dim] = xr.where(is_before_closer, da_before[dim], da_after[dim])
     if index_name is not None:
         nearest_array[index_name] = xr.where(
             is_before_closer, da_before[index_name], da_after[index_name]
