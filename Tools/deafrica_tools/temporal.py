@@ -151,7 +151,7 @@ def _veos(da, pos, method_eos="last"):
     # find the first order slopes
     senesce_deriv = senesce.differentiate("time")
     # find where the fst order slope is negative
-    neg_senesce_deriv = senesce_deriv.where(senesce_deriv < 0)
+    neg_senesce_deriv = senesce_deriv.where(~xr.ufuncs.isnan(senesce_deriv < 0))
     # negative slopes on senescing side
     neg_senesce = senesce.where(neg_senesce_deriv)
     # find medians
@@ -182,7 +182,7 @@ def _los(da, eos, sos):
     LOS = Length of season (in DOY)
     """
     los = eos - sos
-    # handle negative values
+    #handle negative values
     los = xr.where(
         los >= 0,
         los,
@@ -492,10 +492,6 @@ def temporal_statistics(da, stats):
     # deal with any all-NaN pixels by filling with 0's
     mask = da.isnull().all("time")
     da = da.where(~mask, other=0)
-
-    # complete timeseries
-    print("Completing...")
-    da = fast_completion(da)
 
     # ensure dim order is correct for functions
     da = da.transpose("y", "x", "time").values
