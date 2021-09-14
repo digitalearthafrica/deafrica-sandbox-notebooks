@@ -21,6 +21,8 @@ Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/
 # Import required packages
 import sys
 import geopandas as gpd
+import pandas as pd
+import numpy as np
 import xarray as xr
 from datacube.utils import geometry
 from skimage.filters import threshold_otsu
@@ -82,7 +84,7 @@ def process_data(dc, gdf, geom, start_year, end_year):
     """
 
     #Create a query object
-    product = 's2_l2a'
+    product = 'gm_s2_annual'
 
     query = {
         'group_by': 'solar_day',
@@ -92,25 +94,21 @@ def process_data(dc, gdf, geom, start_year, end_year):
     # Identify the most common projection system in the input query
     output_crs = mostcommon_crs(dc=dc, product=product, query=query)
 
-    ds_s2 = load_ard(dc=dc,
-                     products=[product],
+    ds_geomedian = dc.load(product=product,
                      output_crs=output_crs,
-                     dask_chunks={'time':1,'x':2000,'y':2000},
                      measurements=["red","green","blue","nir"],
                      time=(f'{start_year}', f'{end_year}'),
                      resolution = (-10, 10),
                      **query)
     
-    ds_wofs = dc.load(product="ga_ls8c_wofs_2_annual_summary",
+    ds_wofs = dc.load(product="wofs_ls_summary_annual",
                       time=(f'{start_year}', f'{end_year}'),
                       output_crs=output_crs,
                       resolution = (-10, 10),
                       **query)
 
-    # For loaded Sentinel-2 data, compute the annual geomedian
-    ds_geomedian = ds_s2.groupby('time.year').map(xr_geomedian)
+    # For loaded Sentinel-2 Geomedian data, compute the annual geomedian and Calcute NDVI
     ds_geomedian = calculate_indices(ds_geomedian, ['NDVI'], collection='s2')
-    ds_geomedian = ds_geomedian.compute()
 
     # Convert the polygon to a raster that matches our imagery data
     mask = xr_rasterize(gdf, ds_geomedian)
@@ -120,10 +118,10 @@ def process_data(dc, gdf, geom, start_year, end_year):
     
     # Find the middle year and plot the geomedian for the first, middle and last years
     try:
-        mid = int(round(ds_geomedian.year.size / 2, 0))
-        rgb(ds_geomedian, index_dim='year', index=[0, mid, -1])
+        mid = int(round(ds_geomedian.time.size / 2, 0))
+        rgb(ds_geomedian, index_dim='time', index=[0, mid, -1])
     except:
-        rgb(ds_geomedian, index_dim='year', index=[0, -1])
+        rgb(ds_geomedian, index_dim='time', index=[0, -1])
     
     # Process WOfS data to 
     count_wet=ds_wofs.count_wet.where(ds_wofs.count_wet>=0)
@@ -146,7 +144,7 @@ def calculate_vegetation_loss(ds):
     """
     
     # Determine the change by shifting the array by a year and taking the difference
-    ds_shift = ds.NDVI.shift(year=1)
+    ds_shift = ds.NDVI.shift(time=1)
     ds_change_ndvi = ds.NDVI - ds_shift
     
     # Determine a threshold to judge if vegetation has increased or decreased
@@ -163,11 +161,12 @@ def calculate_vegetation_loss(ds):
 
     plt.figure(figsize=(11, 4))
     vegetation_loss_area.plot.line('g-o')
+    plt.grid()
     plt.title('Vegetation Loss')
     plt.ylabel('Area : km sq')
     
     # Determine all areas that experienced any vegetation loss over all years
-    vegetation_loss_sum = vegetation_loss.sum('year')
+    vegetation_loss_sum = vegetation_loss.sum('time')
     
     return vegetation_loss, vegetation_loss_sum
 
@@ -175,7 +174,7 @@ def calculate_vegetation_loss(ds):
 def plot_possible_mining(ds, vegetation_loss_sum, water_frequency_sum, crs, plot_filename="./results/Possible_Mining.png"):
     
     # Select the first year's NDVI as the background image
-    background_image = ds.isel(year=0).NDVI
+    background_image = ds.isel(time=0).NDVI
     
     # Determine the mining areas: vegetation loss & one year of water occurance
     mining_area = vegetation_loss_sum.where(water_frequency_sum == True)
@@ -186,7 +185,7 @@ def plot_possible_mining(ds, vegetation_loss_sum, water_frequency_sum, crs, plot
                                       mask=mining_area.values == 1,
                                       crs=crs
                                  )
-    mining_area_vector_buffer = mining_area_vector.buffer(250)
+    mining_area_vector_buffer = mining_area_vector.buffer(90)
     
     # Rasterize the buffered area
     mining_area_buffer = xr_rasterize(gdf=mining_area_vector_buffer,
@@ -222,7 +221,14 @@ def plot_possible_mining(ds, vegetation_loss_sum, water_frequency_sum, crs, plot
     return vegetation_loss_buffer
 
 def plot_vegetationloss_mining(ds, vegetation_loss, vegetation_loss_buffer):
-   
+    
+    year_arr = (pd.to_datetime(vegetation_loss.time.values)).year
+    background_image = ds.isel(time =0).NDVI
+    
+    total = background_image.count(dim=['x', 'y']) * calculate_area_per_pixel(10)
+    
+    print(pd.DataFrame([total.values], index=['Total Area(kmsq) of the vector file'], columns=['']))
+    print('...................................................................')
     
     vegetation_loss_mininig = vegetation_loss.where((vegetation_loss == True) & (vegetation_loss_buffer == True))
     
@@ -231,40 +237,63 @@ def plot_vegetationloss_mining(ds, vegetation_loss, vegetation_loss_buffer):
 
     vegetation_loss_mininig_area = total_vegetation_loss_mininig * calculate_area_per_pixel(10)
     vegetation_loss_area = total_vegetation_loss * calculate_area_per_pixel(10)
-
+    
+    print(pd.DataFrame([vegetation_loss_area.values, 
+                  vegetation_loss_mininig_area.values,
+                  '----',
+                  (vegetation_loss_area.values / total.values) * 100 , 
+                  (vegetation_loss_mininig_area.values / total.values) * 100
+                 ], 
+                 
+                 columns=year_arr, 
+                 index=['Any Vegetation Loss(kmsq)',
+                        'Vegetation Loss from Possible Mining(kmsq)',
+                        '',
+                        'Any Vegetation Loss(%)', 
+                        'Vegetation Loss from Possible Mining(%)']
+                ))
+    
+    print('...................................................................')
     # Construct and save the figure
     plt.figure(figsize=(12, 12))
     
+    
     vegetation_loss_area.plot.line('g-o', figsize=(11, 4))
     vegetation_loss_mininig_area.plot.line('r-^')
+   
     plt.legend(
             [Patch(facecolor='Green'), Patch(facecolor='Red')], 
-            ['Any Vegetation Loss', 'Vegetation Loss from Possible Mining'],
+            ['Total Area of vector file', 'Any Vegetation Loss', 'Vegetation Loss from Possible Mining'],
             loc = 'upper left'
         )
-
+    
+  
+    plt.grid()
     plt.title('Vegetation Loss')
     plt.ylabel('Area : km sq')
     plt.show()
     
     print('...................................................................')
-    background_image = ds.isel(year =0).NDVI
-    size_n = vegetation_loss.year.size
+    
+    size_n = vegetation_loss.time.size
     color_scheme = [name for name in mcd.TABLEAU_COLORS][:size_n]
 
     plt.figure(figsize=(12, 12))
     color_array = []
     year_array = []
     background_image.plot.imshow(cmap='Greys', add_colorbar=False)
-
+    
+    
     for i in range(1, size_n):
-        vegetation_loss_mininig.isel(year=i).plot.imshow(add_colorbar=False, cmap=ListedColormap([color_scheme[i]]))
+        vegetation_loss_mininig.isel(time=i).plot.imshow(add_colorbar=False, cmap=ListedColormap([color_scheme[i]]))
         color_array.append(Patch(facecolor=f'{color_scheme[i]}'))
-        year_array.append(f'{vegetation_loss.year.values[i]}')
+        year_array.append(f'{year_arr[i]}')
+        
+    
 
 
     plt.legend(color_array, year_array, loc = 'upper left')
 
-    plt.title(f'Vegetation Loss from Possible Mining from {vegetation_loss.year.values[0]} to {vegetation_loss.year.values[-1]}')
+    plt.title(f'Vegetation Loss from Possible Mining from {year_arr[0]} to {year_arr[-1]}')
     plt.show()
 
