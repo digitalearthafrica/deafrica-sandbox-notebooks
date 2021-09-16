@@ -23,7 +23,6 @@ import dask
 import numpy as np
 import xarray as xr
 import hdstats
-from scipy.signal import wiener
 from packaging import version
 from datacube.utils.geometry import assign_crs
 
@@ -61,52 +60,6 @@ def allNaN_arg(da, dim, stat):
         return y
 
 
-def fast_completion(da):
-    """
-    gap-fill a timeseries
-    """
-    if len(da.shape) == 1:
-        raise Exception("'fast_completion' does not currently operate on 1D timeseries")
-    # complete the timeseries (remove NaNs)
-    # grab coords etc
-    x, y, time, attrs = da.x, da.y, da.time, da.attrs
-
-    # reshape to satisfy function
-    da = da.transpose("y", "x", "time").values
-
-    mask = np.isnan(da)
-    idx = np.where(~mask, np.arange(mask.shape[-1]), 0)
-    np.maximum.accumulate(idx, axis=-1, out=idx)
-    i, j = np.meshgrid(np.arange(idx.shape[0]), np.arange(idx.shape[1]), indexing="ij")
-    dat = da[i[:, :, np.newaxis], j[:, :, np.newaxis], idx]
-    if np.isnan(np.sum(dat[:, :, 0])):
-        fill = np.nanmean(dat, axis=-1)
-        for t in range(dat.shape[-1]):
-            mask = np.isnan(dat[:, :, t])
-            if mask.any():
-                dat[mask, t] = fill[mask]
-            else:
-                break
-
-    # stack back into dataarray
-    dat = xr.DataArray(
-        dat,
-        attrs=attrs,
-        coords={"x": x, "y": y, "time": time},
-        dims=["y", "x", "time"],
-    )
-
-    return dat
-
-
-def smooth(da, k=3):
-    if len(da.shape) == 1:
-        raise Exception("'Smooth' does not currently operate on 1D timeseries")
-    da = da.transpose("y", "x", "time")
-    func = lambda arr, k: wiener(da, (1, 1, k))
-    return xr.apply_ufunc(func, da, k, dask="allowed")
-
-
 def _vpos(da):
     """
     vPOS = Value at peak of season
@@ -135,7 +88,7 @@ def _aos(vpos, trough):
     return vpos - trough
 
 
-def _vsos(da, pos, method_sos="median"):
+def _vsos(da, pos, method_sos="first"):
     """
     vSOS = Value at the start of season
     Params
@@ -156,7 +109,7 @@ def _vsos(da, pos, method_sos="median"):
     # find where the first order slope is postive
     pos_green_deriv = green_deriv.where(green_deriv > 0)
     # positive slopes on greening side
-    pos_greenup = greenup.where(pos_green_deriv)
+    pos_greenup = greenup.where(~xr.ufuncs.isnan(pos_green_deriv))
     # find the median
     median = pos_greenup.median("time")
     # distance of values from median
@@ -180,7 +133,7 @@ def _sos(vsos):
     return vsos.time.dt.dayofyear
 
 
-def _veos(da, pos, method_eos="median"):
+def _veos(da, pos, method_eos="last"):
     """
     vEOS = Value at the start of season
     Params
@@ -197,8 +150,8 @@ def _veos(da, pos, method_eos="median"):
     senesce = da.where(da.time > pos.time)
     # find the first order slopes
     senesce_deriv = senesce.differentiate("time")
-    # find where the fst order slope is postive
-    neg_senesce_deriv = senesce_deriv.where(senesce_deriv < 0)
+    # find where the fst order slope is negative
+    neg_senesce_deriv = senesce_deriv.where(~xr.ufuncs.isnan(senesce_deriv < 0))
     # negative slopes on senescing side
     neg_senesce = senesce.where(neg_senesce_deriv)
     # find medians
@@ -229,7 +182,7 @@ def _los(da, eos, sos):
     LOS = Length of season (in DOY)
     """
     los = eos - sos
-    # handle negative values
+    #handle negative values
     los = xr.where(
         los >= 0,
         los,
@@ -268,11 +221,9 @@ def xr_phenology(
         "ROG",
         "ROS",
     ],
-    method_sos="median",
-    method_eos="median",
-    complete="fast_complete",
-    smoothing=None,
-    show_progress=True,
+    method_sos="first",
+    method_eos="last",
+    verbose=True
 ):
     """
     Obtain land surface phenology metrics from an
@@ -314,15 +265,6 @@ def xr_phenology(
         on the senescing side of the curve. If 'median', then vEOS is
         estimated as the 'median' value of the negative slopes on the
         senescing side of the curve.
-    complete : str
-        If 'fast_complete', the timeseries will be completed (gap filled) using
-        fast_completion(), if 'linear', time series with be completed using
-        da.interpolate_na(method='linear')
-    smoothing : str
-        If 'wiener', the timeseries will be smoothed using the
-        scipy.signal.wiener filter with a window size of 3.  If 'rolling_mean',
-        then timeseries is smoothed using a rolling mean with a window size of 3.
-        If set to 'linear', will be smoothed using da.resample(time='1W').interpolate('linear')
 
     Returns
     -------
@@ -367,8 +309,6 @@ def xr_phenology(
                 stats=stats,
                 method_sos=method_sos,
                 method_eos=method_eos,
-                complete=complete,
-                smoothing=smoothing,
             ),
             template=xr.Dataset(template),
         )
@@ -396,52 +336,13 @@ def xr_phenology(
     except:
         pass
 
-    # complete timeseries
-    if complete is not None:
-
-        if complete == "fast_complete":
-
-            if len(da.shape) == 1:
-                print(
-                    "fast_complete does not operate on 1D timeseries, using 'linear' instead"
-                )
-                da = da.interpolate_na(dim="time", method="linear")
-
-            else:
-                print("Completing using fast_complete...")
-                da = fast_completion(da)
-
-        if complete == "linear":
-            print("Completing using linear interp...")
-            da = da.interpolate_na(dim="time", method="linear")
-
-    if smoothing is not None:
-
-        if smoothing == "wiener":
-            if len(da.shape) == 1:
-                print(
-                    "wiener method does not operate on 1D timeseries, using 'rolling_mean' instead"
-                )
-                da = da.rolling(time=3, min_periods=1).mean()
-
-            else:
-                print("   Smoothing with wiener filter...")
-                da = smooth(da)
-
-        if smoothing == "rolling_mean":
-            print("   Smoothing with rolling mean...")
-            da = da.rolling(time=3, min_periods=1).mean()
-
-        if smoothing == "linear":
-            print("    Smoothing using linear interpolation...")
-            da = da.resample(time="1W").interpolate("linear")
-
     # remove any remaining all-NaN pixels
     mask = da.isnull().all("time")
     da = da.where(~mask, other=0)
 
     # calculate the statistics
-    print("      Phenology...")
+    if verbose:
+        print("      Phenology...")
     vpos = _vpos(da)
     pos = _pos(da)
     trough = _trough(da)
@@ -474,7 +375,8 @@ def xr_phenology(
 
     # add the other stats to the dataset
     for stat in stats[1:]:
-        print("         " + stat)
+        if verbose:
+            print("         " + stat)
         stats_keep = stats_dict.get(stat)
         ds[stat] = stats_dict[stat]
 
@@ -590,10 +492,6 @@ def temporal_statistics(da, stats):
     # deal with any all-NaN pixels by filling with 0's
     mask = da.isnull().all("time")
     da = da.where(~mask, other=0)
-
-    # complete timeseries
-    print("Completing...")
-    da = fast_completion(da)
 
     # ensure dim order is correct for functions
     da = da.transpose("y", "x", "time").values
