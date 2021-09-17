@@ -151,7 +151,7 @@ def process_data(gdf, geom, start_year, end_year, product='s2'):
             
     return ds, water_frequency_sum
 
-def calculate_vegetation_loss(ds, product='s2', threshold=-0.2):
+def calculate_vegetation_loss(ds, product='s2', threshold=-0.15):
     """
     Calculate vegetaion loss between each year.
     Takes an xarray dataset, which must have NDVI as an array
