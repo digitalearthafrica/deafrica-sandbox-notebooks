@@ -71,6 +71,8 @@ REQUIRES_PYTHON = '>=3.6.0'
 
 # Import the README and use it as the long-description.
 # Note: this will only work if 'README.md' is present in your MANIFEST.in file!
+here = os.path.abspath(os.path.dirname(__file__))
+
 try:
     with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
         long_description = '\n' + f.read()
