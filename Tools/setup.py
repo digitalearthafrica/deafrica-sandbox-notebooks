@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 
-# Note: To use the 'upload' functionality of this file, you must:
-#   $ pipenv install twine --dev
-
 import io
 import os
 from setuptools import find_packages, setup
@@ -12,7 +9,7 @@ if 'sandbox' in os.getenv('JUPYTER_IMAGE', default=''):
     IS_DEAFRICA_SANDBOX = True
 
 # What packages are required for this module to be executed?
-# These are all on the Sandbox/NCI so shouldn't need installing on those platforms.
+# These are all on the Sandbox so shouldn't need installing on those platforms.
 REQUIRED = [
     # load_era5
     'fsspec'
@@ -70,7 +67,6 @@ AUTHOR = 'Digital Earth Africa'
 REQUIRES_PYTHON = '>=3.6.0'    
 
 # Import the README and use it as the long-description.
-# Note: this will only work if 'README.md' is present in your MANIFEST.in file!
 here = os.path.abspath(os.path.dirname(__file__))
 
 try:
