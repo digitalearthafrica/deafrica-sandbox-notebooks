@@ -9,7 +9,7 @@ from setuptools import find_packages, setup
 
 # Where are we?
 if 'sandbox' in os.getenv('JUPYTER_IMAGE', default=''):
-    IS_DEA=True
+    IS_DEAFRICA_SANDBOX = True
 
 # What packages are required for this module to be executed?
 # These are all on the Sandbox/NCI so shouldn't need installing on those platforms.
@@ -88,7 +88,7 @@ setup_kwargs = {
     'author_email': EMAIL,
     'python_requires': REQUIRES_PYTHON,
     'url': URL,
-    'install_requires': REQUIRED if not IS_DEA else [],
+    'install_requires': REQUIRED if not IS_DEAFRICA_SANDBOX else [],
     'packages': find_packages(),
     'include_package_data':True,
     'license':'Apache License 2.0'
