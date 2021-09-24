@@ -1,36 +1,95 @@
-# -*- coding: utf-8 -*-
-from setuptools import setup
+#!/usr/bin/env python3
 
-packages = \
-['deafrica_tools']
+# Note: To use the 'upload' functionality of this file, you must:
+#   $ pipenv install twine --dev
 
-package_data = \
-{'': ['*']}
+import io
+import os
+from setuptools import find_packages, setup
 
-install_requires = \
-['dask-ml>=1.8.0,<2.0.0',
- 'datacube>=1.8.3,<2.0.0',
- 'geopandas>=0.8.2,<=0.9.0',
- 'joblib>=1.0.1,<2.0.0',
- 'matplotlib>=3.3.4,<4.0.0',
- 'scikit-learn>=0.24.1,<0.25.0',
- 'tqdm>=4.57.0,<5.0.0']
+# Where are we?
+if 'sandbox' in os.getenv('JUPYTER_IMAGE', default=''):
+    IS_DEA=True
 
-setup_kwargs = {
-    'name': 'deafrica-tools',
-    'version': '0.1.0',
-    'description': '',
-    'long_description': None,
-    'author': 'Digital Earth Africa Team',
-    'author_email': None,
-    'maintainer': None,
-    'maintainer_email': None,
-    'url': 'https://github.com/digitalearthafrica/dea-common.git',
-    'packages': packages,
-    'package_data': package_data,
-    'install_requires': install_requires,
-    'python_requires': '>=3.6,<4.0',
+# What packages are required for this module to be executed?
+# These are all on the Sandbox/NCI so shouldn't need installing on those platforms.
+REQUIRED = [
+    # load_era5
+    'fsspec'
+    'warnings'
+    # classification
+    'numpy',
+    'copy',
+    'time',
+    'multiprocessing',
+    'abc',
+    'xarray',
+    'geopandas',
+    'datacube',
+    'tqdm',
+    'dask',
+    'rasterio',
+    'scikit-learn',
+    # coastal
+    'matplotlib',
+    'pandas',
+    'scipy',
+    # 'otps',  # Hard to install, but available on Sandbox
+    # datahandling
+    'GDAL',
+    'odc-ui',
+    'numexpr',
+    # plotting
+    'folium',
+    'pyproj',
+    'branca',
+    'shapely',
+    'scikit-image',
+    # temporal
+    'hdstats',
+    'packaging'
+    # spatial
+    'OWSLib',
+    'osgeo',
+    'fiona',
+    'shapely'
+]
+
+# What packages are optional?
+EXTRAS = {
+    'jupyter': ['IPython', 'ipywidgets', 'ipyleaflet'],
+    'boto': ['boto3'],
 }
 
+# Package meta-data.
+NAME = 'deafrica-tools'
+DESCRIPTION = 'Functions and algorithms for analysing Digital Earth Africa data.'
+URL = 'https://github.com/digitalearthafrica/deafrica-sandbox-notebooks'
+EMAIL = 'https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues'
+AUTHOR = 'Digital Earth Africa'
+REQUIRES_PYTHON = '>=3.6.0'    
+
+# Import the README and use it as the long-description.
+# Note: this will only work if 'README.md' is present in your MANIFEST.in file!
+try:
+    with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
+        long_description = '\n' + f.read()
+except FileNotFoundError:
+    long_description = DESCRIPTION
+    
+setup_kwargs = {
+    'name': NAME,
+    'version': '0.1.0',
+    'description': DESCRIPTION,
+    'long_description': long_description,
+    'author': AUTHOR,
+    'author_email': EMAIL,
+    'python_requires': REQUIRES_PYTHON,
+    'url': URL,
+    'install_requires': REQUIRED if not IS_DEA else [],
+    'packages': find_packages(),
+    'include_package_data':True,
+    'license':'Apache License 2.0'
+}
 
 setup(**setup_kwargs)
