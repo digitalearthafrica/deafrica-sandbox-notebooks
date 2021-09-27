@@ -20,7 +20,6 @@ Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/
 
 Functions included:
     WIT_drill
-    thresholded_tasseled_cap
     animated_timeseries_WIT
     _ds_to_arrraylist
     _add_colourbar
@@ -187,7 +186,7 @@ def WIT_drill(gdf,
     #boolean of wet/dry
     wofls_wet = masking.make_mask(wofls.water, wet=True)
     
-    #maske sure wofs matches other datasets
+    #mask sure wofs matches other datasets
     wofls_wet = wofls_wet.where(wofls_wet.time == tcw.time)
     
     # apply the polygon mask
@@ -200,6 +199,7 @@ def WIT_drill(gdf,
     # load fractional cover
     fc_ds = dc.load(
         product="fc_ls",
+        time=time,
         dask_chunks=dask_chunks,
         like=ds_ls,
         measurements=["pv", "npv", "bs"],
@@ -212,32 +212,30 @@ def WIT_drill(gdf,
 
     # mask with polygon
     fc_ds = fc_ds.where(mask)
+    
+    #mask with TC wetness
     fc_ds_noTCW = fc_ds.where(tcw == False)
 
     if verbose:
         print("Generating classification")
-    # match timesteps
    
     # Cast the dataset to a dataarray
-    maxFC = fc_ds_noTCW.to_array(dim="variable", name="maxFC")
+    fc_ds_noTCW = fc_ds_noTCW.to_array(dim="variable", name="fc_ds_noTCW")
 
     # turn FC array into integer only as nanargmax doesn't 
     # seem to handle floats the way we want it to
-    FC_int = maxFC.astype("int8")
+    fc_ds_noTCW = fc_ds_noTCW.astype("int8")
 
-    # use numpy.nanargmax to get the index of the maximum value along the variable dimension
-    # BSPVNPV=np.nanargmax(FC_int, axis=0)
-    BSPVNPV = FC_int.argmax(dim="variable")
+    # use nanargmax to get the index of the maximum value
+    BSPVNPV = fc_ds_noTCW.argmax(dim="variable")
 
-    FC_mask = xr.ufuncs.isfinite(maxFC).all(dim="variable")
-
+    FC_mask = xr.ufuncs.isfinite(fc_ds_noTCW).all(dim="variable")
     # #re-mask with nans to remove no-data
     BSPVNPV = BSPVNPV.where(FC_mask)
-    # restack the Fractional cover dataset all together
+    
+    # Restack the Fractional cover dataset all together
     # CAUTION:ARGMAX DEPENDS ON ORDER OF VARIABALES IN
-    # DATASET, THESE WILL BE DIFFERENT FOR DIFFERENT COLLECTIONS.
-    # NEED TO ADJUST 0,1,2 BELOW DEPENDING ON ORDER OF FC VARIABLES
-    # IN THE DATASET.
+    # DATASET. NEED TO ADJUST 0,1,2 BELOW DEPENDING ON ORDER OF FC VARIABLES
     FC_dominant = xr.Dataset(
         {
             "bs": (BSPVNPV == 2).where(FC_mask),
@@ -246,95 +244,79 @@ def WIT_drill(gdf,
         }
     )
     
-    # number of pixels in area of interest
-    pixels = mask.sum(dim=["x", "y"])
-    
-    # count number of Fractional Cover, WOfS & TCW pixels
-    FC_count = FC_dominant.sum(dim=["x", "y"])
-    tcw_pixel_count = tcw.sum(dim=["x", "y"])
-    wofs_pixels = wofls_wet.sum(dim=["x", "y"])
-   
+    # pixels counts
+    pixels = mask.sum(dim=["x", "y"]).compute()
+    tcw_pixel_count = tcw.sum(dim=["x", "y"]).persist()
+    FC_count = FC_dominant.sum(dim=["x", "y"]).compute()
+    wofs_pixels = wofls_wet.sum(dim=["x", "y"]).compute()
+
     # count percentages
     wofs_area_percent = (wofs_pixels / pixels) * 100
     tcw_area_percent = (tcw_pixel_count / pixels) * 100
-
-    # calculate wet not wofs
-    tcw_less_wofs = tcw_area_percent - wofs_area_percent
+    tcw_less_wofs = tcw_area_percent - wofs_area_percent #wet not wofs
 
     # Fractional cover pixel count method
     # Get number of FC pixels, divide by total number of pixels per polygon
-    # Work out the number of nodata pixels in the data, so that we can graph the variables by number of observed pixels.
-    Bare_soil_percent = (FC_count.bs / pixels) * 100
-    Photosynthetic_veg_percent = (FC_count.pv / pixels) * 100
-    NonPhotosynthetic_veg_percent = (FC_count.npv / pixels) * 100
+    # Work out the number of nodata pixels in the data 
+    BS_percent = (FC_count.bs / pixels) * 100
+    PV_percent = (FC_count.pv / pixels) * 100
+    NPV_percent = (FC_count.npv / pixels) * 100
     NoData = (
         100
         - wofs_area_percent
         - tcw_less_wofs
-        - Photosynthetic_veg_percent
-        - NonPhotosynthetic_veg_percent
-        - Bare_soil_percent
+        - PV_percent
+        - NPV_percent
+        - BS_percent
     )
     NoDataPixels = (NoData / 100) * pixels
+    
+    #re-do percentages but no handling no-data pixels within polygon
+    BS_percent = (FC_count.bs / (pixels - NoDataPixels)) * 100
+    PV_percent = (FC_count.pv / (pixels - NoDataPixels)) * 100
+    NPV_percent = (FC_count.npv / (pixels - NoDataPixels)) * 100
+    wofs_area_percent = (wofs_pixels / (pixels - NoDataPixels)) * 100
+    tcw_area_percent = (tcw_pixel_count / (pixels - NoDataPixels)) * 100
+    tcw_less_wofs = tcw_area_percent - wofs_area_percent
 
-    # Fractional cover pixel count method
-    # Get number of FC pixels, divide by total number of pixels per polygon
-    Bare_soil_percent2 = (FC_count.bs / (pixels - NoDataPixels)) * 100
-    Photosynthetic_veg_percent2 = (FC_count.pv / (pixels - NoDataPixels)) * 100
-    NonPhotosynthetic_veg_percent2 = (
-        FC_count.npv / (pixels - NoDataPixels)) * 100
-
-    # count percentage of area of wofs
-    wofs_area_percent2 = (wofs_pixels / (pixels - NoDataPixels)) * 100
-    # wofs_area_percent
-    wofs_area_percent = (wofs_pixels / pixels) * 100
-    # count number of tcw pixels
-    tcw_pixel_count2 = tcw.sum(dim=["x", "y"])
-
-    # calculate percentage area wet
-    tcw_area_percent2 = (tcw_pixel_count2 / (pixels - NoDataPixels)) * 100
-
-    # calculate wet not wofs
-    tcw_less_wofs2 = tcw_area_percent2 - wofs_area_percent2
-
-    # last check for timestep matching before we plot
-    wofs_area_percent2 = wofs_area_percent2.where(
-        wofs_area_percent2.time == Bare_soil_percent2.time
-    )
-    Bare_soil_percent2 = Bare_soil_percent2.where(
-        Bare_soil_percent2.time == wofs_area_percent2.time
-    )
-    Photosynthetic_veg_percent2 = Photosynthetic_veg_percent2.where(
-        Photosynthetic_veg_percent2.time == wofs_area_percent2.time
-    )
-    NonPhotosynthetic_veg_percent2 = NonPhotosynthetic_veg_percent2.where(
-        NonPhotosynthetic_veg_percent2.time == wofs_area_percent2.time
-    )
+#     # last check for timestep matching before we plot
+#     wofs_area_percent2 = wofs_area_percent2.where(
+#         wofs_area_percent2.time == Bare_soil_percent2.time
+#     )
+#     Bare_soil_percent2 = Bare_soil_percent2.where(
+#         Bare_soil_percent2.time == wofs_area_percent2.time
+#     )
+#     Photosynthetic_veg_percent2 = Photosynthetic_veg_percent2.where(
+#         Photosynthetic_veg_percent2.time == wofs_area_percent2.time
+#     )
+#     NonPhotosynthetic_veg_percent2 = NonPhotosynthetic_veg_percent2.where(
+#         NonPhotosynthetic_veg_percent2.time == wofs_area_percent2.time
+#     )
     
     # start setup of dataframe by adding only one dataset
-    WOFS_df = pd.DataFrame(
-        data=wofs_area_percent2.data,
-        index=wofs_area_percent2.time.values,
+    df = pd.DataFrame(
+        data=wofs_area_percent.data,
+        index=wofs_area_percent.time.values,
         columns=["wofs_area_percent"],
     )
 
     # add data into pandas dataframe for export
-    WOFS_df["wet_percent"] = tcw_less_wofs2.data
-    WOFS_df["green_veg_percent"] = Photosynthetic_veg_percent2.data
-    WOFS_df["dry_veg_percent"] = NonPhotosynthetic_veg_percent2.data
-    WOFS_df["bare_soil_percent"] = Bare_soil_percent2.data
+    df["wet_percent"] = tcw_less_wofs.data
+    df["green_veg_percent"] = PV_percent.data
+    df["dry_veg_percent"] = NPV_percent.data
+    df["bare_soil_percent"] = BS_percent.data
 
-    # call the composite dataframe something sensible, like PolyDrill
-    PolyDrill_df = WOFS_df.round(2)
+    # round numbers
+    df = df.round(2)
 
     # save the csv of the output data used to create the stacked plot for the polygon drill
     if export_csv:
         print('exporting csv: ' + export_csv)
-        PolyDrill_df.to_csv(
+        df.to_csv(
             export_csv, index_label="Datetime"
         )
 
-    return PolyDrill_df
+    return df
 
 
 def animated_timeseries_WIT(
