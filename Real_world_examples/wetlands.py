@@ -1,6 +1,6 @@
 # deafrica_wetlandstools.py
 
-'''
+"""
 Description: This file contains a set of python functions for working with
 the Wetlands Insight Tool (WIT)
 
@@ -27,7 +27,7 @@ Functions included:
 
 Last modified: Feb 2020
 
-'''
+"""
 
 
 # Import required packages
@@ -37,7 +37,6 @@ import folium
 import math
 import calendar
 import numpy as np
-import ipywidgets
 import geopandas as gpd
 import matplotlib as mpl
 from datetime import datetime
@@ -49,7 +48,6 @@ import matplotlib.animation as animation
 import matplotlib.patheffects as PathEffects
 from matplotlib.colors import ListedColormap
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from ipyleaflet import Map, Marker, Popup, GeoJSON, basemaps
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 import datacube
@@ -77,15 +75,15 @@ from deafrica_tools.spatial import xr_rasterize
 from deafrica_tools.classification import HiddenPrints
 
 
-
-def WIT_drill(gdf,
-              time,
-              min_gooddata=0.80,
-              TCW_threshold=-0.035,
-              export_csv=None,
-              dask_chunks=None,
-              verbose=False
-             ):
+def WIT_drill(
+    gdf,
+    time,
+    min_gooddata=0.80,
+    TCW_threshold=-0.035,
+    export_csv=None,
+    dask_chunks=None,
+    verbose=False,
+):
     """
     The Wetlands Insight Tool. This function loads FC, WOfS, and Landsat data,
     and calculates tasseled cap wetness, in order to determine the dominant
@@ -98,7 +96,7 @@ def WIT_drill(gdf,
     Last modified: Sept 2021
 
     Parameters
-    ----------  
+    ----------
     gdf : geopandas.GeoDataFrame
         The dataframe must only contain a single row,
         containing the polygon you wish to interrograte.
@@ -111,91 +109,91 @@ def WIT_drill(gdf,
         and therefore included in the WIT plot.  Defaults to 0.8, which should
         be considered a minimum percentage.
     TCW_threshold : Int, optional
-        The tasseled cap wetness threshold, beyond which a pixel will be 
+        The tasseled cap wetness threshold, beyond which a pixel will be
         considered 'wet'. Defaults to -6000. Consider the surface reflectance
-        scaling of the Landsat product when adjusting this (C2 = 0-1) 
+        scaling of the Landsat product when adjusting this (C2 = 0-1)
     export_csv : str, optional
         To export the returned pandas dataframe provide
         a location string (e.g. 'output/results.csv')
     dask_chunks : dict, optional
         To lazily load the datasets using dask, pass a dictionary containing
         the dimensions over which to chunk e.g. {'time':-1, 'x':250, 'y':250}.
-     verbose: 
-        
+     verbose:
+
     Returns
     -------
-    PolyDrill_df : Pandas.Dataframe
+    df : Pandas.Dataframe
         A pandas dataframe containing the timeseries of relative fractions
-        of each land cover class (WOfs, FC, TCW) 
+        of each land cover class (WOfs, FC, TCW)
 
     """
-
-    if verbose:
-        print("working on polygon: " +str(gdf.drop('geometry', axis=1).values) + ".  ")
-
-    # make quaery from polygon
-    geom = geom = geometry.Geometry(geom=gdf.iloc[0].geometry, crs=gdf.crs)
-    
+    # add geom to dc query dict
+    if isinstance(gdf, datacube.utils.geometry._base.Geometry):
+        gdf = gpd.GeoDataFrame({'col1':['name'],'geometry':gdf.geom}, crs=gdf.crs)
+    geom = geometry.Geometry(geom=gdf.iloc[0].geometry, crs=gdf.crs)
     query = {"geopolygon": geom, "time": time}
-    
+
     # Create a datacube instance
     dc = datacube.Datacube(app="wetlands insight tool")
 
     # load landsat 5,7,8 data
+    warnings.filterwarnings("ignore")
     ds_ls = load_ard(
         dc=dc,
         products=["ls8_sr", "ls7_sr", "ls5_sr"],
-        output_crs='epsg:6933',
+        output_crs="epsg:6933",
         min_gooddata=min_gooddata,
+        mask_filters=(['opening', 3], ['dilation', 3]),
         measurements=["red", "green", "blue", "nir", "swir_1", "swir_2"],
         dask_chunks=dask_chunks,
-        group_by='solar_day',
+        group_by="solar_day",
         resolution=(-30, 30),
         verbose=verbose,
         **query,
-    )
+    ).persist()
 
     # create polygon mask
-    mask = xr_rasterize(gdf.iloc[[0]], ds_ls)
+    if isinstance(gdf, datacube.utils.geometry._base.Geometry):
+        mask=xr_rasterize(gdf, ds_ls)
+    else:
+        mask = xr_rasterize(gdf.iloc[[0]], ds_ls)
     ds_ls = ds_ls.where(mask)
 
     # calculate tasselled cap wetness within masked AOI
     if verbose:
         print("calculating tasseled cap wetness index ")
-    
+
     with HiddenPrints():
-        warnings.filterwarnings("ignore")
-        tcw = calculate_indices(ds_ls, index=['TCW'],
-                                    normalise=False,
-                                    collection='c2',
-                                    drop=True)
+        tcw = calculate_indices(
+            ds_ls, index=["TCW"], normalise=False, collection="c2", drop=True
+        )
     tcw = tcw.TCW >= TCW_threshold
     tcw = tcw.where(mask, 0)
 
     if verbose:
         print("Loading WOfS layers ")
-    
+
     wofls = dc.load(
         product="wofs_ls",
         like=ds_ls,
         fuse_func=wofs_fuser,
         dask_chunks=dask_chunks,
-        collection_category='T1'
+        collection_category="T1",
     )
-    
-    #boolean of wet/dry
+
+    # boolean of wet/dry
     wofls_wet = masking.make_mask(wofls.water, wet=True)
-    
-    #mask sure wofs matches other datasets
+
+    # mask sure wofs matches other datasets
     wofls_wet = wofls_wet.where(wofls_wet.time == tcw.time)
-    
+
     # apply the polygon mask
     wofls_wet = wofls_wet.where(mask)
 
     # load Fractional cover
     if verbose:
         print("Loading fractional Cover")
-    
+
     # load fractional cover
     fc_ds = dc.load(
         product="fc_ls",
@@ -203,39 +201,42 @@ def WIT_drill(gdf,
         dask_chunks=dask_chunks,
         like=ds_ls,
         measurements=["pv", "npv", "bs"],
-        collection_category='T1'
+        collection_category="T1",
     )
     
+    # mask sure fc matches other datasets
+    fc_ds = fc_ds.where(fc_ds.time == tcw.time)
+
     # use wofls mask to cloud mask FC
     clear_and_dry = masking.make_mask(wofls, dry=True).water
     fc_ds = fc_ds.where(clear_and_dry)
 
     # mask with polygon
     fc_ds = fc_ds.where(mask)
-    
-    #mask with TC wetness
+
+    # mask with TC wetness
     fc_ds_noTCW = fc_ds.where(tcw == False)
 
     if verbose:
         print("Generating classification")
-   
+
     # Cast the dataset to a dataarray
     fc_ds_noTCW = fc_ds_noTCW.to_array(dim="variable", name="fc_ds_noTCW")
 
-    # turn FC array into integer only as nanargmax doesn't 
+    # turn FC array into integer only as nanargmax doesn't
     # seem to handle floats the way we want it to
-    fc_ds_noTCW = fc_ds_noTCW.astype("int8")
+    fc_int = fc_ds_noTCW.astype("int8")
 
     # use nanargmax to get the index of the maximum value
-    BSPVNPV = fc_ds_noTCW.argmax(dim="variable")
+    BSPVNPV = fc_int.argmax(dim="variable")
 
+    #int dytype remocves NaNs so we need to create mask again
     FC_mask = xr.ufuncs.isfinite(fc_ds_noTCW).all(dim="variable")
-    # #re-mask with nans to remove no-data
     BSPVNPV = BSPVNPV.where(FC_mask)
-    
+
     # Restack the Fractional cover dataset all together
     # CAUTION:ARGMAX DEPENDS ON ORDER OF VARIABALES IN
-    # DATASET. NEED TO ADJUST 0,1,2 BELOW DEPENDING ON ORDER OF FC VARIABLES
+    # DATASET. NEED TO ADJUST BELOW DEPENDING ON ORDER OF FC VARIABLES
     FC_dominant = xr.Dataset(
         {
             "bs": (BSPVNPV == 2).where(FC_mask),
@@ -243,56 +244,37 @@ def WIT_drill(gdf,
             "npv": (BSPVNPV == 1).where(FC_mask),
         }
     )
+
+    # pixel counts
+    pixels = mask.sum(dim=["x", "y"])
     
-    # pixels counts
-    pixels = mask.sum(dim=["x", "y"]).compute()
-    tcw_pixel_count = tcw.sum(dim=["x", "y"]).persist()
+    tcw_pixel_count = tcw.sum(dim=["x", "y"]).compute()
     FC_count = FC_dominant.sum(dim=["x", "y"]).compute()
     wofs_pixels = wofls_wet.sum(dim=["x", "y"]).compute()
 
     # count percentages
     wofs_area_percent = (wofs_pixels / pixels) * 100
     tcw_area_percent = (tcw_pixel_count / pixels) * 100
-    tcw_less_wofs = tcw_area_percent - wofs_area_percent #wet not wofs
+    tcw_less_wofs = tcw_area_percent - wofs_area_percent  # wet not wofs
 
     # Fractional cover pixel count method
     # Get number of FC pixels, divide by total number of pixels per polygon
-    # Work out the number of nodata pixels in the data 
+    # Work out the number of nodata pixels in the data
     BS_percent = (FC_count.bs / pixels) * 100
     PV_percent = (FC_count.pv / pixels) * 100
     NPV_percent = (FC_count.npv / pixels) * 100
-    NoData = (
-        100
-        - wofs_area_percent
-        - tcw_less_wofs
-        - PV_percent
-        - NPV_percent
-        - BS_percent
-    )
-    NoDataPixels = (NoData / 100) * pixels
-    
-    #re-do percentages but no handling no-data pixels within polygon
-    BS_percent = (FC_count.bs / (pixels - NoDataPixels)) * 100
-    PV_percent = (FC_count.pv / (pixels - NoDataPixels)) * 100
-    NPV_percent = (FC_count.npv / (pixels - NoDataPixels)) * 100
-    wofs_area_percent = (wofs_pixels / (pixels - NoDataPixels)) * 100
-    tcw_area_percent = (tcw_pixel_count / (pixels - NoDataPixels)) * 100
+    NoData_count = ((
+        100 - wofs_area_percent - tcw_less_wofs - PV_percent - NPV_percent - BS_percent
+    ) / 100) * pixels
+
+    # re-do percentages but now handling any no-data pixels within polygon
+    BS_percent = (FC_count.bs / (pixels - NoData_count)) * 100
+    PV_percent = (FC_count.pv / (pixels - NoData_count)) * 100
+    NPV_percent = (FC_count.npv / (pixels - NoData_count)) * 100
+    wofs_area_percent = (wofs_pixels / (pixels - NoData_count)) * 100
+    tcw_area_percent = (tcw_pixel_count / (pixels - NoData_count)) * 100
     tcw_less_wofs = tcw_area_percent - wofs_area_percent
 
-#     # last check for timestep matching before we plot
-#     wofs_area_percent2 = wofs_area_percent2.where(
-#         wofs_area_percent2.time == Bare_soil_percent2.time
-#     )
-#     Bare_soil_percent2 = Bare_soil_percent2.where(
-#         Bare_soil_percent2.time == wofs_area_percent2.time
-#     )
-#     Photosynthetic_veg_percent2 = Photosynthetic_veg_percent2.where(
-#         Photosynthetic_veg_percent2.time == wofs_area_percent2.time
-#     )
-#     NonPhotosynthetic_veg_percent2 = NonPhotosynthetic_veg_percent2.where(
-#         NonPhotosynthetic_veg_percent2.time == wofs_area_percent2.time
-#     )
-    
     # start setup of dataframe by adding only one dataset
     df = pd.DataFrame(
         data=wofs_area_percent.data,
@@ -308,13 +290,11 @@ def WIT_drill(gdf,
 
     # round numbers
     df = df.round(2)
-
+    
     # save the csv of the output data used to create the stacked plot for the polygon drill
     if export_csv:
-        print('exporting csv: ' + export_csv)
-        df.to_csv(
-            export_csv, index_label="Datetime"
-        )
+        print("exporting csv: " + export_csv)
+        df.to_csv(export_csv, index_label="Datetime")
 
     return df
 
@@ -435,8 +415,7 @@ def animated_timeseries_WIT(
             fig, (ax1, ax2) = plt.subplots(
                 ncols=2, gridspec_kw={"width_ratios": [1, 2]}
             )
-            fig.subplots_adjust(left=0, bottom=0, right=1,
-                                top=1, wspace=0.2, hspace=0)
+            fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0.2, hspace=0)
             fig.set_size_inches(10.0, height * 0.5, forward=True)
             ax1.axis("off")
             ax2.margins(x=0.01)
@@ -469,8 +448,7 @@ def animated_timeseries_WIT(
                 df.green_veg_percent,
                 df.dry_veg_percent,
                 df.bare_soil_percent,
-                labels=["open water", "wet",
-                        "green veg", "dry veg", "bare soil"],
+                labels=["open water", "wet", "green veg", "dry veg", "bare soil"],
                 colors=pal,
                 alpha=0.6,
                 **pandasplot_kwargs,
@@ -571,8 +549,7 @@ def animated_timeseries_WIT(
 
                 except:
 
-                    date_string = ds[time_dim][{
-                        time_dim: frame_i}].values.item()
+                    date_string = ds[time_dim][{time_dim: frame_i}].values.item()
 
                 # Create annotation string based on title and date specifications:
                 title = title_list[frame_i]
@@ -649,8 +626,7 @@ def animated_timeseries_WIT(
 
             elif output_path[-3:] == "gif":
                 print("    Exporting animation to {}".format(output_path))
-                ani.save(output_path, dpi=width_pixels /
-                         10.0, writer="imagemagick")
+                ani.save(output_path, dpi=width_pixels / 10.0, writer="imagemagick")
 
             else:
                 print("    Output file type must be either .mp4, .wmv or .gif")
@@ -694,8 +670,7 @@ def _ds_to_arrraylist(
 
             # Create new one band array
             img_toshow = exposure.rescale_intensity(
-                ds_i[bands[0]].values, in_range=(
-                    p_low, p_high), out_range="image"
+                ds_i[bands[0]].values, in_range=(p_low, p_high), out_range="image"
             )
 
         else:
