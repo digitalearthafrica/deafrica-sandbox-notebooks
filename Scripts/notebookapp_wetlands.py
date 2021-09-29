@@ -100,8 +100,9 @@ def select_region_app(date, product, size_limit=12000):
 def WIT_app(
     gdf,
     time_range,
-    min_gooddata=0.80,
+    min_gooddata=0.85,
     TCW_threshold=-0.035,
+    resample_frequency=None,
     export_csv=None,
     export_plot=None,
     dask_chunks=dict(x=1000, y=1000, time=1),
@@ -121,6 +122,10 @@ def WIT_app(
         of good quality pixels required for a satellite observation to be loaded
         and therefore included in the WIT plot.  Defaults to 0.8, which should
         be considered a minimum percentage.
+    resample_frequency : str 
+        Option for resampling time-series of input datasets. This option is useful
+        for either smoothing the WIT plot, or because the area of analysis is larger
+        than a scene width and therefore requires composites.
     TCW_threshold : float, optional
         The tasseled cap wetness threshold, larger than which a pixel will be
         considered 'wet'. Defaults to -0.035.
@@ -155,6 +160,7 @@ def WIT_app(
         gdf=gdf,
         time=time_range,
         min_gooddata=min_gooddata,
+        resample_frequency=resample_frequency,
         TCW_threshold=TCW_threshold,
         export_csv=export_csv,
         dask_chunks=dask_chunks,

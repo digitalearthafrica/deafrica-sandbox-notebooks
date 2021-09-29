@@ -55,8 +55,9 @@ from deafrica_tools.classification import HiddenPrints
 def WIT_drill(
     gdf,
     time,
-    min_gooddata=0.80,
+    min_gooddata=0.85,
     TCW_threshold=-0.035,
+    resample_frequency=None,
     export_csv=None,
     dask_chunks=None,
     verbose=False,
@@ -83,12 +84,15 @@ def WIT_drill(
     min_gooddata : Float, optional
         A number between 0 and 1 (e.g 0.8) indicating the minimum percentage
         of good quality pixels required for a satellite observation to be loaded
-        and therefore included in the WIT plot.  Defaults to 0.8, which should
-        be considered a minimum percentage.
+        and therefore included in the WIT plot.
     TCW_threshold : Int, optional
         The tasseled cap wetness threshold, beyond which a pixel will be
         considered 'wet'. Defaults to -6000. Consider the surface reflectance
         scaling of the Landsat product when adjusting this (C2 = 0-1)
+    resample_frequency : str 
+        Option for resampling time-series of input datasets. This option is useful
+        for either smoothing the WIT plot, or because the area of analysis is larger
+        than a scene width and therefore requires composites.
     export_csv : str, optional
         To export the returned pandas dataframe provide
         a location string (e.g. 'output/results.csv')
@@ -127,23 +131,26 @@ def WIT_drill(
         resolution=(-30, 30),
         verbose=verbose,
         **query,
-    ).persist()
-
+    ).persist() 
+    
     # create polygon mask
-    if isinstance(gdf, datacube.utils.geometry._base.Geometry):
-        mask=xr_rasterize(gdf, ds_ls)
-    else:
-        mask = xr_rasterize(gdf.iloc[[0]], ds_ls)
+    mask = xr_rasterize(gdf.iloc[[0]], ds_ls)
     ds_ls = ds_ls.where(mask)
-
+    
     # calculate tasselled cap wetness within masked AOI
     if verbose:
         print("calculating tasseled cap wetness index ")
-
-    with HiddenPrints():
+    
+    with HiddenPrints(): #suppres the prints from this func
         tcw = calculate_indices(
             ds_ls, index=["TCW"], normalise=False, collection="c2", drop=True
         )
+    
+    if resample_frequency is not None:
+        if verbose:
+            print('Resampling TCW to '+ resample_frequency)
+        tcw = tcw.resample(time=resample_frequency).max()
+    
     tcw = tcw.TCW >= TCW_threshold
     tcw = tcw.where(mask, 0)
 
@@ -160,10 +167,15 @@ def WIT_drill(
 
     # boolean of wet/dry
     wofls_wet = masking.make_mask(wofls.water, wet=True)
-
+    
+    if resample_frequency is not None:
+        if verbose:
+            print('Resampling WOfS to '+ resample_frequency)
+        wofls_wet = wofls_wet.resample(time=resample_frequency).max()
+    
     # mask sure wofs matches other datasets
     wofls_wet = wofls_wet.where(wofls_wet.time == tcw.time)
-
+    
     # apply the polygon mask
     wofls_wet = wofls_wet.where(mask)
 
@@ -181,12 +193,17 @@ def WIT_drill(
         collection_category="T1",
     )
     
-    # mask sure fc matches other datasets
-    fc_ds = fc_ds.where(fc_ds.time == tcw.time)
-
     # use wofls mask to cloud mask FC
     clear_and_dry = masking.make_mask(wofls, dry=True).water
     fc_ds = fc_ds.where(clear_and_dry)
+    
+    if resample_frequency is not None:
+        if verbose:
+            print('Resampling FC to '+ resample_frequency)
+        fc_ds = fc_ds.resample(time=resample_frequency).mean()
+    
+    # mask sure fc matches other datasets
+    fc_ds = fc_ds.where(fc_ds.time == tcw.time)
 
     # mask with polygon
     fc_ds = fc_ds.where(mask)
@@ -251,6 +268,10 @@ def WIT_drill(
     wofs_area_percent = (wofs_pixels / (pixels - NoData_count)) * 100
     tcw_area_percent = (tcw_pixel_count / (pixels - NoData_count)) * 100
     tcw_less_wofs = tcw_area_percent - wofs_area_percent
+    
+    # Sometimes when we resample datastes, WOfS extent can be
+    # greater than the wetness extent, thus make negative values == zero
+    tcw_less_wofs = tcw_less_wofs.where(tcw_less_wofs>=0, 0) 
 
     # start setup of dataframe by adding only one dataset
     df = pd.DataFrame(
