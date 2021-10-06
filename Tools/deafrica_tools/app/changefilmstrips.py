@@ -6,7 +6,7 @@ change filmstrips notebook, inside the Real_world_examples folder.
 Available functions:
     run_filmstrip_app
 
-Last modified: April 2021
+Last modified: October 2021
 '''
 
 # Load modules

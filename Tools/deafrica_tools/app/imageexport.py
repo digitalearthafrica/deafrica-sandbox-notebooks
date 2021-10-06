@@ -7,7 +7,7 @@ Available functions:
     select_region_app
     export_image_app
 
-Last modified: September 2021
+Last modified: October 2021
 '''
 
 # Load modules

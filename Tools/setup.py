@@ -49,12 +49,20 @@ REQUIRED = [
     'OWSLib',
     'osgeo',
     'fiona',
-    'shapely'
+    'shapely',
+    # app subpackage modules
+    'ipyleaflet',
+    'datetime',
+    'json',
+    'IPython',
+    'ipywidgets',
+    'itertools',
+    'traitlets'
 ]
 
 # What packages are optional?
 EXTRAS = {
-    'jupyter': ['IPython', 'ipywidgets', 'ipyleaflet'],
+    # 'jupyter': ['IPython', 'ipywidgets'], moved to REQUIRED
     'boto': ['boto3'],
 }
 

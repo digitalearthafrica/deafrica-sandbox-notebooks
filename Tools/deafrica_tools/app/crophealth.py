@@ -7,7 +7,7 @@ Available functions:
     load_crophealth_data
     run_crophelath_app
 
-Last modified: April 2021
+Last modified: October 2021
 '''
 
 # Load modules
