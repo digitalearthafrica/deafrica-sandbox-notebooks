@@ -1,4 +1,4 @@
-# notebookapp_crophealth.py
+# crophealth.py
 '''
 This file contains functions for loading and interacting with data in the
 crop health notebook, inside the Real_world_examples folder.

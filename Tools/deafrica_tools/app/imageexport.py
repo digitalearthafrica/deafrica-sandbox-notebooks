@@ -1,4 +1,4 @@
-# notebookapp_imageexport.py
+# imageexport.py
 '''
 This file contains functions for creating an interactive map for 
 selecting satellite imagery and exporting image files.

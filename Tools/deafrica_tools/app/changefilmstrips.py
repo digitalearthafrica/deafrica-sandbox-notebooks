@@ -1,4 +1,4 @@
-# notebookapp_changefilmstrips.py
+# changefilmstrips.py
 '''
 This file contains functions for loading and interacting with data in the
 change filmstrips notebook, inside the Real_world_examples folder.
