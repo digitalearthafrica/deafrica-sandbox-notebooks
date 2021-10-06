@@ -61,6 +61,7 @@ def WIT_drill(
     export_csv=None,
     dask_chunks=None,
     verbose=False,
+    verbose_progress=False,
 ):
     """
     The Wetlands Insight Tool. This function loads FC, WOfS, and Landsat data,
@@ -99,7 +100,9 @@ def WIT_drill(
     dask_chunks : dict, optional
         To lazily load the datasets using dask, pass a dictionary containing
         the dimensions over which to chunk e.g. {'time':-1, 'x':250, 'y':250}.
-     verbose:
+    verbose:
+    verbose_progress: str, optional
+        For use with Dask progress bar
 
     Returns
     -------
@@ -119,6 +122,9 @@ def WIT_drill(
 
     # load landsat 5,7,8 data
     warnings.filterwarnings("ignore")
+
+    if verbose_progress:
+        print("Loading Landsat data")
     ds_ls = load_ard(
         dc=dc,
         products=["ls8_sr", "ls7_sr", "ls5_sr"],
@@ -223,7 +229,7 @@ def WIT_drill(
 
     # use nanargmax to get the index of the maximum value
     BSPVNPV = fc_int.argmax(dim="variable")
-
+    
     #int dytype remocves NaNs so we need to create mask again
     FC_mask = xr.ufuncs.isfinite(fc_ds_noTCW).all(dim="variable")
     BSPVNPV = BSPVNPV.where(FC_mask)
@@ -231,6 +237,7 @@ def WIT_drill(
     # Restack the Fractional cover dataset all together
     # CAUTION:ARGMAX DEPENDS ON ORDER OF VARIABALES IN
     # DATASET. NEED TO ADJUST BELOW DEPENDING ON ORDER OF FC VARIABLES
+    
     FC_dominant = xr.Dataset(
         {
             "bs": (BSPVNPV == 2).where(FC_mask),
@@ -242,8 +249,17 @@ def WIT_drill(
     # pixel counts
     pixels = mask.sum(dim=["x", "y"])
     
+
+    if verbose_progress:
+        print("Computing area classified as wet")
     tcw_pixel_count = tcw.sum(dim=["x", "y"]).compute()
+    
+    if verbose_progress:
+        print("Computing area classified as green veg, dry veg, and bare soil")
     FC_count = FC_dominant.sum(dim=["x", "y"]).compute()
+    
+    if verbose_progress:
+        print("Computing area classified as open water")
     wofs_pixels = wofls_wet.sum(dim=["x", "y"]).compute()
 
     # count percentages
