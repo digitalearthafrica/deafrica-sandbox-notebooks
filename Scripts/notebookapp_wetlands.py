@@ -167,15 +167,8 @@ def WIT_app(
         verbose=verbose,
     )
 
-    # save the csv
-    if export_csv:
-        if verbose:
-            print("exporting csv: " + export_csv)
-        df.to_csv(export_csv, index_label="Datetime")
-
     # ---Plotting------------------------------
-
-    fontsize = 17
+    plt.rcParams.update({'font.size': 17})
     # set up color palette
     pal = [
         sns.xkcd_rgb["cobalt blue"],
@@ -207,11 +200,10 @@ def WIT_app(
     )
 
     # set axis limits to the min and max
-    plt.axis(xmin=df.index[0], xmax=df.index[-1], ymin=0, ymax=100, fontsize=fontsize)
-    plt.tick_params(labelsize=fontsize)
+    plt.axis(xmin=df.index[0], xmax=df.index[-1], ymin=0, ymax=100)
     # add a legend and a tight plot box
-    plt.legend(loc="lower left", framealpha=0.6, fontsize=fontsize)
-    plt.title("Fractional Cover, Wetness, and Water", fontsize=fontsize)
+    plt.legend(loc="lower left", framealpha=0.6)
+    plt.title("Fractional Cover, Wetness, and Water")
     plt.tight_layout()
     plt.show()
     if export_plot:

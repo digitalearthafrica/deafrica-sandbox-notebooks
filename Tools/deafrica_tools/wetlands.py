@@ -64,15 +64,16 @@ def WIT_drill(
     verbose_progress=False,
 ):
     """
-    The Wetlands Insight Tool. This function loads FC, WOfS, and Landsat data,
-    and calculates tasseled cap wetness, in order to determine the dominant
-    land cover class within a polygon at each satellite observation.
+    The Wetlands Insight Tool run onver an extent covered by a polygon.
+    This function loads FC, WOfS, and Landsat data, and calculates tasseled
+    cap wetness, in order to determine the dominant land cover class
+    within a polygon at each satellite observation.
 
     The output is a pandas dataframe containing a timeseries of the relative
     fractions of each class at each time-step. This forms the input to produce
     a stacked line-plot.
 
-    Last modified: Sept 2021
+    Last modified: Oct 2021
 
     Parameters
     ----------
@@ -85,17 +86,20 @@ def WIT_drill(
     min_gooddata : Float, optional
         A number between 0 and 1 (e.g 0.8) indicating the minimum percentage
         of good quality pixels required for a satellite observation to be loaded
-        and therefore included in the WIT plot.
+        and therefore included in the WIT plot. This number should, at a minimum,
+        be set to 0.80 to limit biases in the result if not resampling the time-series.
+        If resampling the data using the parameter `resample_frequency`, then
+        setting this number to 0 (or a low float number) is acceptable.
     TCW_threshold : Int, optional
         The tasseled cap wetness threshold, beyond which a pixel will be
-        considered 'wet'. Defaults to -6000. Consider the surface reflectance
-        scaling of the Landsat product when adjusting this (C2 = 0-1)
+        considered 'wet'. Defaults to -0.035.
     resample_frequency : str 
         Option for resampling time-series of input datasets. This option is useful
         for either smoothing the WIT plot, or because the area of analysis is larger
-        than a scene width and therefore requires composites.
+        than a scene width and therefore requires composites. Options include any
+        str accepted by `xarray.resample(time=)`. The resampling method used is .max()
     export_csv : str, optional
-        To export the returned pandas dataframe provide
+        To save the returned pandas dataframe as a .csv file, pass a
         a location string (e.g. 'output/results.csv')
     dask_chunks : dict, optional
         To lazily load the datasets using dask, pass a dictionary containing
@@ -137,7 +141,7 @@ def WIT_drill(
         resolution=(-30, 30),
         verbose=verbose,
         **query,
-    ).persist() 
+    )
     
     # create polygon mask
     mask = xr_rasterize(gdf.iloc[[0]], ds_ls)
@@ -159,6 +163,7 @@ def WIT_drill(
     
     tcw = tcw.TCW >= TCW_threshold
     tcw = tcw.where(mask, 0)
+    tcw = tcw.persist() 
 
     if verbose:
         print("Loading WOfS layers ")
@@ -206,7 +211,7 @@ def WIT_drill(
     if resample_frequency is not None:
         if verbose:
             print('Resampling FC to '+ resample_frequency)
-        fc_ds = fc_ds.resample(time=resample_frequency).mean()
+        fc_ds = fc_ds.resample(time=resample_frequency).max()
     
     # mask sure fc matches other datasets
     fc_ds = fc_ds.where(fc_ds.time == tcw.time)
