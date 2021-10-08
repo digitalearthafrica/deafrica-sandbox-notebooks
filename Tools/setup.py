@@ -5,8 +5,7 @@ import os
 from setuptools import find_packages, setup
 
 # Where are we?
-if 'sandbox' in os.getenv('JUPYTER_IMAGE', default=''):
-    IS_DEAFRICA_SANDBOX = True
+IS_DEAFRICA_SANDBOX = ('sandbox' in os.getenv('JUPYTER_IMAGE', default=''))
 
 # What packages are required for this module to be executed?
 # These are all on the Sandbox so shouldn't need installing on those platforms.
