@@ -1,4 +1,4 @@
-# notebookapp_crophealth.py
+# crophealth.py
 '''
 This file contains functions for loading and interacting with data in the
 crop health notebook, inside the Real_world_examples folder.
@@ -7,7 +7,7 @@ Available functions:
     load_crophealth_data
     run_crophelath_app
 
-Last modified: April 2021
+Last modified: October 2021
 '''
 
 # Load modules

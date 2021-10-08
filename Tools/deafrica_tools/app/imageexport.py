@@ -1,4 +1,4 @@
-# notebookapp_imageexport.py
+# imageexport.py
 '''
 This file contains functions for creating an interactive map for 
 selecting satellite imagery and exporting image files.
@@ -7,7 +7,7 @@ Available functions:
     select_region_app
     export_image_app
 
-Last modified: September 2021
+Last modified: October 2021
 '''
 
 # Load modules
