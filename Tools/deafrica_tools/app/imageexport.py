@@ -248,7 +248,7 @@ def export_image_app(geopolygon,
     dc = datacube.Datacube(app='Exporting_satellite_images')
 
     # Configure local dask cluster
-    create_local_dask_cluster()
+    client = create_local_dask_cluster(return_client=True)
 
     # Create query after adjusting interval time to UTC by
     # adding a UTC offset of -10 hours. 
@@ -349,4 +349,8 @@ def export_image_app(geopolygon,
 
     # Export to file
     plt.imsave(fname=fname, arr=rgb_rescaled, format=output_format)
+    
+    #close dask client
+    client.close()
+    
     print('Finished exporting image.')
