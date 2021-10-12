@@ -128,7 +128,7 @@ def tidal_tag(
         obs_tideheights = [predictedtide.tide_m for predictedtide in obs_predictedtides]
 
         # Assign tide heights to the dataset as a new variable
-        ds["tide_height"] = xr.DataArray(obs_tideheights, [("time", ds.time)])
+        ds["tide_height"] = xr.DataArray(obs_tideheights, [("time", ds.time.values)])
 
         # Optionally calculate the tide phase for each observation
         if ebb_flow:
@@ -153,7 +153,7 @@ def tidal_tag(
             ]
 
             # Assign tide phase to the dataset as a new variable
-            ds["ebb_flow"] = xr.DataArray(tidal_phase, [("time", ds.time)])
+            ds["ebb_flow"] = xr.DataArray(tidal_phase, [("time", ds.time.values)])
 
         # If swap_dims = True, make tide height the primary dimension
         # instead of time
