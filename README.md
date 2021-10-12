@@ -26,7 +26,7 @@ The repository is based around the following directory structure (from simple to
 
 The supporting scripts and data for the notebooks are kept in the following directories:
 
-- [Tools](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Scripts): *Python functions and algorithms developed to assist in analysing DE Africa data (e.g. loading data, plotting, spatial analysis, machine learning)* 
+- [Tools](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Tools): *Python functions and algorithms developed to assist in analysing DE Africa data (e.g. loading data, plotting, spatial analysis, machine learning)* 
 
 - [Supplementary_data](https://github.com/GeoscienceAustralia/dea-notebooks/tree/master/Supplementary_data): *Supplementary files required for the analyses above (e.g. images, rasters, shapefiles, training data)*
 
