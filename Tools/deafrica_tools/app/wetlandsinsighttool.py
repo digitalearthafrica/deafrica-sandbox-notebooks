@@ -1,6 +1,6 @@
-# wetlands_app.py
+# wetlandsinsighttool.py
 """
-Description: This file contains a set of python functions for the interactive wetlands insight tool
+Description: This file contains the wetlands insight tool class, which can be used to run an interactive version of the wetlands isn
 
 License: The code in this notebook is licensed under the Apache License,
 Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth 
@@ -43,18 +43,10 @@ from ipywidgets import (
     GridspecLayout,
     Button,
     Layout,
-    jslink,
-    IntText,
-    IntSlider,
-    DatePicker,
     HBox,
     VBox,
-    Text,
-    BoundedFloatText,
     HTML,
-    Dropdown,
     Output,
-    Label,
 )
 import json
 import geopandas as gpd
@@ -63,116 +55,19 @@ from dask.diagnostics import ProgressBar
 
 from deafrica_tools.dask import create_local_dask_cluster
 from deafrica_tools.wetlands import WIT_drill
-
-
-def create_map():
-
-    basemap_osm = basemap_to_tiles(basemaps.OpenStreetMap.Mapnik)
-    basemap_esri = basemap_to_tiles(basemaps.Esri.WorldImagery)
-    basemap_cartodb = basemap_to_tiles(basemaps.CartoDB.Positron)
-
-    m = Map(center=(4, 20), zoom=3, basemap=basemap_esri)
-
-    return m
-
-
-def create_deafrica_layer(product, date):
-
-    # Load DEA WMS
-    class TimeWMSLayer(WMSLayer):
-        time = Unicode("").tag(sync=True, o=True)
-
-    time_wms = TimeWMSLayer(
-        url="https://ows.digitalearth.africa/",
-        layers=product,
-        time=date,
-        format="image/png",
-        transparent=True,
-        attribution="Digital Earth Africa",
-    )
-
-    return time_wms
-
-
-def create_datepicker(description):
-
-    date_picker = DatePicker(description=description, disabled=False)
-
-    return date_picker
-
-
-def create_drawcontrol():
-
-    draw_control = DrawControl()
-
-    draw_control.rectangle = {
-        "shapeOptions": {"fillColor": "#fca45d", "color": "#fca45d", "fillOpacity": 1.0}
-    }
-
-    draw_control.polygon = {
-        "shapeOptions": {
-            "fillColor": "#6be5c3",
-            "color": "#6be5c3",
-            "fillOpacity": 1.0,
-        },
-        "drawError": {"color": "#dd253b", "message": "Error!"},
-        "allowIntersection": False,
-    }
-
-    # Disable other forms
-    draw_control.marker = {}
-    draw_control.circle = {}
-    draw_control.circlemarker = {}
-    draw_control.polyline = {}
-
-    return draw_control
-
-
-def create_inputtext(value, placeholder, description):
-
-    input_text = Text(
-        value=value, placeholder=placeholder, description=description, disabled=False
-    )
-
-    return input_text
-
-
-def create_boundedfloattext(value, description, min_val, max_val, step_val):
-
-    float_text = BoundedFloatText(
-        value=value,
-        min=min_val,
-        max=max_val,
-        step=step_val,
-        description=description,
-        disabled=False,
-    )
-
-    return float_text
-
-
-def create_html(value):
-
-    html = HTML(
-        value=value,
-    )
-
-    return html
-
-
-def create_dropdown(options, value, description):
-
-    dropdown = Dropdown(
-        options=options,
-        value=value,
-        description=description,
-    )
-
-    return dropdown
+import deafrica_tools.app.widgetconstructors as deawidgets
+# from wetlands import WIT_drill
+# import widgetconstructors as deawidgets
 
 
 def make_box_layout():
-    return Layout(margin="0px 15px 15px 0px", padding="5px 5px 5px 5px")
+     return Layout(
+         #border='solid 1px black',
+         margin='0px 10px 10px 0px',
+         padding='5px 5px 5px 5px',
+         width='100%',
+         height='100%',
+     )
 
 
 def create_expanded_button(description, button_style):
@@ -188,8 +83,8 @@ class wit_app(HBox):
         super().__init__()
 
         ##########################################################
+        # INITIAL ATTRIBUTES #
 
-        # set any initial attributes here
         self.startdate = "2020-01-01"
         self.enddate = "2020-03-01"
         self.mingooddata = 0.0
@@ -206,12 +101,20 @@ class wit_app(HBox):
         self.target = None
         self.action = None
         self.gdf_drawn = None
-
-        self.paramlog = create_html(
-            "<h3>Wetlands Insight Tool</h3><p>Select parameters and AOI</p>"
-        )
-        self.paramlog.layout = make_box_layout()
-
+        
+        ##########################################################
+        # HEADER FOR APP #
+        
+        # Create the Header widget
+        header_title_text = "<h3>Wetlands Insight Tool</h3>"
+        instruction_text = "<p>Select parameters and AOI</p>"
+        self.header = deawidgets.create_html(header_title_text + instruction_text)
+        self.header.layout = make_box_layout()
+        
+        ##########################################################
+        # HANDLER FUNCTION FOR DRAW CONTROL #
+        
+        # Define the action to take once something is drawn on the map
         def update_geojson(target, action, geo_json):
 
             self.action = action
@@ -228,51 +131,64 @@ class wit_app(HBox):
             gdf_drawn_epsg6933 = gdf.copy().to_crs("EPSG:6933")
             m2_per_km2 = 10 ** 6
             area = gdf_drawn_epsg6933.area.values[0] / m2_per_km2
-            base_text = f"<h3>Wetlands Insight Tool</h3><p><b>Total polygon area</b>: {area:.2f} km<sup>2</sup></p>"
+            polyarea_text = f"<p><b>Total polygon area</b>: {area:.2f} km<sup>2</sup></p>"
 
             if area <= 5000:
-                confirmation_text = (
-                    f'<p style="color:#33cc33;">Area falls within recommended limit</p>'
-                )
-                self.paramlog.value = base_text + confirmation_text
+                confirmation_text = '<p style="color:#33cc33;">Area falls within recommended limit</p>'
+                self.header.value = header_title_text + polyarea_text + confirmation_text
             else:
-                warning_text = f'<p style="color:#ff5050;">Area is too large, please update your polygon</p>'
-                self.paramlog.value = base_text + warning_text
+                warning_text = '<p style="color:#ff5050;">Area is too large, please update your polygon</p>'
+                self.header.value = header_title_text + polyarea_text + warning_text
 
         ##########################################################
+        # WIDGETS FOR APP OUTPUTS #
 
+        self.dask_client = Output(layout=make_box_layout())
         self.progress_bar = Output(layout=make_box_layout())
         self.wit_plot = Output(layout=make_box_layout())
-        self.progress_header = create_html("")
+        self.progress_header = deawidgets.create_html("")
 
         ##########################################################
+        # MAP WIDGET, DRAWING TOOLS, WMS LAYERS #
 
+        # Create drawing tools
+        desired_drawtools = ['rectangle', 'polygon']
+        draw_control = deawidgets.create_drawcontrol(desired_drawtools)
+        
+        # Begin by displaying an empty layer group, and update the group with desired WMS on interaction.
         self.deafrica_layers = LayerGroup(layers=())
 
         # Create map widget
-        self.m = create_map()
-        draw_control = create_drawcontrol()
-        self.m.add_control(draw_control)
-        self.basemap = self.m.basemap
-        self.m.add_layer(self.deafrica_layers)
+        self.m = deawidgets.create_map()
         self.m.layout = make_box_layout()
+        
+        # Add tools to map widget
+        self.m.add_control(draw_control)
+        self.m.add_layer(self.deafrica_layers)
+        
+        # Store current basemap for future use
+        self.basemap = self.m.basemap
 
         ##########################################################
+        # WIDGETS FOR APP CONTROLS #
 
         # Create parameter widgets
-        startdate_picker = create_datepicker("")
-        enddate_picker = create_datepicker("")
-        min_good_data = create_boundedfloattext(self.mingooddata, "", 0.0, 1.0, 0.05)
-        resampling_freq = create_inputtext(self.resamplingfreq, self.resamplingfreq, "")
-        output_csv = create_inputtext(self.out_csv, self.out_csv, "")
-        output_plot = create_inputtext(self.out_plot, self.out_plot, "")
-        basemap_dropdown = create_dropdown(
-            self.product_list, self.product_list[0][1], ""
-        )
+        startdate_picker = deawidgets.create_datepicker()
+        enddate_picker = deawidgets.create_datepicker()
+        min_good_data = deawidgets.create_boundedfloattext(self.mingooddata, 0.0, 1.0, 0.05)
+        resampling_freq = deawidgets.create_inputtext(self.resamplingfreq, self.resamplingfreq)
+        output_csv = deawidgets.create_inputtext(self.out_csv, self.out_csv)
+        output_plot = deawidgets.create_inputtext(self.out_plot, self.out_plot)
+        deaoverlay_dropdown = deawidgets.create_dropdown(self.product_list, self.product_list[0][1])
         run_button = create_expanded_button("Run", "info")
 
+        ##########################################################
+        # COLLECTION OF ALL APP CONTROLS #
+        
         parameter_selection = VBox(
             [
+                HTML("<b>DEA Overlay:</b>"),
+                deaoverlay_dropdown,
                 HTML("<b>Start Date:</b>"),
                 startdate_picker,
                 HTML("<b>End Date:</b>"),
@@ -285,36 +201,36 @@ class wit_app(HBox):
                 output_csv,
                 HTML("<b>Output Plot:</b>"),
                 output_plot,
-                HTML("<b>DEA Overlay:</b>"),
-                basemap_dropdown,
-                run_button,
             ]
         )
         parameter_selection.layout = make_box_layout()
 
         ##########################################################
+        # SPECIFICATION OF APP LAYOUT #
 
         # Create the layout #[rowspan, colspan]
-        grid = GridspecLayout(12, 12, height="1200px", width="auto")
+        grid = GridspecLayout(11, 10, height="1100px", width="auto")
 
         # Controls and Status
-        grid[0, 0:6] = self.paramlog
-        grid[1:7, 0:3] = parameter_selection
+        grid[0, :] = self.header
+        grid[1:6, 0:2] = parameter_selection
+        grid[6, 0:2] = run_button
+        
+        # Dask and Progress info
+        grid[1, 7:] = self.dask_client
+        grid[2:7, 7:] = self.progress_bar
 
         # Map
-        grid[1:7, 3:] = self.m
-
-        # Progress bar
-        grid[7, 0:3] = self.progress_header
-        grid[8:, 0:3] = self.progress_bar
+        grid[1:7, 2:7] = self.m
 
         # Plot
-        grid[7:, 3:] = self.wit_plot
+        grid[7:, :] = self.wit_plot
 
         # Display using HBox children attribute
         self.children = [grid]
 
         ##########################################################
+        # SPECIFICATION UPDATE FUNCTIONS FOR EACH WIDGET #
 
         # Run update functions whenever various widgets are changed.
         startdate_picker.observe(self.update_startdate, "value")
@@ -323,11 +239,12 @@ class wit_app(HBox):
         resampling_freq.observe(self.update_resamplingfreq, "value")
         output_csv.observe(self.update_outputcsv, "value")
         output_plot.observe(self.update_outputplot, "value")
-        basemap_dropdown.observe(self.update_basemap, "value")
+        deaoverlay_dropdown.observe(self.update_deaoverlay, "value")
         run_button.on_click(self.run_app)
         draw_control.on_draw(update_geojson)
 
-        ##########################################################
+    ##############################################################
+    # DEFINITION OF ALL UPDATE FUNCTIONS #
 
     # set the start date to the new edited date
     def update_startdate(self, change):
@@ -354,7 +271,7 @@ class wit_app(HBox):
         self.out_plot = change.new
 
     # Update product
-    def update_basemap(self, change):
+    def update_deaoverlay(self, change):
 
         self.product = change.new
 
@@ -362,12 +279,13 @@ class wit_app(HBox):
             self.deafrica_layers.clear_layers()
         else:
             self.deafrica_layers.clear_layers()
-            layer = create_deafrica_layer(self.product, self.product_year)
+            layer = deawidgets.create_dea_wms_layer(self.product, self.product_year)
             self.deafrica_layers.add_layer(layer)
 
     def run_app(self, change):
-
+        
         # Clear progress bar and output areas before running
+        self.dask_client.clear_output()
         self.progress_bar.clear_output()
         self.wit_plot.clear_output()
 
@@ -375,40 +293,36 @@ class wit_app(HBox):
         dc = datacube.Datacube(app="wetland_app")
 
         # Configure local dask cluster
-        client = create_local_dask_cluster(return_client=True, display_client=False)
+        with self.dask_client:
+            client = create_local_dask_cluster(
+                return_client=True, display_client=True
+            )
 
         # Set any defaults
-        resample_frequency = "1M"
         TCW_threshold = -0.035
         dask_chunks = dict(x=1000, y=1000, time=1)
 
         self.progress_header.value = f"<h3>Progress</h3>"
-
-        with self.progress_bar:
-            print("running WIT")
-
-        # self.paramlog.value = 'Running WIT'
+        
         # run wetlands polygon drill
-
         with self.progress_bar:
-            with ProgressBar():
-                warnings.filterwarnings("ignore")
+#             with ProgressBar():
+            warnings.filterwarnings("ignore")                
+            try:
                 df = WIT_drill(
                     gdf=self.gdf_drawn,
                     time=(self.startdate, self.enddate),
                     min_gooddata=self.mingooddata,
-                    resample_frequency=resample_frequency,
+                    resample_frequency=self.resamplingfreq,
                     TCW_threshold=TCW_threshold,
                     export_csv=self.out_csv,
                     dask_chunks=dask_chunks,
                     verbose=False,
                     verbose_progress=True,
                 )
-
-        # self.progress_bar.clear_output()
-        with self.progress_bar:
-            print("WIT complete")
-        # self.paramlog.value = 'WIT Complete'
+                print("WIT complete")
+            except AttributeError:
+                print("No polygon selected")
         
         # close down the dask client
         client.close()
@@ -435,7 +349,7 @@ class wit_app(HBox):
             # make a stacked area plot
             plt.close("all")
 
-            fig, ax = plt.subplots(constrained_layout=True, figsize=(22, 6))
+            fig, ax = plt.subplots(constrained_layout=True, figsize=(20, 6))
 
             ax.stackplot(
                 df.index,

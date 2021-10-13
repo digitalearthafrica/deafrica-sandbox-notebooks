@@ -41,6 +41,7 @@ from skimage import exposure
 import matplotlib.animation as animation
 import matplotlib.patheffects as PathEffects
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from dask.distributed import progress
 
 import datacube
 from datacube.utils import masking
