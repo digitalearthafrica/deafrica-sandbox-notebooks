@@ -12,7 +12,6 @@ IS_DEAFRICA_SANDBOX = ('sandbox' in os.getenv('JUPYTER_IMAGE', default=''))
 REQUIRED = [
     # load_era5
     'fsspec',
-    'warnings',
     # classification
     'numpy',
     'xarray',
@@ -39,10 +38,8 @@ REQUIRED = [
     'scikit-image',
     # temporal
     'hdstats',
-    'packaging'
     # spatial
     'OWSLib',
-    'osgeo',
     'fiona',
     'shapely',
     # app subpackage modules
