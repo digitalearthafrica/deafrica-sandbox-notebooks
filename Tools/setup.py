@@ -45,7 +45,6 @@ REQUIRED = [
     # app subpackage modules
     'ipyleaflet',
     'datetime',
-    'json',
     'IPython',
     'ipywidgets',
     'traitlets'
