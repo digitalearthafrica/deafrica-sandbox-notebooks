@@ -48,7 +48,6 @@ REQUIRED = [
     'json',
     'IPython',
     'ipywidgets',
-    'itertools',
     'traitlets'
 ]
 
