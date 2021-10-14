@@ -15,7 +15,6 @@ REQUIRED = [
     'warnings'
     # classification
     'numpy',
-    'multiprocessing',
     'xarray',
     'geopandas',
     'datacube',
