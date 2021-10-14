@@ -15,10 +15,7 @@ REQUIRED = [
     'warnings'
     # classification
     'numpy',
-    'copy',
-    'time',
     'multiprocessing',
-    'abc',
     'xarray',
     'geopandas',
     'datacube',
