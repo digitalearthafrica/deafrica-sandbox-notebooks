@@ -11,8 +11,8 @@ IS_DEAFRICA_SANDBOX = ('sandbox' in os.getenv('JUPYTER_IMAGE', default=''))
 # These are all on the Sandbox so shouldn't need installing on those platforms.
 REQUIRED = [
     # load_era5
-    'fsspec'
-    'warnings'
+    'fsspec',
+    'warnings',
     # classification
     'numpy',
     'xarray',
