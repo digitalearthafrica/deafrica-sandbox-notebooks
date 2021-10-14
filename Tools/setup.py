@@ -43,16 +43,12 @@ REQUIRED = [
     'fiona',
     'shapely',
     # app subpackage modules
-    'ipyleaflet',
-    'datetime',
-    'IPython',
-    'ipywidgets',
-    'traitlets'
+    'datetime'
 ]
 
 # What packages are optional?
 EXTRAS = {
-    # 'jupyter': ['IPython', 'ipywidgets'], moved to REQUIRED
+    'jupyter': ['IPython', 'ipywidgets', 'ipyleaflet'],
     'boto': ['boto3'],
 }
 
