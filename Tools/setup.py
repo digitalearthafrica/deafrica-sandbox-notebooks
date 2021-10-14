@@ -11,14 +11,9 @@ IS_DEAFRICA_SANDBOX = ('sandbox' in os.getenv('JUPYTER_IMAGE', default=''))
 # These are all on the Sandbox so shouldn't need installing on those platforms.
 REQUIRED = [
     # load_era5
-    'fsspec'
-    'warnings'
+    'fsspec',
     # classification
     'numpy',
-    'copy',
-    'time',
-    'multiprocessing',
-    'abc',
     'xarray',
     'geopandas',
     'datacube',
@@ -43,25 +38,17 @@ REQUIRED = [
     'scikit-image',
     # temporal
     'hdstats',
-    'packaging'
     # spatial
     'OWSLib',
-    'osgeo',
     'fiona',
     'shapely',
     # app subpackage modules
-    'ipyleaflet',
-    'datetime',
-    'json',
-    'IPython',
-    'ipywidgets',
-    'itertools',
-    'traitlets'
+    'datetime'
 ]
 
 # What packages are optional?
 EXTRAS = {
-    # 'jupyter': ['IPython', 'ipywidgets'], moved to REQUIRED
+    'jupyter': ['IPython', 'ipywidgets', 'ipyleaflet'],
     'boto': ['boto3'],
 }
 
