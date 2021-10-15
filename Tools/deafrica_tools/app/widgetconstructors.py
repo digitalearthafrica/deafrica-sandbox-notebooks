@@ -1,6 +1,7 @@
 # widgetconstructors.py
 """
-Description: This file contains a set of python functions for easily defining widgets in the context of DE Africa. These are largely cutomised wrappers around existing widgets
+Description: This file contains a set of python functions for easily defining widgets
+in the context of DE Africa. These are largely cutomised wrappers around existing widgets
 
 License: The code in this notebook is licensed under the Apache License,
 Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth 

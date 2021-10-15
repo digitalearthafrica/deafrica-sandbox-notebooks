@@ -1,6 +1,7 @@
 # wetlandsinsighttool.py
 """
-Description: This file contains the wetlands insight tool class, which can be used to run an interactive version of the wetlands isn
+Description: This file contains the wetlands insight tool class,
+which can be used to run an interactive version of the wetlands insight tool.
 
 License: The code in this notebook is licensed under the Apache License,
 Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth 
@@ -133,7 +134,7 @@ class wit_app(HBox):
             area = gdf_drawn_epsg6933.area.values[0] / m2_per_km2
             polyarea_text = f"<p><b>Total polygon area</b>: {area:.2f} km<sup>2</sup></p>"
 
-            if area <= 5000:
+            if area <= 3000:
                 confirmation_text = '<p style="color:#33cc33;">Area falls within recommended limit</p>'
                 self.header.value = header_title_text + polyarea_text + confirmation_text
             else:
@@ -187,7 +188,7 @@ class wit_app(HBox):
         
         parameter_selection = VBox(
             [
-                HTML("<b>DEA Overlay:</b>"),
+                HTML("<b>DE Africa Overlay:</b>"),
                 deaoverlay_dropdown,
                 HTML("<b>Start Date:</b>"),
                 startdate_picker,
@@ -301,9 +302,15 @@ class wit_app(HBox):
         # Set any defaults
         TCW_threshold = -0.035
         dask_chunks = dict(x=1000, y=1000, time=1)
-
-        self.progress_header.value = f"<h3>Progress</h3>"
         
+        #check resampling freq
+        if self.resamplingfreq  == 'None':
+            rsf = None
+        else:
+            rsf = self.resamplingfreq
+        
+        self.progress_header.value = f"<h3>Progress</h3>"
+            
         # run wetlands polygon drill
         with self.progress_bar:
 #             with ProgressBar():
@@ -313,7 +320,7 @@ class wit_app(HBox):
                     gdf=self.gdf_drawn,
                     time=(self.startdate, self.enddate),
                     min_gooddata=self.mingooddata,
-                    resample_frequency=self.resamplingfreq,
+                    resample_frequency=rsf,
                     TCW_threshold=TCW_threshold,
                     export_csv=self.out_csv,
                     dask_chunks=dask_chunks,
@@ -325,7 +332,7 @@ class wit_app(HBox):
                 print("No polygon selected")
         
         # close down the dask client
-        client.close()
+        client.shutdown()
 
         # save the csv
         if self.out_csv:
@@ -376,7 +383,7 @@ class wit_app(HBox):
 
             # add a legend and a tight plot box
             ax.legend(loc="lower left", framealpha=0.6)
-            ax.set_title("Fractional Cover, Wetness, and Water")
+            ax.set_title("Percentage Fractional Cover, Wetness, and Water")
             # plt.tight_layout()
             plt.show()
 

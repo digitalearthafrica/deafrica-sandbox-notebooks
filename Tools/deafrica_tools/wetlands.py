@@ -105,8 +105,9 @@ def WIT_drill(
     dask_chunks : dict, optional
         To lazily load the datasets using dask, pass a dictionary containing
         the dimensions over which to chunk e.g. {'time':-1, 'x':250, 'y':250}.
-    verbose:
-    verbose_progress: str, optional
+    verbose: bool, optional
+        If true, print statements are putput detailing the progress of the tool.
+    verbose_progress: bool, optional
         For use with Dask progress bar
 
     Returns
@@ -257,15 +258,15 @@ def WIT_drill(
     
 
     if verbose_progress:
-        print("Computing area classified as wet")
+        print("Computing wetness")
     tcw_pixel_count = tcw.sum(dim=["x", "y"]).compute()
     
     if verbose_progress:
-        print("Computing area classified as green veg, dry veg, and bare soil")
+        print("Computing green veg, dry veg, and bare soil")
     FC_count = FC_dominant.sum(dim=["x", "y"]).compute()
     
     if verbose_progress:
-        print("Computing area classified as open water")
+        print("Computing open water")
     wofs_pixels = wofls_wet.sum(dim=["x", "y"]).compute()
 
     # count percentages
