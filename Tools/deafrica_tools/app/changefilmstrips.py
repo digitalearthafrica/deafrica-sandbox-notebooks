@@ -276,6 +276,6 @@ def run_filmstrip_app(
         )
 
         # close dask client
-        client.close()
+        client.shutdown()
 
         return ds_geomedian
