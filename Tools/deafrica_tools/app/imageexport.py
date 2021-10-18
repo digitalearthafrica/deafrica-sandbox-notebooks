@@ -351,6 +351,6 @@ def export_image_app(geopolygon,
     plt.imsave(fname=fname, arr=rgb_rescaled, format=output_format)
     
     #close dask client
-    client.close()
+    client.shutdown()
     
     print('Finished exporting image.')
