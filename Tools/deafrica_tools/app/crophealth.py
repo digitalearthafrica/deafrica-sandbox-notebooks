@@ -38,7 +38,7 @@ from deafrica_tools.spatial import xr_rasterize
 from deafrica_tools.bandindices import calculate_indices
 
 
-def load_crophealth_data(lat, lon, buffer):
+def load_crophealth_data(lat, lon, buffer, date):
     """
     Loads Sentinel-2 analysis-ready data (ARD) product for the crop health
     case-study area over the last two years.
@@ -53,6 +53,9 @@ def load_crophealth_data(lat, lon, buffer):
     buffer:
          The number of square degrees to load around the central latitude and longitude. 
          For reasonable loading times, set this as `0.1` or lower.
+    date:
+         The most recent date to show data for.
+         The app will automatically load all data available for the two years prior to this date.
 
     Returns
     ----------
@@ -74,7 +77,7 @@ def load_crophealth_data(lat, lon, buffer):
     # Specify the date range
     # Calculated as today's date, subtract 730 days to collect two years of data
     # Dates are converted to strings as required by loading function below
-    end_date = dt.date.today()
+    end_date = dt.datetime.strptime(date, "%Y-%m-%d")
     start_date = end_date - dt.timedelta(days=730)
 
     time = (start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
