@@ -1037,13 +1037,15 @@ def plot_wofs(wofs, legend=True, **plot_kwargs):
         cb.set_ticklabels(cblabels)
     return im
 
-def plot_LULC(LULC, legend=True, **plot_kwargs):
-    """Plot an ESRI LULC image.
+def plot_LULC(LULC, product, legend=True, **plot_kwargs):
+    """Plot a LULC image.
     
     Parameters
     ----------
     LULC : xr.DataArray
         A DataArray containing LULC bit flags.
+    product : dict
+        'ESA' or 'ESRI'
     legend : bool
         Whether to plot a legend. Default True.
     plot_kwargs : dict
@@ -1053,22 +1055,43 @@ def plot_LULC(LULC, legend=True, **plot_kwargs):
     -------
     plot    
     """
+    if 'ESRI' in product
+    try:
     cmap = mcolours.ListedColormap([
-      np.array([0, 0, 0]) / 255,
-      np.array([65, 155, 223]) / 255,
-      np.array([57, 125, 73]) / 255,
-      np.array([136, 176, 83]) / 255,
-      np.array([122, 135, 198]) / 255,
-      np.array([228, 150, 53]) / 255,
-      np.array([223, 195, 90]) / 255,
-      np.array([196 ,40, 27]) / 255,
-      np.array([165, 155, 143]) / 255,
-      np.array([168, 235, 255]) / 255,
-      np.array([97, 97, 97]) / 255
-    ])
+        np.array([0, 0, 0]) / 255,
+        np.array([65, 155, 223]) / 255,
+        np.array([57, 125, 73]) / 255,
+        np.array([136, 176, 83]) / 255,
+        np.array([122, 135, 198]) / 255,
+        np.array([228, 150, 53]) / 255,
+        np.array([223, 195, 90]) / 255,
+        np.array([196 ,40, 27]) / 255,
+        np.array([165, 155, 143]) / 255,
+        np.array([168, 235, 255]) / 255,
+        np.array([97, 97, 97]) / 255
+        ])
     bounds=range(0,12)
     norm = mcolours.BoundaryNorm(np.array(bounds), cmap.N)
     cblabels = ['no data', 'water', 'trees', 'grass', 'flooded vegetation', 'crops', 'scrub/shrub', 'built area', 'bare ground', 'snow/ice', 'clouds']
+    if 'ESA' in product
+    try:
+    cmap = mcolours.ListedColormap([
+      np.array([0, 0, 0]) / 255,
+      np.array([0, 100, 0]) / 255,
+      np.array([255, 187, 34]) / 255,
+      np.array([255, 255, 76]) / 255,
+      np.array([240, 150, 255]) / 255,
+      np.array([250, 0, 0]) / 255,
+      np.array([180, 180, 180]) / 255,
+      np.array([240, 240, 240]) / 255,
+      np.array([0 ,100, 200]) / 255,
+      np.array([0, 150, 160]) / 255,
+      np.array([0, 207, 117]) / 255,
+      np.array([250, 230, 160]) / 255
+    ])
+    bounds=[-5,5,15,25,35,45,55,65,75,85,92,98,105]
+    norm = mcolours.BoundaryNorm(np.array(bounds), cmap.N)
+    cblabels = ['no data', 'tree cover', 'shrubland', 'grassland', 'cropland', 'built up', 'bare/sparse vegetation', 'snow and ice', 'permanent water bodies', 'herbaceous wetland', 'mangroves', 'moss and lichen']
 
     try:
         im = LULC.plot.imshow(cmap=cmap, norm=norm, add_colorbar=legend, **plot_kwargs)
@@ -1080,7 +1103,6 @@ def plot_LULC(LULC, legend=True, **plot_kwargs):
             cb = im.colorbar
         except AttributeError:
             cb = im.cbar
-        ticks = cb.get_ticks()
-        cb.set_ticks(np.arange(0,12,1)+0.5)
+        cb.set_ticks([0,10,20,30,40,50,60,70,80,88.5,95,101.5])
         cb.set_ticklabels(cblabels)
     return im
