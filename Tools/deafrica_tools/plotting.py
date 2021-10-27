@@ -1036,3 +1036,51 @@ def plot_wofs(wofs, legend=True, **plot_kwargs):
         cb.set_ticks(ticks + np.diff(ticks, append=256) / 2)
         cb.set_ticklabels(cblabels)
     return im
+
+def plot_LULC(LULC, legend=True, **plot_kwargs):
+    """Plot an ESRI LULC image.
+    
+    Parameters
+    ----------
+    LULC : xr.DataArray
+        A DataArray containing LULC bit flags.
+    legend : bool
+        Whether to plot a legend. Default True.
+    plot_kwargs : dict
+        Keyword arguments passed on to DataArray.plot.
+    
+    Returns
+    -------
+    plot    
+    """
+    cmap = mcolours.ListedColormap([
+      np.array([0, 0, 0]) / 255,
+      np.array([65, 155, 223]) / 255,
+      np.array([57, 125, 73]) / 255,
+      np.array([136, 176, 83]) / 255,
+      np.array([122, 135, 198]) / 255,
+      np.array([228, 150, 53]) / 255,
+      np.array([223, 195, 90]) / 255,
+      np.array([196 ,40, 27]) / 255,
+      np.array([165, 155, 143]) / 255,
+      np.array([168, 235, 255]) / 255,
+      np.array([97, 97, 97]) / 255
+    ])
+    bounds=range(0,12)
+    norm = mcolours.BoundaryNorm(np.array(bounds), cmap.N)
+    cblabels = ['no data', 'water', 'trees', 'grass', 'flooded vegetation', 'crops', 'scrub/shrub', 'built area', 'bare ground', 'snow/ice', 'clouds']
+
+    try:
+        im = LULC.plot.imshow(cmap=cmap, norm=norm, add_colorbar=legend, **plot_kwargs)
+    except AttributeError:
+        im = LULC.plot(cmap=cmap, norm=norm, add_colorbar=legend, **plot_kwargs)
+    
+    if legend:
+        try:
+            cb = im.colorbar
+        except AttributeError:
+            cb = im.cbar
+        ticks = cb.get_ticks()
+        cb.set_ticks(np.arange(0,12,1)+0.5)
+        cb.set_ticklabels(cblabels)
+    return im
