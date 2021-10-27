@@ -1037,12 +1037,12 @@ def plot_wofs(wofs, legend=True, **plot_kwargs):
         cb.set_ticklabels(cblabels)
     return im
 
-def plot_LULC(LULC, legend=True, **plot_kwargs):
+def plot_lulc(lulc, legend=True, **plot_kwargs):
     """Plot an ESRI LULC image.
     
     Parameters
     ----------
-    LULC : xr.DataArray
+    lulc : xr.DataArray
         A DataArray containing LULC bit flags.
     legend : bool
         Whether to plot a legend. Default True.
@@ -1071,9 +1071,9 @@ def plot_LULC(LULC, legend=True, **plot_kwargs):
     cblabels = ['no data', 'water', 'trees', 'grass', 'flooded vegetation', 'crops', 'scrub/shrub', 'built area', 'bare ground', 'snow/ice', 'clouds']
 
     try:
-        im = LULC.plot.imshow(cmap=cmap, norm=norm, add_colorbar=legend, **plot_kwargs)
+        im = lulc.plot.imshow(cmap=cmap, norm=norm, add_colorbar=legend, **plot_kwargs)
     except AttributeError:
-        im = LULC.plot(cmap=cmap, norm=norm, add_colorbar=legend, **plot_kwargs)
+        im = lulc.plot(cmap=cmap, norm=norm, add_colorbar=legend, **plot_kwargs)
     
     if legend:
         try:
