@@ -30,7 +30,7 @@ The supporting scripts and data for the notebooks are kept in the following dire
 
 - [Tools](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/main/Tools): *Python functions and algorithms developed to assist in analysing DE Africa data (e.g. loading data, plotting, spatial analysis, machine learning)* 
 
-- [Supplementary_data](https://github.com/GeoscienceAustralia/dea-notebooks/tree/main/Supplementary_data): *Supplementary files required for the analyses above (e.g. images, rasters, shapefiles, training data)*
+- [Supplementary_data](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/main/Supplementary_data): *Supplementary files required for the analyses above (e.g. images, rasters, shapefiles, training data)*
 
 ---
 
@@ -41,9 +41,11 @@ To get started with using `deafrica-sandbox-notebooks`, visit the DE Africa Note
 
 Once you're set up, the main option for interacting with `deafrica-sandbox-notebooks` and contributing back to the repository is through:
 
-* **DE Africa notebooks using Git**: Git is a version-control software designed to help track changes to files and collaborate with multiple users on a project. Using ``git`` is the recommended workflow for working with ``deafrica-sandbox-notebooks`` as it makes it easy to stay up to date with the latest versions of functions and code, and makes it impossible to lose your work. 
+* **DE Africa notebooks using Git:** Git is a version-control software designed to help track changes to files and collaborate with multiple users on a project. Using ``git`` is the recommended workflow for working with ``deafrica-sandbox-notebooks`` as it makes it easy to stay up to date with the latest versions of functions and code, and makes it impossible to lose your work. 
 
   * Refer to the repository's [Guide to using DE Africa Notebooks with git](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/wiki/Guide-to-using-DE-Africa-Notebooks-with-git) wiki article. For a more detailed explanation suited to new Git users, see our [Version Control with Git](https://docs.digitalearthafrica.org/en/latest/sandbox/git-howto/index.html) tutorial.
+  
+* **Set up Git authentication tokens:** Git requires multi-factor authentication when using the command line or API. Set up a personal access token by following instructions from the [GitHub Docs](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token).
 
 ---
 
@@ -53,7 +55,7 @@ Once you're set up, the main option for interacting with `deafrica-sandbox-noteb
 
 The `deafrica-sandbox-notebooks` repository uses 'branches' to manage individuals' notebooks, and to allow easy publishing of notebooks ready to be shared. There are two main types of branches:
 
-* [Main branch](https://github.com/GeoscienceAustralia/dea-notebooks/tree/main): The ``main`` branch contains DE Africa's collection of publicly available notebooks. The ``main`` branch is protected, and is only updated after new commits a reviewed and approved by the DE Africa team.
+* [Main branch](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/main): The ``main`` branch contains DE Africa's collection of publicly available notebooks. The ``main`` branch is protected, and is only updated after new commits a reviewed and approved by the DE Africa team.
 * [Working branches](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/branches): All other branches in the repository are working spaces for users of ``deafrica-sandbox-notebooks``. They have a unique name (typically named after the user). The notebooks on these branches can be works-in-progress and do not need to be pretty or complete. By using a working branch, it is easy to use scripts and algorithms from ``deafrica-sandbox-notebooks`` in your own work, or share and collaborate on a working version of a notebook or code.
 
 --- 
@@ -86,7 +88,8 @@ Once the pull request has been approved, you can merge it into the ``main`` bran
 
 ## Update: The default branch has been renamed!
 *October 2021*
-``master`` is now named ``main``
+
+``master`` is now named ``main`` in line with GitHub recommended naming conventions.
 
 If you have a local clone created before 29 October 2021, you can update it by running the following commands.
 
