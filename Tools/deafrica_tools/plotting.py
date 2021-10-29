@@ -90,7 +90,7 @@ def rgb(
     bands : list of strings, optional
         A list of three strings giving the band names to plot. Defaults
         to '['red', 'green', 'blue']'. If the dataset does not contain
-        bands named `'red', 'green', 'blue'`, then `bands` must be 
+        bands named `'red', 'green', 'blue'`, then `bands` must be
         specified.
     index : integer or list of integers, optional
         `index` can be used to select one (`index=0`) or multiple
@@ -144,9 +144,11 @@ def rgb(
     # If bands are not in the dataset
     ds_vars = list(ds.data_vars)
     if set(bands).issubset(ds_vars) == False:
-        raise ValueError("rgb() bands do not match band names in dataset. "
-                        "Note the default rgb() bands are ['red', 'green', 'blue'].")
-    
+        raise ValueError(
+            "rgb() bands do not match band names in dataset. "
+            "Note the default rgb() bands are ['red', 'green', 'blue']."
+        )
+
     # If ax is supplied via kwargs, ignore aspect and size
     if "ax" in kwargs:
 
@@ -958,9 +960,10 @@ def _degree_to_zoom_level(l1, l2, margin=0.0):
         zoom_level_int = 18
     return zoom_level_int
 
+
 def plot_wofs(wofs, legend=True, **plot_kwargs):
     """Plot a water observation bit flag image.
-    
+
     Parameters
     ----------
     wofs : xr.DataArray
@@ -969,23 +972,25 @@ def plot_wofs(wofs, legend=True, **plot_kwargs):
         Whether to plot a legend. Default True.
     plot_kwargs : dict
         Keyword arguments passed on to DataArray.plot.
-    
+
     Returns
     -------
-    plot    
+    plot
     """
-    cmap = mcolours.ListedColormap([
-          np.array([150, 150, 110]) / 255,   # dry - 0
-          np.array([0, 0, 0]) / 255,   # nodata, - 1
-          np.array([119, 104, 87]) / 255,   # terrain - 16
-          np.array([89, 88, 86]) / 255,     # cloud_shadow - 32
-          np.array([216, 215, 214]) / 255,  # cloud - 64
-          np.array([242, 220, 180]) / 255,  # cloudy terrain - 80
-          np.array([79, 129, 189]) / 255,  # water - 128
-          np.array([51, 82, 119]) / 255,   # shady water - 160
-          np.array([186, 211, 242]) / 255, # cloudy water - 192
-    ])
-    bounds=[
+    cmap = mcolours.ListedColormap(
+        [
+            np.array([150, 150, 110]) / 255,  # dry - 0
+            np.array([0, 0, 0]) / 255,  # nodata, - 1
+            np.array([119, 104, 87]) / 255,  # terrain - 16
+            np.array([89, 88, 86]) / 255,  # cloud_shadow - 32
+            np.array([216, 215, 214]) / 255,  # cloud - 64
+            np.array([242, 220, 180]) / 255,  # cloudy terrain - 80
+            np.array([79, 129, 189]) / 255,  # water - 128
+            np.array([51, 82, 119]) / 255,  # shady water - 160
+            np.array([186, 211, 242]) / 255,  # cloudy water - 192
+        ]
+    )
+    bounds = [
         0,
         1,
         16,
@@ -998,13 +1003,23 @@ def plot_wofs(wofs, legend=True, **plot_kwargs):
         255,
     ]
     norm = mcolours.BoundaryNorm(np.array(bounds) - 0.1, cmap.N)
-    cblabels = ['dry', 'nodata', 'terrain', 'cloud shadow', 'cloud', 'cloudy terrain', 'water', 'shady water', 'cloudy water']
+    cblabels = [
+        "dry",
+        "nodata",
+        "terrain",
+        "cloud shadow",
+        "cloud",
+        "cloudy terrain",
+        "water",
+        "shady water",
+        "cloudy water",
+    ]
 
     try:
         im = wofs.plot.imshow(cmap=cmap, norm=norm, add_colorbar=legend, **plot_kwargs)
     except AttributeError:
         im = wofs.plot(cmap=cmap, norm=norm, add_colorbar=legend, **plot_kwargs)
-    
+
     if legend:
         try:
             cb = im.colorbar
@@ -1015,81 +1030,115 @@ def plot_wofs(wofs, legend=True, **plot_kwargs):
         cb.set_ticklabels(cblabels)
     return im
 
-def plot_lulc(lulc, product={}, legend=True, **plot_kwargs):
+
+def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
     """Plot a LULC image.
-    
+
     Parameters
     ----------
-    LULC : xr.DataArray
+    lulc : xr.DataArray
         A DataArray containing LULC bit flags.
-    product : dict
+    product : str
         'ESA' or 'ESRI'
     legend : bool
         Whether to plot a legend. Default True.
     plot_kwargs : dict
         Keyword arguments passed on to DataArray.plot.
-    
+
     Returns
     -------
-    plot    
+    plot
     """
-    if 'ESRI' in product:
+
+    if "ESRI" in product:
         try:
-            cmap = mcolours.ListedColormap([
-                np.array([0, 0, 0]) / 255,
-                np.array([65, 155, 223]) / 255,
-                np.array([57, 125, 73]) / 255,
-                np.array([136, 176, 83]) / 255,
-                np.array([122, 135, 198]) / 255,
-                np.array([228, 150, 53]) / 255,
-                np.array([223, 195, 90]) / 255,
-                np.array([196 ,40, 27]) / 255,
-                np.array([165, 155, 143]) / 255,
-                np.array([168, 235, 255]) / 255,
-                np.array([97, 97, 97]) / 255
-                ])
-            bounds=range(0,12)
+            cmap = mcolours.ListedColormap(
+                [
+                    np.array([0, 0, 0]) / 255,
+                    np.array([65, 155, 223]) / 255,
+                    np.array([57, 125, 73]) / 255,
+                    np.array([136, 176, 83]) / 255,
+                    np.array([122, 135, 198]) / 255,
+                    np.array([228, 150, 53]) / 255,
+                    np.array([223, 195, 90]) / 255,
+                    np.array([196, 40, 27]) / 255,
+                    np.array([165, 155, 143]) / 255,
+                    np.array([168, 235, 255]) / 255,
+                    np.array([97, 97, 97]) / 255,
+                ]
+            )
+            bounds = range(0, 12)
             norm = mcolours.BoundaryNorm(np.array(bounds), cmap.N)
-            cblabels = ['no data', 'water', 'trees', 'grass', 'flooded vegetation', 'crops', 'scrub/shrub', 'built area', 'bare ground', 'snow/ice', 'clouds']
-        except: AttributeError
-    if 'ESA' in product:
+            cblabels = [
+                "no data",
+                "water",
+                "trees",
+                "grass",
+                "flooded vegetation",
+                "crops",
+                "scrub/shrub",
+                "built area",
+                "bare ground",
+                "snow/ice",
+                "clouds",
+            ]
+        except:
+            AttributeError
+
+    if "ESA" in product:
         try:
-            cmap = mcolours.ListedColormap([
-              np.array([0, 0, 0]) / 255,
-              np.array([0, 100, 0]) / 255,
-              np.array([255, 187, 34]) / 255,
-              np.array([255, 255, 76]) / 255,
-              np.array([240, 150, 255]) / 255,
-              np.array([250, 0, 0]) / 255,
-              np.array([180, 180, 180]) / 255,
-              np.array([240, 240, 240]) / 255,
-              np.array([0 ,100, 200]) / 255,
-              np.array([0, 150, 160]) / 255,
-              np.array([0, 207, 117]) / 255,
-              np.array([250, 230, 160]) / 255
-            ])
-            bounds=[-5,5,15,25,35,45,55,65,75,85,92,98,105]
+            cmap = mcolours.ListedColormap(
+                [
+                    np.array([0, 0, 0]) / 255,
+                    np.array([0, 100, 0]) / 255,
+                    np.array([255, 187, 34]) / 255,
+                    np.array([255, 255, 76]) / 255,
+                    np.array([240, 150, 255]) / 255,
+                    np.array([250, 0, 0]) / 255,
+                    np.array([180, 180, 180]) / 255,
+                    np.array([240, 240, 240]) / 255,
+                    np.array([0, 100, 200]) / 255,
+                    np.array([0, 150, 160]) / 255,
+                    np.array([0, 207, 117]) / 255,
+                    np.array([250, 230, 160]) / 255,
+                ]
+            )
+            bounds = [-5, 5, 15, 25, 35, 45, 55, 65, 75, 85, 92, 98, 105]
             norm = mcolours.BoundaryNorm(np.array(bounds), cmap.N)
-            cblabels = ['no data', 'tree cover', 'shrubland', 'grassland', 'cropland', 'built up', 'bare/sparse vegetation', 'snow and ice', 'permanent water bodies', 'herbaceous wetland', 'mangroves', 'moss and lichen']
-        except: AttributeError
+            cblabels = [
+                "no data",
+                "tree cover",
+                "shrubland",
+                "grassland",
+                "cropland",
+                "built up",
+                "bare/sparse vegetation",
+                "snow and ice",
+                "permanent water bodies",
+                "herbaceous wetland",
+                "mangroves",
+                "moss and lichen",
+            ]
+        except:
+            AttributeError
+
     try:
         im = lulc.plot.imshow(cmap=cmap, norm=norm, add_colorbar=legend, **plot_kwargs)
     except AttributeError:
         im = lulc.plot(cmap=cmap, norm=norm, add_colorbar=legend, **plot_kwargs)
-    
-    if legend and 'ESRI' in product:
+
+    if legend:
         try:
             cb = im.colorbar
         except AttributeError:
             cb = im.cbar
-        cb.set_ticks(np.arange(0,12,1)+0.5)
-        cb.set_ticklabels(cblabels)
-    
-    if legend and 'ESA' in product:
-        try:
-            cb = im.colorbar
-        except AttributeError:
-            cb = im.cbar
-        cb.set_ticks([0,10,20,30,40,50,60,70,80,88.5,95,101.5])
-        cb.set_ticklabels(cblabels)
+
+        if "ESRI" in product:
+            cb.set_ticks(np.arange(0, 12, 1) + 0.5)
+            cb.set_ticklabels(cblabels)
+
+        if "ESA" in product:
+            cb.set_ticks([0, 10, 20, 30, 40, 50, 60, 70, 80, 88.5, 95, 101.5])
+            cb.set_ticklabels(cblabels)
+
     return im
