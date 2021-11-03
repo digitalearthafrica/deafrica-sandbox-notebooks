@@ -198,7 +198,7 @@ def create_html(value):
     return html
 
 
-def create_map(map_center=(4, 20), zoom_level=3):
+def create_map(map_center=(4, 20), zoom_level=3, basemap=leaflet.basemaps.OpenStreetMap.Mapnik, basemap_name='Open Street Map'):
     '''
     Create an interactive ipyleaflet map
     
@@ -214,7 +214,9 @@ def create_map(map_center=(4, 20), zoom_level=3):
         Defaults to 3 to view all of Africa
     basemap : ipyleaflet basemap (dict)
         Basemap to use, can be any from https://ipyleaflet.readthedocs.io/en/latest/api_reference/basemaps.html
-        Defaults to ESRI World Imagery (basemaps.Esri.WorldImagery)
+        Defaults to Open Street Map (basemaps.OpenStreetMap.Mapnik)
+    basemap_name : string
+        Layer name for the basemap
         
     Returns
     -------
@@ -223,16 +225,10 @@ def create_map(map_center=(4, 20), zoom_level=3):
         
     '''
     
-#     esri_worldimagery = leaflet.basemap_to_tiles(leaflet.basemaps.Esri.WorldImagery)
-#     esri_worldimagery.name = 'ESRI World Imagery'
-    osm = leaflet.basemap_to_tiles(leaflet.basemaps.OpenStreetMap.Mapnik)
-    osm.name = 'Countries and Locations'
+    basemap_tiles = leaflet.basemap_to_tiles(basemap)
+    basemap_tiles.name = basemap_name
 
-    m = leaflet.Map(center=map_center, zoom=zoom_level, basemap=osm, scroll_wheel_zoom=True)
-#     m.add_layer(esri_worldimagery)
-    
-#     control = LayersControl(position='topright')
-#     m.add_control(control)
+    m = leaflet.Map(center=map_center, zoom=zoom_level, basemap=basemap_tiles, scroll_wheel_zoom=True)
     
     return m
 

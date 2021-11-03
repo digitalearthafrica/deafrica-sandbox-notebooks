@@ -166,12 +166,6 @@ class wit_app(HBox):
         # Create map widget
         self.m = deawidgets.create_map()
         
-#         # Add wms layers
-#         for i, product in enumerate(self.product_list):
-#             layer = deawidgets.create_dea_wms_layer(product[1], self.product_year)
-#             layer.name = product[0]
-#             self.m.add_layer(layer)
-        
         self.m.layout = make_box_layout()
         
         # Add tools to map widget
