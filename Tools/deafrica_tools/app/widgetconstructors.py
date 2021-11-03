@@ -225,11 +225,10 @@ def create_map(map_center=(4, 20), zoom_level=3):
     
 #     esri_worldimagery = leaflet.basemap_to_tiles(leaflet.basemaps.Esri.WorldImagery)
 #     esri_worldimagery.name = 'ESRI World Imagery'
+    osm = leaflet.basemap_to_tiles(leaflet.basemaps.OpenStreetMap.Mapnik)
+    osm.name = 'Countries and Locations'
 
-    cartodb_positron = leaflet.basemap_to_tiles(leaflet.basemaps.CartoDB.Positron)
-    cartodb_positron.name = 'Countries and Locations'
-
-    m = leaflet.Map(center=map_center, zoom=zoom_level, basemap=cartodb_positron, scroll_wheel_zoom=True)
+    m = leaflet.Map(center=map_center, zoom=zoom_level, basemap=osm, scroll_wheel_zoom=True)
 #     m.add_layer(esri_worldimagery)
     
 #     control = LayersControl(position='topright')
