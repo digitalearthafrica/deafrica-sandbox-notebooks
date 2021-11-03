@@ -33,6 +33,7 @@ Last modified: Oct 2021
 """
 
 import ipyleaflet as leaflet
+from ipyleaflet import LayersControl
 import ipywidgets as widgets
 from traitlets import Unicode
 
@@ -197,7 +198,7 @@ def create_html(value):
     return html
 
 
-def create_map(map_center=(4, 20), zoom_level=3, basemap=leaflet.basemaps.Esri.WorldImagery):
+def create_map(map_center=(4, 20), zoom_level=3):
     '''
     Create an interactive ipyleaflet map
     
@@ -222,9 +223,17 @@ def create_map(map_center=(4, 20), zoom_level=3, basemap=leaflet.basemaps.Esri.W
         
     '''
     
-    tiled_basemap = leaflet.basemap_to_tiles(basemap)
+#     esri_worldimagery = leaflet.basemap_to_tiles(leaflet.basemaps.Esri.WorldImagery)
+#     esri_worldimagery.name = 'ESRI World Imagery'
+
+    cartodb_positron = leaflet.basemap_to_tiles(leaflet.basemaps.CartoDB.Positron)
+    cartodb_positron.name = 'Countries and Locations'
+
+    m = leaflet.Map(center=map_center, zoom=zoom_level, basemap=cartodb_positron, scroll_wheel_zoom=True)
+#     m.add_layer(esri_worldimagery)
     
-    m = leaflet.Map(center=map_center, zoom=zoom_level, basemap=tiled_basemap)
+#     control = LayersControl(position='topright')
+#     m.add_control(control)
     
     return m
 
