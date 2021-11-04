@@ -40,7 +40,6 @@ import pytz
 from collections import Counter
 from datacube.utils import masking
 from scipy.ndimage import binary_dilation
-from datacube.storage.masking import mask_invalid_data
 from odc.algo import mask_cleanup
 from copy import deepcopy
 import odc.algo
