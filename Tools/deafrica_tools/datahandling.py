@@ -40,7 +40,6 @@ import pytz
 from collections import Counter
 from datacube.utils import masking
 from scipy.ndimage import binary_dilation
-from datacube.storage.masking import mask_invalid_data
 from odc.algo import mask_cleanup
 from copy import deepcopy
 import odc.algo
@@ -422,7 +421,7 @@ def load_ard(
             datasets = dc.find_datasets(product=product, **query)
 
         # Remove Landsat 7 SLC-off observations if ls7_slc_off=False
-        if not ls7_slc_off and product in ["ls7_c2l2"]:
+        if not ls7_slc_off and product in ["ls7_sr"]:
             if verbose:
                 print("    Ignoring SLC-off observations for ls7")
             datasets = [
