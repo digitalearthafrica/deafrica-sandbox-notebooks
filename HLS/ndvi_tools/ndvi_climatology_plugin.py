@@ -6,21 +6,22 @@ from odc.stats.model import Task
 from datacube.utils import masking
 from odc.algo import keep_good_only, erase_bad
 from odc.algo._masking import mask_cleanup
-from odc.stats.model import StatsPluginInterface
-from odc.stats import _plugins
+from odc.stats.plugins._base import StatsPluginInterface
+from odc.stats.plugins._registry import register
 from odc.algo.io import load_with_native_transform
 
 
 class NDVIClimatology(StatsPluginInterface):
-    NAME = "ndvi_climatology"
+    NAME = "NDVIClimatology"
     SHORT_NAME = NAME
     VERSION = "0.0.1"
+    PRODUCT_FAMILY = "statistics"
 
     def __init__(
         self,
         resampling: str = "bilinear",
         bands: Optional[Sequence[str]] = ["red", "nir"],
-        databases: Dict[str, Optional[Any]] = None,
+        datasets: Dict[str, Optional[Any]] = None,
         mask_band: str = "QA_PIXEL",
         flags_ls57: Dict[str, Optional[Any]] = dict(
             cloud="high_confidence", cloud_shadow="high_confidence"
@@ -41,7 +42,7 @@ class NDVIClimatology(StatsPluginInterface):
 
         self.bands = bands
         self.mask_band = mask_band
-        self.databases = databases
+        self.datasets = datasets
         self.input_bands = self.bands.append(mask_band)
         self.flags_ls57 = flags_ls57
         self.flags_ls8 = flags_ls8
@@ -53,12 +54,12 @@ class NDVIClimatology(StatsPluginInterface):
         self.offset = offset
         self.output_dtype = np.dtype(output_dtype)
         self.output_nodata = np.nan
-
+    
     @property
     def measurements(self) -> Tuple[str, ...]:
         return self.bands
-
-    def input_data(self, task: Task) -> xr.Dataset:
+    
+    def input_data(self, datasets, task) -> xr.Dataset:
         """
         Load each of the sensors, remove cloud and poor data,
         apply scaling coefficients to LS5 & 7 NDVI to mimic
@@ -104,7 +105,7 @@ class NDVIClimatology(StatsPluginInterface):
 
         # load landsat 5 & 7
         ls57 = load_with_native_transform(
-            dss=self.databases["ls57"],
+            dss=self.datasets["ls57"],
             geobox=task.geobox,
             native_transform=lambda x: masking_data(x, self.flags_ls57),
             bands=self.bands,
@@ -114,7 +115,7 @@ class NDVIClimatology(StatsPluginInterface):
 
         # load Landsat 8
         ls8 = load_with_native_transform(
-            dss=self.databases["ls8"],
+            dss=self.datasets["ls8"],
             geobox=task.geobox,
             native_transform=lambda x: masking_data(x, self.flags_ls8),
             bands=self.bands,
@@ -206,4 +207,4 @@ class NDVIClimatology(StatsPluginInterface):
 
         return clim
     
-_plugins.register("NDVIClimatology", NDVIClimatology)
+register(name="NDVIClimatology", plugin_class=NDVIClimatology)

@@ -1,19 +1,19 @@
-plugin: ndvi_tools.ndvi_climatology_plugin.NDVIClimatology
+plugin: NDVIClimatology
 plugin_config:
-#   resampling: "bilinear"
-#   databases:
-#     ls57: //home/jovyan/git/deafrica-sandbox-notebooks/HLS/ls7_sr_2014--P2Y.db
-#     ls8: //home/jovyan/git/deafrica-sandbox-notebooks/HLS/ls8_sr_2014--P2Y.db
-#   bands: ["red", "nir"],
-#   mask_band: QA_PIXEL
-#   mask_filters: [["opening", 5], ["dilation", 5]],
-#   flags_ls57:
-#     cloud: "high_confidence"
-#     cloud_shadow: "high_confidence"
-#   flags_ls8: 
-#     cloud: "high_confidence"
-#     cloud_shadow: "high_confidence"
-#     cirrus: "high_confidence"
+  resampling: "bilinear"
+  datasets:
+    ls57: //home/jovyan/git/deafrica-sandbox-notebooks/HLS/ls7_sr_2014--P2Y.db
+    ls8: //home/jovyan/git/deafrica-sandbox-notebooks/HLS/ls8_sr_2014--P2Y.db
+  bands: ["red", "nir"]
+  mask_band: "QA_PIXEL"
+  mask_filters: [["opening", 5], ["dilation", 5]]
+  flags_ls57:
+    cloud: "high_confidence"
+    cloud_shadow: "high_confidence"
+  flags_ls8: 
+    cloud: "high_confidence"
+    cloud_shadow: "high_confidence"
+    cirrus: "high_confidence"
 product:
   name: ndvi_climatology
   short_name: ndvi_climatology
