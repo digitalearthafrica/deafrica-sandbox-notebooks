@@ -1,0 +1,38 @@
+plugin: ndvi_tools.ndvi_climatology_plugin.NDVIClimatology
+plugin_config:
+#   resampling: "bilinear"
+#   databases:
+#     ls57: //home/jovyan/git/deafrica-sandbox-notebooks/HLS/ls7_sr_2014--P2Y.db
+#     ls8: //home/jovyan/git/deafrica-sandbox-notebooks/HLS/ls8_sr_2014--P2Y.db
+#   bands: ["red", "nir"],
+#   mask_band: QA_PIXEL
+#   mask_filters: [["opening", 5], ["dilation", 5]],
+#   flags_ls57:
+#     cloud: "high_confidence"
+#     cloud_shadow: "high_confidence"
+#   flags_ls8: 
+#     cloud: "high_confidence"
+#     cloud_shadow: "high_confidence"
+#     cirrus: "high_confidence"
+product:
+  name: ndvi_climatology
+  short_name: ndvi_climatology
+  version: 0.0.1
+  collections_site: explorer.digitalearth.africa
+  producer: digitalearthafrica.org
+  region_code_format: "x{x:03d}y{y:03d}"
+# computing resources
+threads: 4
+memory_limit: 30Gi
+max_processing_time: 3600
+job_queue_max_lease: 900
+renew_safety_margin: 60
+future_poll_interval: 2
+s3_acl: bucket-owner-full-control
+# Generic product attributes
+cog_opts:
+  zlevel: 4
+  overrides:
+    rgba:
+      compress: JPEG
+      jpeg_quality: 90
