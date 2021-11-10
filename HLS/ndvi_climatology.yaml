@@ -1,4 +1,4 @@
-plugin: NDVIClimatology
+plugin: ndvi_tools.ndvi_climatology_plugin.NDVIClimatology
 plugin_config:
   resampling: "bilinear"
   bands: ["red", "nir"]
