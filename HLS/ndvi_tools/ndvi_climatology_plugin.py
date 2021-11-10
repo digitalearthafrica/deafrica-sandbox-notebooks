@@ -1,5 +1,4 @@
-from typing import Any, Dict, Iterable, Optional, Sequence, Tuple
-
+from toolz import get_in
 import xarray as xr
 import numpy as np
 from odc.stats.model import Task
@@ -9,7 +8,9 @@ from odc.algo._masking import mask_cleanup
 from odc.stats.plugins._base import StatsPluginInterface
 from odc.stats.plugins._registry import register
 from odc.algo.io import load_with_native_transform
-
+from datacube.model import Dataset
+from datacube.utils.geometry import GeoBox
+from typing import Any, Dict, Iterable, Optional, Sequence, Tuple
 
 class NDVIClimatology(StatsPluginInterface):
     NAME = "NDVIClimatology"
@@ -21,8 +22,8 @@ class NDVIClimatology(StatsPluginInterface):
         self,
         resampling: str = "bilinear",
         bands: Optional[Sequence[str]] = ["red", "nir"],
-        datasets: Dict[str, Optional[Any]] = None,
         mask_band: str = "QA_PIXEL",
+        group_by: str = "solar_day",
         flags_ls57: Dict[str, Optional[Any]] = dict(
             cloud="high_confidence", cloud_shadow="high_confidence"
         ),
@@ -42,8 +43,8 @@ class NDVIClimatology(StatsPluginInterface):
 
         self.bands = bands
         self.mask_band = mask_band
-        self.datasets = datasets
-        self.input_bands = self.bands.append(mask_band)
+        self.group_by = group_by
+        self.input_bands = (tuple(bands) + (mask_band,))
         self.flags_ls57 = flags_ls57
         self.flags_ls8 = flags_ls8
         self.resampling = resampling
@@ -59,7 +60,7 @@ class NDVIClimatology(StatsPluginInterface):
     def measurements(self) -> Tuple[str, ...]:
         return self.bands
     
-    def input_data(self, datasets, task) -> xr.Dataset:
+    def input_data(self, datasets: Sequence[Dataset], geobox: GeoBox) -> xr.Dataset:
         """
         Load each of the sensors, remove cloud and poor data,
         apply scaling coefficients to LS5 & 7 NDVI to mimic
@@ -102,23 +103,33 @@ class NDVIClimatology(StatsPluginInterface):
             xx["cloud_mask"] = cloud_mask
 
             return xx
-
+        
+        #seperate datsets into different sensors
+        product_datasets = {}
+        for dataset in datasets:
+            product = get_in(["product", "name"], dataset.metadata_doc)
+            if product not in product_datasets:
+                product_datasets[product] = []
+            product_datasets[product].append(dataset)
+        
         # load landsat 5 & 7
         ls57 = load_with_native_transform(
-            dss=self.datasets["ls57"],
-            geobox=task.geobox,
+            dss=product_datasets["ls7_sr"],
+            geobox=geobox,
             native_transform=lambda x: masking_data(x, self.flags_ls57),
-            bands=self.bands,
+            bands=self.input_bands,
+            groupby=self.group_by,
             chunks=self.work_chunks,
             resampling=self.resampling,
         )
 
         # load Landsat 8
         ls8 = load_with_native_transform(
-            dss=self.datasets["ls8"],
-            geobox=task.geobox,
+            dss=product_datasets["ls8_sr"],
+            geobox=geobox,
             native_transform=lambda x: masking_data(x, self.flags_ls8),
-            bands=self.bands,
+            bands=self.input_bands,
+            groupby=self.group_by,
             chunks=self.work_chunks,
             resampling=self.resampling,
         )

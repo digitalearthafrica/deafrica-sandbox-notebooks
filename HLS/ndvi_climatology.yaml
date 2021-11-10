@@ -1,9 +1,6 @@
 plugin: NDVIClimatology
 plugin_config:
   resampling: "bilinear"
-  datasets:
-    ls57: //home/jovyan/git/deafrica-sandbox-notebooks/HLS/ls7_sr_2014--P2Y.db
-    ls8: //home/jovyan/git/deafrica-sandbox-notebooks/HLS/ls8_sr_2014--P2Y.db
   bands: ["red", "nir"]
   mask_band: "QA_PIXEL"
   mask_filters: [["opening", 5], ["dilation", 5]]
