@@ -22,8 +22,6 @@ REQUIRED = [
     "typing",
     "geopandas",
     "gdal",
-    "rsgislib",
-    "scipy",
     "dask",
     "dask-ml",
     "rasterstats",
@@ -31,7 +29,7 @@ REQUIRED = [
 ]
 
 # Package meta-data.
-NAME = "ndvi-tools"
+NAME = "ndvi_tools"
 DESCRIPTION = "Tools for running DE Africa's NDVI anomaly project"
 URL = "https://github.com/digitalearthafrica/deafrica-sandbox-notebooks"
 EMAIL = "chad.burton@ga.gov.au"

@@ -3,6 +3,8 @@ plugin_config:
   resampling: "bilinear"
   bands: ["red", "nir"]
   mask_band: "QA_PIXEL"
+  harmonization_slope: 0.988
+  harmonization_intercept: -0.015
   mask_filters: [["opening", 5], ["dilation", 5]]
   flags_ls57:
     cloud: "high_confidence"
@@ -28,8 +30,4 @@ future_poll_interval: 2
 s3_acl: bucket-owner-full-control
 # Generic product attributes
 cog_opts:
-  zlevel: 4
-  overrides:
-    rgba:
-      compress: JPEG
-      jpeg_quality: 90
+  zlevel: 9
