@@ -1,35 +1,7 @@
-# widgetconstructors.py
 """
-Description: This file contains a set of python functions for easily defining widgets
-in the context of DE Africa. These are largely cutomised wrappers around existing widgets
+Functions for easily defining widgets in the context of DE Africa notebooks.
 
-License: The code in this notebook is licensed under the Apache License,
-Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth 
-Africa data is licensed under the Creative Commons by Attribution 4.0 
-license (https://creativecommons.org/licenses/by/4.0/).
-
-Contact: If you need assistance, please post a question on the Open Data 
-Cube Slack channel (http://slack.opendatacube.org/) or on the GIS Stack 
-Exchange (https://gis.stackexchange.com/questions/ask?tags=open-data-cube) 
-using the `open-data-cube` tag (you can view previously asked questions 
-here: https://gis.stackexchange.com/questions/tagged/open-data-cube). 
-
-If you would like to report an issue with this script, you can file one on 
-Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new
-
-Functions included:
-    create_datepicker
-    create_inputtext
-    create_boundedfloattext
-    create_dropdown
-    create_html
-    create_map
-    create_dea_wms_layer
-    create_drawcontrol
-    
-
-Last modified: Oct 2021
-
+These are largely customised wrappers around existing widgets.
 """
 
 import ipyleaflet as leaflet
