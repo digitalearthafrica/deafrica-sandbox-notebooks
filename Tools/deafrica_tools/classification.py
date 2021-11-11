@@ -1,58 +1,34 @@
-# classification.py
 """
-Description: This file contains a set of python functions for conducting
-machine learning classification on remote sensing data contained in an
-Open Data Cube instance.
-
-License: The code in this notebook is licensed under the Apache License,
-Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
-
-Contact: If you need assistance, please post a question on the Open Data
-Cube Slack channel (http://slack.opendatacube.org/) or on the GIS Stack
-Exchange (https://gis.stackexchange.com/questions/ask?tags=open-data-cube)
-using the `open-data-cube` tag (you can view previously asked questions
-here: https://gis.stackexchange.com/questions/tagged/open-data-cube).
-
-If you would like to report an issue with this script, you can file one on
-Github https://github.com/digitalearthafrica/deafrica-sandbox-notebooks
-
-Last modified: May 2021
-
-
+Machine learning functions for classification of remote sensing data contained
+in an Open Data Cube instance.
 """
+
+import multiprocessing as mp
 import os
 import sys
 import time
+import warnings
+from abc import ABCMeta, abstractmethod
+from copy import deepcopy
+
+import dask.array as da
+import dask.distributed as dd
 import joblib
-import datacube
-import rasterio
 import numpy as np
 import pandas as pd
 import xarray as xr
-from tqdm.auto import tqdm
-import dask.array as da
-import geopandas as gpd
-from copy import deepcopy
-import multiprocessing as mp
-import dask.distributed as dd
-import matplotlib.pyplot as plt
-from sklearn.cluster import KMeans
-from sklearn.utils import check_random_state
-from abc import ABCMeta, abstractmethod
-from datacube.utils import geometry
-from sklearn.base import ClusterMixin
-from dask.diagnostics import ProgressBar
-from rasterio.features import rasterize
 from dask_ml.wrappers import ParallelPostFit
-from sklearn.mixture import GaussianMixture
+from datacube.utils import geometry
 from datacube.utils.geometry import assign_crs
-from sklearn.cluster import AgglomerativeClustering
-from sklearn.model_selection import KFold, ShuffleSplit
-from sklearn.model_selection import BaseCrossValidator
-
-import warnings
-
 from deafrica_tools.spatial import xr_rasterize
+from sklearn.base import ClusterMixin
+from sklearn.cluster import AgglomerativeClustering
+from sklearn.cluster import KMeans
+from sklearn.mixture import GaussianMixture
+from sklearn.model_selection import BaseCrossValidator
+from sklearn.model_selection import KFold, ShuffleSplit
+from sklearn.utils import check_random_state
+from tqdm.auto import tqdm
 
 
 def sklearn_flatten(input_xr):
@@ -605,7 +581,8 @@ def collect_training_data(
         the bounds of the input geometry. The 'feature_func' must accept a 'dc_query'
         object, and return a single xarray.Dataset or xarray.DataArray containing
         2D coordinates (i.e x and y, without a third dimension).
-        e.g.
+        e.g.::
+
             def feature_function(query):
                 dc = datacube.Datacube(app='feature_layers')
                 ds = dc.load(**query)
@@ -919,27 +896,32 @@ def spatial_clusters(
     """
     Create spatial groups on coorindate data using either KMeans clustering
     or a Gaussian Mixture model
+
     Last modified: September 2020
+
     Parameters
     ----------
     n_groups : int
-        The number of groups to create. This is passed as 'n_clusters=n_groups'
-        for the KMeans algo, and 'n_components=n_groups' for the GMM. If using
-        method='Hierarchical' then this paramter is ignored.
+        The number of groups to create. This is passed as ``n_clusters=n_groups``
+        for the KMeans algo, and ``n_components=n_groups`` for the GMM. If using
+        method=``'Hierarchical'`` then this parameter is ignored.
     coordinates : np.array
-        A numpy array of coordinate values e.g.
-        np.array([[3337270.,  262400.],
-                  [3441390., -273060.], ...])
+        A numpy array of coordinate values e.g.::
+
+            np.array([[3337270.,  262400.],
+                      [3441390., -273060.], ...])
+
     method : str
-        Which algorithm to use to seperate data points. Either 'KMeans', 'GMM', or
-        'Hierarchical'. If using 'Hierarchical' then must set max_distance.
+        Which algorithm to use to seperate data points.
+        Either ``'KMeans'``, ``'GMM'``, or ``'Hierarchical'``.
+        If using ``'Hierarchical'`` then must set max_distance.
     max_distance : int
-        If method is set to 'hierarchical' then maximum distance describes the
+        If method is set to ``'Hierarchical'`` then maximum distance describes the
         maximum euclidean distances between all observations in a cluster. 'n_groups'
         is ignored in this case.
     **kwargs : optional,
-        Additional keyword arguments to pass to sklearn.cluster.Kmeans or
-        sklearn.mixture.GuassianMixture depending on the 'method' argument.
+        Additional keyword arguments to pass to ``sklearn.cluster.Kmeans`` or
+        ``sklearn.mixture.GuassianMixture`` depending on the 'method' argument.
     Returns
     -------
      labels : array, shape [n_samples,]
@@ -992,9 +974,10 @@ def SKCV(
 ):
     """
     Generate spatial k-fold cross validation indices using coordinate data.
-    This function wraps the 'SpatialShuffleSplit' and 'SpatialKFold' classes.
+
+    This function wraps the ``SpatialShuffleSplit`` and ``SpatialKFold`` classes.
     These classes ingest coordinate data in the form of an
-    np.array([[Eastings, northings]]) and assign samples to a spatial cluster
+    ``np.array([[eastings, northings]])`` and assign samples to a spatial cluster
     using either a KMeans, Gaussain Mixture, or Agglomerative Clustering algorithm.
     This cross-validator is preferred over other sklearn.model_selection methods
     for spatial data to avoid overestimating cross-validation scores.
@@ -1006,17 +989,19 @@ def SKCV(
     Parameters
     ----------
     coordinates : np.array
-        A numpy array of coordinate values e.g.
-        np.array([[3337270.,  262400.],
-                  [3441390., -273060.], ...])
+        A numpy array of coordinate values e.g.::
+
+            np.array([[3337270.,  262400.],
+                      [3441390., -273060.], ...])
+
     n_splits : int
         The number of test-train cross validation splits to generate.
     cluster_method : str
-        Which algorithm to use to seperate data points. Either 'KMeans', 'GMM', or
-        'Hierarchical'
+        Which algorithm to use to separate data points. Either ``'KMeans'``,
+        ``'GMM'``, or ``'Hierarchical'``
     kfold_method : str
-        One of either 'SpatialShuffleSplit' or 'SpatialKFold'. See the docs
-        under class:_SpatialShuffleSplit and class: _SpatialKFold for more
+        One of either ``'SpatialShuffleSplit'`` or ``'SpatialKFold'``. See the docs
+        under class:_SpatialShuffleSplit and class:_SpatialKFold for more
         information on these options.
     test_size : float, int, None
         If float, should be between 0.0 and 1.0 and represent the proportion
@@ -1025,15 +1010,17 @@ def SKCV(
         complement of the train size. If ``train_size`` is also None, it will
         be set to 0.15.
     balance : int or bool
-        if setting kfold_method to 'SpatialShuffleSplit': int
+        if setting kfold_method to ``'SpatialShuffleSplit'``: int
             The number of splits generated per iteration to try to balance the
             amount of data in each set so that *test_size* and *train_size* are
             respected. If 1, then no extra splits are generated (essentially
             disabling the balacing). Must be >= 1.
-         if setting kfold_method to 'SpatialKFold': bool
-             Whether or not to split clusters into fold with approximately equal
+
+        if setting kfold_method to ``'SpatialKFold'``: bool
+            Whether or not to split clusters into fold with approximately equal
             number of data points. If False, each fold will have the same number of
             clusters (which can have different number of data points in them).
+
     n_groups : int
         The number of groups to create. This is passed as 'n_clusters=n_groups'
         for the KMeans algo, and 'n_components=n_groups' for the GMM. If using
@@ -1051,7 +1038,7 @@ def SKCV(
         If int, random_state is the seed used by the random number generator;
         If RandomState instance, random_state is the random number generator;
         If None, the random number generator is the RandomState instance used
-        by `np.random`.
+        by ``np.random``.
     **kwargs : optional,
         Additional keyword arguments to pass to sklearn.cluster.Kmeans or
         sklearn.mixture.GuassianMixture depending on the cluster_method argument.
@@ -1122,26 +1109,30 @@ def spatial_train_test_split(
     y : np.array
         Training data labels
     coordinates : np.array
-        A numpy array of coordinate values e.g.
-        np.array([[3337270.,  262400.],
-                  [3441390., -273060.], ...])
+        A numpy array of coordinate values e.g.::
+
+            np.array([[3337270.,  262400.],
+                      [3441390., -273060.], ...])
+
     cluster_method : str
-        Which algorithm to use to seperate data points. Either 'KMeans', 'GMM', or
-        'Hierarchical'
+        Which algorithm to use to seperate data points.
+        Either ``'KMeans'``, ``'GMM'``, or ``'Hierarchical'``
     kfold_method : str
-        One of either 'SpatialShuffleSplit' or 'SpatialKFold'. See the docs
-        under class:_SpatialShuffleSplit and class: _SpatialKFold for more
-        information on these options.
+        One of either ``'SpatialShuffleSplit'`` or ``'SpatialKFold'``.
+        See the docs under class:_SpatialShuffleSplit and
+        class: _SpatialKFold for more information on these options.
     balance : int or bool
-        if setting kfold_method to 'SpatialShuffleSplit': int
+        if setting kfold_method to ''`SpatialShuffleSplit`'': int
             The number of splits generated per iteration to try to balance the
             amount of data in each set so that *test_size* and *train_size* are
             respected. If 1, then no extra splits are generated (essentially
             disabling the balacing). Must be >= 1.
-         if setting kfold_method to 'SpatialKFold': bool
+
+        if setting kfold_method to ''`SpatialKFold`'': bool
             Whether or not to split clusters into fold with approximately equal
             number of data points. If False, each fold will have the same number of
             clusters (which can have different number of data points in them).
+
     test_size : float, int, None
         If float, should be between 0.0 and 1.0 and represent the proportion
         of the dataset to include in the test split. If int, represents the
