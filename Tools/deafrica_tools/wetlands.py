@@ -1,32 +1,5 @@
-# deafrica_wetlandstools.py
-
 """
-Description: This file contains a set of python functions for working with
-the Wetlands Insight Tool (WIT)
-
-License: The code in this notebook is licensed under the Apache License,
-Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth 
-Africa data is licensed under the Creative Commons by Attribution 4.0 
-license (https://creativecommons.org/licenses/by/4.0/).
-
-Contact: If you need assistance, please post a question on the Open Data 
-Cube Slack channel (http://slack.opendatacube.org/) or on the GIS Stack 
-Exchange (https://gis.stackexchange.com/questions/ask?tags=open-data-cube) 
-using the `open-data-cube` tag (you can view previously asked questions 
-here: https://gis.stackexchange.com/questions/tagged/open-data-cube). 
-
-If you would like to report an issue with this script, you can file one on 
-Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new
-
-Functions included:
-    WIT_drill
-    animated_timeseries_WIT
-    _ds_to_arrraylist
-    _add_colourbar
-    
-
-Last modified: Sept 2021
-
+Functions for working with the Wetlands Insight Tool (WIT)
 """
 
 # Import required packages

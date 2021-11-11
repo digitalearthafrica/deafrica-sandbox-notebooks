@@ -1,29 +1,10 @@
 """
 Functions for plotting Digital Earth Africa data.
-License
--------
-The code in this notebook is licensed under the Apache License,
-Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth
-Africa data is licensed under the Creative Commons by Attribution 4.0
-license (https://creativecommons.org/licenses/by/4.0/).
-Contact
--------
-If you need assistance, please post a question on the Open Data
-Cube Slack channel (http://slack.opendatacube.org/) or on the GIS Stack
-Exchange (https://gis.stackexchange.com/questions/ask?tags=open-data-cube)
-using the `open-data-cube` tag (you can view previously asked questions
-here: https://gis.stackexchange.com/questions/tagged/open-data-cube).
-If you would like to report an issue with this script, file one on
-Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new
-.. autosummary::
-   :nosignatures:
-   :toctree: gen
 """
 
 # Import required packages
 import math
 import folium
-import calendar
 import ipywidgets
 import branca
 import numpy as np
@@ -77,7 +58,9 @@ def rgb(
     path using `savefig_path`.
     This function was designed to work as an easier-to-use wrapper
     around xarray's `.plot.imshow()` functionality.
+
     Last modified: April 2021
+
     Parameters
     ----------
     ds : xarray Dataset
@@ -262,9 +245,12 @@ def display_map(x, y, crs="EPSG:4326", margin=-0.5, zoom_bias=0):
     Given a set of x and y coordinates, this function generates an
     interactive map with a bounded rectangle overlayed on Google Maps
     imagery.
+
     Last modified: September 2019
+
     Modified from function written by Otto Wagner available here:
     https://github.com/ceos-seo/data_cube_utilities/tree/master/data_cube_utilities
+
     Parameters
     ----------
     x : (float, float)
@@ -354,7 +340,9 @@ def map_shapefile(
     basemap, with features coloured based on attribute column values.
     Optionally, can be set up to print selected data from features in
     the GeoDataFrame.
+
     Last modified: February 2020
+
     Parameters
     ----------
     gdf : geopandas.GeoDataFrame
@@ -554,13 +542,16 @@ def xr_animation(
     Takes an `xarray` timeseries and animates the data as either a
     three-band (e.g. true or false colour) or single-band animation,
     allowing changes in the landscape to be compared across time.
+
     Animations can be customised to include text and date annotations
     or use specific combinations of input bands. Vector data can be
     overlaid and animated on top of imagery, and custom image
     processing functions can be applied to each frame.
     Supports .mp4 (ideal for Twitter/social media) and .gif (ideal
     for all purposes, but can have large file sizes) format files.
+
     Last modified: October 2020
+
     Parameters
     ----------
     ds : xarray.Dataset
@@ -946,7 +937,6 @@ def xr_animation(
 
 
 def _degree_to_zoom_level(l1, l2, margin=0.0):
-
     """
     Helper function to set zoom level for `display_map`
     """

@@ -1,14 +1,6 @@
-# imageexport.py
-'''
-This file contains functions for creating an interactive map for 
-selecting satellite imagery and exporting image files.
-
-Available functions:
-    select_region_app
-    export_image_app
-
-Last modified: October 2021
-'''
+"""
+Create an interactive map for selecting satellite imagery and exporting image files.
+"""
 
 # Load modules
 import datacube
@@ -22,43 +14,47 @@ from skimage import exposure
 from ipyleaflet import (WMSLayer, basemaps, basemap_to_tiles)
 from traitlets import Unicode
 
-import sys
-
 from deafrica_tools.spatial import reverse_geocode
 from deafrica_tools.dask import create_local_dask_cluster
+
 
 def select_region_app(date,
                       satellites,
                       size_limit=10000):
-    '''
+    """
     An interactive app that allows the user to select a region from a
     map using imagery from Sentinel-2 and Landsat. The output of this
-    function is used as the input to `export_image_app` to export high-
+    function is used as the input to :func:`export_image_app` to export high-
     resolution satellite images.
-    
+
     Last modified: September 2021
 
     Parameters
     ----------
     date : str
         The exact date used to plot imagery on the interactive map
-        (e.g. `date='1988-01-01'`). 
+        (e.g. ``date='1988-01-01'``).
     satellites : str
         The satellite data to plot on the interactive map. Three options
         are currently supported:
-            "Landsat": data from the Landsat 5, 7 and 8 satellites
-            "Sentinel-2": data from Sentinel-2A and Sentinel-2B
+
+            * ''`Landsat`'': data from the Landsat 5, 7 and 8 satellites
+            * ``'Sentinel-2'``: data from Sentinel-2A and Sentinel-2B
+
     size_limit : int, optional
         An optional size limit for the area selection in sq km.
         Defaults to 10000 sq km.
-        
+
     Returns
     -------
-    A dictionary containing 'geopolygon' (defining the area to 
-    export imagery from), 'date' (date used to export imagery), and 
-    'satellites' (the satellites from which to extract imagery). These
-    are passed to the `export_image_app` function to export the image.
-    '''
+    A dictionary containing:
+
+        * 'geopolygon' (defining the area to export imagery from),
+        * 'date' (date used to export imagery), and
+        * 'satellites' (the satellites from which to extract imagery).
+
+    These are passed to the :func:`export_image_app` function to export the image.
+    """
 
     ########################
     # Select and load data #
@@ -118,20 +114,20 @@ def export_image_app(geopolygon,
                      image_proc_funcs=None,
                      output_format="jpg",
                      standardise_name=False):
-    '''
+    """
     Exports Digital Earth Africa satellite data as an image file
-    based on the extent and time period selected using 
-    `select_region_app.` The function supports Sentinel-2 and Landsat 
+    based on the extent and time period selected using
+    :func:`select_region_app`. The function supports Sentinel-2 and Landsat
     data, creating True and False colour images.
-        
+
     By default, files are named using:
-    
-        "<product> - <YYYY-MM-DD> - <site, state> - <description>.png" 
-        
-    Set `standardise_name=True` for a machine-readable name:
-    
-        "<product>_<YYYY-MM-DD>_<site-state>_<description>.png" 
-    
+
+        ``"<product> - <YYYY-MM-DD> - <site, state> - <description>.png"``
+
+    Set ``standardise_name=True`` for a machine-readable name:
+
+        ``"<product>_<YYYY-MM-DD>_<site-state>_<description>.png"``
+
     Last modified: September 2021
 
     Parameters
@@ -140,58 +136,62 @@ def export_image_app(geopolygon,
         A datacube geopolygon providing the spatial bounds used to load
         satellite data.
     date : str
-        The exact date used to extract imagery 
-        (e.g. `date='1988-01-01'`). 
+        The exact date used to extract imagery
+        (e.g. `date='1988-01-01'`).
     satellites : str
-        The satellite data to be used to extract imagery. Four 
+        The satellite data to be used to extract imagery. Four
         options are currently supported:
-            "Landsat-8": data from the Landsat 8 satellite
-            "Landsat-7": data from the Landsat 8 satellite
-            "Landsat-5": data from the Landsat 8 satellite
-            "Sentinel-2": data from Sentinel-2A and Sentinel-2B
-            "Sentinel-2 geomedian": data from the Sentinel-2 annual geomedian
+
+            ``'Landsat-8'``: data from the Landsat 8 satellite
+            ``'Landsat-7'``: data from the Landsat 8 satellite
+            ``'Landsat-5'``: data from the Landsat 8 satellite
+            ``'Sentinel-2'``: data from Sentinel-2A and Sentinel-2B
+            ``'Sentinel-2 geomedian'``: data from the Sentinel-2 annual geomedian
+
     style : str, optional
         The style used to produce the image. Two options are currently
         supported:
-            "True colour": Creates a true colour image using the red, 
-            green and blue satellite bands
-            "False colour": Creates a false colour image using 
-            short-wave infrared, infrared and green satellite bands.
-            The specific bands used vary between Landsat and Sentinel-2.  
+
+            * ``'True colour'``: Creates a true colour image using the red,
+              green and blue satellite bands
+            * ``'False colour'``: Creates a false colour image using
+              short-wave infrared, infrared and green satellite bands.
+              The specific bands used vary between Landsat and Sentinel-2.
+
     resolution : tuple, optional
-        The spatial resolution to load data. By default, the tool will 
-        automatically set the best possible resolution depending on the 
-        satellites selected (i.e 30 m for Landsat, 10 m for Sentinel-2). 
-        Increasing this (e.g. to resolution = (-100, 100)) can be useful
+        The spatial resolution to load data. By default, the tool will
+        automatically set the best possible resolution depending on the
+        satellites selected (i.e 30 m for Landsat, 10 m for Sentinel-2).
+        Increasing this (e.g. to ``resolution=(-100, 100)``) can be useful
         for loading large spatial extents.
     vmin, vmax : int or float
-        The minimum and maximum surface reflectance values used to 
-        clip the resulting imagery to enhance contrast. 
+        The minimum and maximum surface reflectance values used to
+        clip the resulting imagery to enhance contrast.
     percentile_stretch : tuple of floats, optional
-        An tuple of two floats (between 0.00 and 1.00) that can be used 
-        to clip the imagery to based on percentiles to get more control 
-        over the brightness and contrast of the image. The default is 
-        None; '(0.02, 0.98)' is equivelent to `robust=True`. If this 
-        parameter is used, `vmin` and `vmax` will have no effect.
+        An tuple of two floats (between 0.00 and 1.00) that can be used
+        to clip the imagery to based on percentiles to get more control
+        over the brightness and contrast of the image. The default is
+        ``None``; ``(0.02, 0.98)`` is equivelent to ``robust=True``. If this
+        parameter is used, ``vmin`` and ``vmax`` will have no effect.
     power : float, optional
-        Raises imagery by a power to reduce bright features and 
+        Raises imagery by a power to reduce bright features and
         enhance dark features. This can add extra definition over areas
         with extremely bright features like snow, beaches or salt pans.
     image_proc_funcs : list of funcs, optional
-        An optional list containing functions that will be applied to 
-        the output image. This can include image processing functions 
-        such as increasing contrast, unsharp masking, saturation etc. 
-        The function should take AND return a `numpy.ndarray` with 
-        shape [y, x, bands]. If your function has parameters, you 
+        An optional list containing functions that will be applied to
+        the output image. This can include image processing functions
+        such as increasing contrast, unsharp masking, saturation etc.
+        The function should take AND return a `numpy.ndarray` with
+        shape ``[y, x, bands]``. If your function has parameters, you
         can pass in custom values using a lambda function, e.g.:
-        `image_proc_funcs = [lambda x: skimage.filters.unsharp_mask(x, radius=5, amount=0.2)]`
+        ``[lambda x: skimage.filters.unsharp_mask(x, radius=5, amount=0.2)]``
     output_format : str, optional
-        The output file format of the image. Valid options include "jpg"
-        and "png". Defaults to "jpg".
+        The output file format of the image. Valid options include ``'jpg'``
+        and ``'png'``. Defaults to ``'jpg'``.
     standardise_name : bool, optional
-        Whether to export the image file with a machine-readable 
-        file name (e.g. `<product>_<YYYY-MM-DD>_<site-state>_<description>.png`)        
-    '''
+        Whether to export the image file with a machine-readable
+        file name (e.g. ``<product>_<YYYY-MM-DD>_<site-state>_<description>.png``)
+    """
     
     ###########################
     # Set up satellite params #

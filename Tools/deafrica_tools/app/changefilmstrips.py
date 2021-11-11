@@ -1,12 +1,6 @@
-# changefilmstrips.py
 """
-This file contains functions for loading and interacting with data in the
-change filmstrips notebook, inside the Real_world_examples folder.
-
-Available functions:
-    run_filmstrip_app
-
-Last modified: October 2021
+Loading and interacting with data in the change filmstrips notebook,
+inside the Real_world_examples folder.
 """
 
 # Load modules
