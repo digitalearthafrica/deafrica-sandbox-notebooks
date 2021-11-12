@@ -27,33 +27,6 @@ class NDVIClimatology(StatsPluginInterface):
         mask_band: str = "QA_PIXEL",
         harmonization_slope: float = None,
         harmonization_intercept: float = None,
-        output_bands: Tuple[str, ...] = (
-            "ndvi_clim_mean_jan",
-            "ndvi_clim_mean_feb",
-            "ndvi_clim_mean_mar",
-            "ndvi_clim_mean_apr",
-            "ndvi_clim_mean_may",
-            "ndvi_clim_mean_jun",
-            "ndvi_clim_mean_jul",
-            "ndvi_clim_mean_aug",
-            "ndvi_clim_mean_sep",
-            "ndvi_clim_mean_oct",
-            "ndvi_clim_mean_nov",
-            "ndvi_clim_mean_dec",
-            "ndvi_clim_std_jan",
-            "ndvi_clim_std_feb",
-            "ndvi_clim_std_mar",
-            "ndvi_clim_std_apr",
-            "ndvi_clim_std_may",
-            "ndvi_clim_std_jun",
-            "ndvi_clim_std_jul",
-            "ndvi_clim_std_aug",
-            "ndvi_clim_std_sep",
-            "ndvi_clim_std_oct",
-            "ndvi_clim_std_nov",
-            "ndvi_clim_std_dec",
-            "count"
-        ),
         group_by: str = "solar_day",
         flags_ls57: Dict[str, Optional[Any]] = dict(
             cloud="high_confidence", cloud_shadow="high_confidence"
@@ -69,6 +42,44 @@ class NDVIClimatology(StatsPluginInterface):
         scale: float = 0.0000275,
         offset: float = -0.2,
         output_dtype: str = "float32",
+        output_bands: Tuple[str, ...] = (
+            "mean_jan",
+            "mean_feb",
+            "mean_mar",
+            "mean_apr",
+            "mean_may",
+            "mean_jun",
+            "mean_jul",
+            "mean_aug",
+            "mean_sep",
+            "mean_oct",
+            "mean_nov",
+            "mean_dec",
+            "stddev_jan",
+            "stddev_feb",
+            "stddev_mar",
+            "stddev_apr",
+            "stddev_may",
+            "stddev_jun",
+            "stddev_jul",
+            "stddev_aug",
+            "stddev_sep",
+            "stddev_oct",
+            "stddev_nov",
+            "stddev_dec",
+            "count_jan",
+            "count_feb",
+            "count_mar",
+            "count_apr",
+            "count_may",
+            "count_jun",
+            "count_jul",
+            "count_aug",
+            "count_sep",
+            "count_oct",
+            "count_nov",
+            "count_dec",
+        ),
         **kwargs,
     ):
 
@@ -139,16 +150,24 @@ class NDVIClimatology(StatsPluginInterface):
             return xx
 
         # seperate datsets into different sensors
-        product_datasets = {}
+        product_dss = {}
         for dataset in datasets:
             product = get_in(["product", "name"], dataset.metadata_doc)
-            if product not in product_datasets:
-                product_datasets[product] = []
-            product_datasets[product].append(dataset)
+            if product not in product_dss:
+                product_dss[product] = []
+            product_dss[product].append(dataset)
         
-        # load landsat 5 & 7
+        #seperate out 5,7 datasets so we can handle
+        ls57_dss = []
+        if "ls5_sr" in product_dss:
+            ls57_dss = ls57_dss + product_dss["ls5_sr"]
+        
+        if "ls7_sr" in product_dss:
+            ls57_dss = ls57_dss + product_dss["ls7_sr"]
+        
+        # load landsat 5 and/or 7
         ls57 = load_with_native_transform(
-            dss=product_datasets["ls5_sr"] + product_datasets["ls7_sr"],
+            dss=ls57_dss,
             geobox=geobox,
             native_transform=lambda x: masking_data(x, self.flags_ls57),
             bands=self.input_bands,
@@ -157,10 +176,10 @@ class NDVIClimatology(StatsPluginInterface):
             chunks=self.work_chunks,
             resampling=self.resampling,
         )
-     
+
         # load Landsat 8
         ls8 = load_with_native_transform(
-            dss=product_datasets["ls8_sr"],
+            dss=product_dss["ls8_sr"],
             geobox=geobox,
             native_transform=lambda x: masking_data(x, self.flags_ls8),
             bands=self.input_bands,
@@ -182,7 +201,7 @@ class NDVIClimatology(StatsPluginInterface):
                 cloud_mask = mask_cleanup(
                     ds[k]["cloud_mask"], mask_filters=self.filters
                 )
-            
+
             # erase pixels with cloud
             ds[k] = ds[k].drop_vars(["cloud_mask"])
             ds[k] = erase_bad(ds[k], cloud_mask)
@@ -198,22 +217,24 @@ class NDVIClimatology(StatsPluginInterface):
                 # set data-type and nodata attrs
                 ds[k][band] = ds[k][band].astype(self.output_dtype)
                 ds[k][band].attrs["nodata"] = self.output_nodata
-                
-            #add back cloud mask
-            ds[k]['cloud_mask'] = cloud_mask
+
+            # add back cloud mask
+            ds[k]["cloud_mask"] = cloud_mask
 
             # calculate ndvi
             ds[k]["ndvi"] = (ds[k].nir - ds[k].red) / (ds[k].nir + ds[k].red)
-            
-            # remove red and nir 
+
+            # remove red and nir
             ds[k] = ds[k].drop_vars(["red", "nir"])
-            
+
         # scaling of 5-7 NDVI to match NDVI 8
-        ds["ls57"]["ndvi"] = (ds["ls57"]["ndvi"] - self.harmonization_intercept) / self.harmonization_slope
+        ds["ls57"]["ndvi"] = (
+            ds["ls57"]["ndvi"] - self.harmonization_intercept
+        ) / self.harmonization_slope
 
         # combine datarrays and convert back to dataset
         ndvi = ds["ls57"].combine_first(ds["ls8"])
-        
+
         return ndvi
 
     def reduce(self, xx: xr.Dataset) -> xr.Dataset:
@@ -222,9 +243,9 @@ class NDVIClimatology(StatsPluginInterface):
         and std. dev.
         """
         #  seperate the clear count from the dataset
-        cc = xx[['cloud_mask']]
+        cc = xx[["cloud_mask"]]
         xx = xx.drop_vars(["cloud_mask"])
-        
+
         ## climatology calulations
         months = {
             "jan": [1],
@@ -240,36 +261,41 @@ class NDVIClimatology(StatsPluginInterface):
             "nov": [11],
             "dec": [12],
         }
-        
-        #calculate the climatologies for each month
+
+        # calculate the climatologies for each month
         xx_mean = xx.groupby(xx.spec["time.month"]).mean()
         xx_std = xx.groupby(xx.spec["time.month"]).std()
-        cc = cc.groupby(cc.spec["time.month"]).sum() #total clear obs
-        
-        #loop throuhg months, select out arrays, rename
+        cc = cc.groupby(cc.spec["time.month"]).sum() # total clear obs/month
+
+        # loop throuhg months, select out arrays, rename
         ndvi_var_mean = []
         ndvi_var_std = []
         pq = []
         for m in months:
+            #mean
             ix_mean = xx_mean.sel(month=months[m])
             ix_mean = (
                 ix_mean.to_array(name="ndvi_clim_mean_" + m).drop("variable").squeeze()
             )
+            #std dev
             ix_std = xx_std.sel(month=months[m])
             ix_std = (
                 ix_std.to_array(name="ndvi_clim_std_" + m).drop("variable").squeeze()
             )
+            #count
             ix_count = cc.sel(month=months[m])
-            ix_count = (
-                ix_count.to_array(name="count_" + m).drop("variable").squeeze()
-            )
+            ix_count = ix_count.to_array(name="count_" + m).drop("variable").squeeze()
+            
+            #appned da's to lists
             ndvi_var_mean.append(ix_mean)
             ndvi_var_std.append(ix_std)
             pq.append(ix_count)
-        
-        #merge them all into one giant dataset
-        clim = xr.merge(ndvi_var_mean + ndvi_var_std + pq, compat="override").drop("month")
-        
+
+        # merge them all into one dataset
+        clim = xr.merge(ndvi_var_mean + ndvi_var_std + pq, compat="override").drop(
+            "month"
+        )
+
         return clim
 
     def fuser(self, xx):
