@@ -51,7 +51,6 @@ from ipywidgets import (
     Output,
 )
 import json
-# import gettext
 import geopandas as gpd
 from io import BytesIO
 from dask.diagnostics import ProgressBar
@@ -60,10 +59,6 @@ import deafrica_tools
 from deafrica_tools.dask import create_local_dask_cluster
 from deafrica_tools.wetlands import WIT_drill
 import deafrica_tools.app.widgetconstructors as deawidgets
-# from wetlands import WIT_drill
-# import widgetconstructors as deawidgets
-
-# _ = gettext.gettext
 
 
 def make_box_layout():
