@@ -43,9 +43,9 @@ This file can then be uploaded to POEditor.com, by joining this project: https:/
 
 (TODO: Automate this step as in other projects such as [deafrica-docs](https://github.com/digitalearthafrica/deafrica-docs/blob/main/.github/workflows/main.yml)
 
-Currently, the `po` and `mo` files must be exported to `Tools/deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.mo`
+Currently, the `po` and `mo` files must be exported to `deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.mo`
 
 In python code, strings surrounded by an underscore function `_('')` will be translated.
 
-This function is declared as a global after [`deafrica_tools.set_lang('fr')`](Tools/__init__.py) is called.  
-See [wetlandsinsighttool.py](Tools/app/wetlandsinsighttool.py) as an example.
+This function is declared as a global after [`deafrica_tools.set_lang('fr')`](deafrica_tools/__init__.py) is called.  
+See [wetlandsinsighttool.py](deafrica_tools/app/wetlandsinsighttool.py) as an example.
