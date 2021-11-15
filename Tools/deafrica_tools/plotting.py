@@ -1,34 +1,10 @@
 """
 Functions for plotting Digital Earth Africa data.
-
-License
--------
-The code in this notebook is licensed under the Apache License,
-Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth
-Africa data is licensed under the Creative Commons by Attribution 4.0
-license (https://creativecommons.org/licenses/by/4.0/).
-
-Contact
--------
-If you need assistance, please post a question on the Open Data
-Cube Slack channel (http://slack.opendatacube.org/) or on the GIS Stack
-Exchange (https://gis.stackexchange.com/questions/ask?tags=open-data-cube)
-using the `open-data-cube` tag (you can view previously asked questions
-here: https://gis.stackexchange.com/questions/tagged/open-data-cube).
-
-If you would like to report an issue with this script, file one on
-Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new
-
-.. autosummary::
-   :nosignatures:
-   :toctree: gen
-
 """
 
 # Import required packages
 import math
 import folium
-import calendar
 import ipywidgets
 import branca
 import numpy as np
@@ -80,7 +56,6 @@ def rgb(
     parameter allows easily selecting individual or multiple images for
     RGB plotting. Images can be saved to file by specifying an output
     path using `savefig_path`.
-
     This function was designed to work as an easier-to-use wrapper
     around xarray's `.plot.imshow()` functionality.
 
@@ -98,7 +73,7 @@ def rgb(
     bands : list of strings, optional
         A list of three strings giving the band names to plot. Defaults
         to '['red', 'green', 'blue']'. If the dataset does not contain
-        bands named `'red', 'green', 'blue'`, then `bands` must be 
+        bands named `'red', 'green', 'blue'`, then `bands` must be
         specified.
     index : integer or list of integers, optional
         `index` can be used to select one (`index=0`) or multiple
@@ -143,20 +118,20 @@ def rgb(
         matplotlib axes object by passing an `ax` keyword argument.
         For more options, see:
         http://xarray.pydata.org/en/stable/generated/xarray.plot.imshow.html
-
     Returns
     -------
     An RGB plot of one or multiple observations, and optionally an image
     file written to file.
-
     """
 
     # If bands are not in the dataset
     ds_vars = list(ds.data_vars)
     if set(bands).issubset(ds_vars) == False:
-        raise ValueError("rgb() bands do not match band names in dataset. "
-                        "Note the default rgb() bands are ['red', 'green', 'blue'].")
-    
+        raise ValueError(
+            "rgb() bands do not match band names in dataset. "
+            "Note the default rgb() bands are ['red', 'green', 'blue']."
+        )
+
     # If ax is supplied via kwargs, ignore aspect and size
     if "ax" in kwargs:
 
@@ -294,7 +269,6 @@ def display_map(x, y, crs="EPSG:4326", margin=-0.5, zoom_bias=0):
         A numeric value allowing you to increase or decrease the zoom
         level by one step. Defaults to 0; set to greater than 0 to zoom
         in, and less than 0 to zoom out.
-
     Returns
     -------
     folium.Map : A map centered on the supplied coordinate bounds. A
@@ -408,7 +382,6 @@ def map_shapefile(
         transparency) and 'dashArray' (whether to plot lines/outlines
         with dashes). For more information:
         https://ipyleaflet.readthedocs.io/en/latest/api_reference/choropleth.html
-
     """
 
     def on_hover(event, id, properties):
@@ -574,7 +547,6 @@ def xr_animation(
     or use specific combinations of input bands. Vector data can be
     overlaid and animated on top of imagery, and custom image
     processing functions can be applied to each frame.
-
     Supports .mp4 (ideal for Twitter/social media) and .gif (ideal
     for all purposes, but can have large file sizes) format files.
 
@@ -683,7 +655,6 @@ def xr_animation(
         render (e.g. `limit=50` will render the first 50 frames). This
         can be useful for quickly testing animations without rendering
         the entire time-series.
-
     """
 
     def _start_end_times(gdf, ds):
@@ -966,7 +937,6 @@ def xr_animation(
 
 
 def _degree_to_zoom_level(l1, l2, margin=0.0):
-
     """
     Helper function to set zoom level for `display_map`
     """
@@ -980,9 +950,10 @@ def _degree_to_zoom_level(l1, l2, margin=0.0):
         zoom_level_int = 18
     return zoom_level_int
 
+
 def plot_wofs(wofs, legend=True, **plot_kwargs):
     """Plot a water observation bit flag image.
-    
+
     Parameters
     ----------
     wofs : xr.DataArray
@@ -991,23 +962,25 @@ def plot_wofs(wofs, legend=True, **plot_kwargs):
         Whether to plot a legend. Default True.
     plot_kwargs : dict
         Keyword arguments passed on to DataArray.plot.
-    
+
     Returns
     -------
-    plot    
+    plot
     """
-    cmap = mcolours.ListedColormap([
-          np.array([150, 150, 110]) / 255,   # dry - 0
-          np.array([0, 0, 0]) / 255,   # nodata, - 1
-          np.array([119, 104, 87]) / 255,   # terrain - 16
-          np.array([89, 88, 86]) / 255,     # cloud_shadow - 32
-          np.array([216, 215, 214]) / 255,  # cloud - 64
-          np.array([242, 220, 180]) / 255,  # cloudy terrain - 80
-          np.array([79, 129, 189]) / 255,  # water - 128
-          np.array([51, 82, 119]) / 255,   # shady water - 160
-          np.array([186, 211, 242]) / 255, # cloudy water - 192
-    ])
-    bounds=[
+    cmap = mcolours.ListedColormap(
+        [
+            np.array([150, 150, 110]) / 255,  # dry - 0
+            np.array([0, 0, 0]) / 255,  # nodata, - 1
+            np.array([119, 104, 87]) / 255,  # terrain - 16
+            np.array([89, 88, 86]) / 255,  # cloud_shadow - 32
+            np.array([216, 215, 214]) / 255,  # cloud - 64
+            np.array([242, 220, 180]) / 255,  # cloudy terrain - 80
+            np.array([79, 129, 189]) / 255,  # water - 128
+            np.array([51, 82, 119]) / 255,  # shady water - 160
+            np.array([186, 211, 242]) / 255,  # cloudy water - 192
+        ]
+    )
+    bounds = [
         0,
         1,
         16,
@@ -1020,13 +993,23 @@ def plot_wofs(wofs, legend=True, **plot_kwargs):
         255,
     ]
     norm = mcolours.BoundaryNorm(np.array(bounds) - 0.1, cmap.N)
-    cblabels = ['dry', 'nodata', 'terrain', 'cloud shadow', 'cloud', 'cloudy terrain', 'water', 'shady water', 'cloudy water']
+    cblabels = [
+        "dry",
+        "nodata",
+        "terrain",
+        "cloud shadow",
+        "cloud",
+        "cloudy terrain",
+        "water",
+        "shady water",
+        "cloudy water",
+    ]
 
     try:
         im = wofs.plot.imshow(cmap=cmap, norm=norm, add_colorbar=legend, **plot_kwargs)
     except AttributeError:
         im = wofs.plot(cmap=cmap, norm=norm, add_colorbar=legend, **plot_kwargs)
-    
+
     if legend:
         try:
             cb = im.colorbar
@@ -1035,4 +1018,117 @@ def plot_wofs(wofs, legend=True, **plot_kwargs):
         ticks = cb.get_ticks()
         cb.set_ticks(ticks + np.diff(ticks, append=256) / 2)
         cb.set_ticklabels(cblabels)
+    return im
+
+
+def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
+    """Plot a LULC image.
+
+    Parameters
+    ----------
+    lulc : xr.DataArray
+        A DataArray containing LULC bit flags.
+    product : str
+        'ESA' or 'ESRI'
+    legend : bool
+        Whether to plot a legend. Default True.
+    plot_kwargs : dict
+        Keyword arguments passed on to DataArray.plot.
+
+    Returns
+    -------
+    plot
+    """
+
+    if "ESRI" in product:
+        try:
+            cmap = mcolours.ListedColormap(
+                [
+                    np.array([0, 0, 0]) / 255,
+                    np.array([65, 155, 223]) / 255,
+                    np.array([57, 125, 73]) / 255,
+                    np.array([136, 176, 83]) / 255,
+                    np.array([122, 135, 198]) / 255,
+                    np.array([228, 150, 53]) / 255,
+                    np.array([223, 195, 90]) / 255,
+                    np.array([196, 40, 27]) / 255,
+                    np.array([165, 155, 143]) / 255,
+                    np.array([168, 235, 255]) / 255,
+                    np.array([97, 97, 97]) / 255,
+                ]
+            )
+            bounds = range(0, 12)
+            norm = mcolours.BoundaryNorm(np.array(bounds), cmap.N)
+            cblabels = [
+                "no data",
+                "water",
+                "trees",
+                "grass",
+                "flooded vegetation",
+                "crops",
+                "scrub/shrub",
+                "built area",
+                "bare ground",
+                "snow/ice",
+                "clouds",
+            ]
+        except:
+            AttributeError
+
+    if "ESA" in product:
+        try:
+            cmap = mcolours.ListedColormap(
+                [
+                    np.array([0, 0, 0]) / 255,
+                    np.array([0, 100, 0]) / 255,
+                    np.array([255, 187, 34]) / 255,
+                    np.array([255, 255, 76]) / 255,
+                    np.array([240, 150, 255]) / 255,
+                    np.array([250, 0, 0]) / 255,
+                    np.array([180, 180, 180]) / 255,
+                    np.array([240, 240, 240]) / 255,
+                    np.array([0, 100, 200]) / 255,
+                    np.array([0, 150, 160]) / 255,
+                    np.array([0, 207, 117]) / 255,
+                    np.array([250, 230, 160]) / 255,
+                ]
+            )
+            bounds = [-5, 5, 15, 25, 35, 45, 55, 65, 75, 85, 92, 98, 105]
+            norm = mcolours.BoundaryNorm(np.array(bounds), cmap.N)
+            cblabels = [
+                "no data",
+                "tree cover",
+                "shrubland",
+                "grassland",
+                "cropland",
+                "built up",
+                "bare/sparse vegetation",
+                "snow and ice",
+                "permanent water bodies",
+                "herbaceous wetland",
+                "mangroves",
+                "moss and lichen",
+            ]
+        except:
+            AttributeError
+
+    try:
+        im = lulc.plot.imshow(cmap=cmap, norm=norm, add_colorbar=legend, **plot_kwargs)
+    except AttributeError:
+        im = lulc.plot(cmap=cmap, norm=norm, add_colorbar=legend, **plot_kwargs)
+
+    if legend:
+        try:
+            cb = im.colorbar
+        except AttributeError:
+            cb = im.cbar
+
+        if "ESRI" in product:
+            cb.set_ticks(np.arange(0, 12, 1) + 0.5)
+            cb.set_ticklabels(cblabels)
+
+        if "ESA" in product:
+            cb.set_ticks([0, 10, 20, 30, 40, 50, 60, 70, 80, 88.5, 95, 101.5])
+            cb.set_ticklabels(cblabels)
+
     return im

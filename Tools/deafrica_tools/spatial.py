@@ -1,34 +1,5 @@
-## spatial.py
 '''
-Description: This file contains a set of python functions for conducting 
-spatial analyses on Digital Earth Australia data.
-
-License: The code in this notebook is licensed under the Apache License, 
-Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth 
-Australia data is licensed under the Creative Commons by Attribution 4.0 
-license (https://creativecommons.org/licenses/by/4.0/).
-
-Contact: If you need assistance, please post a question on the Open Data 
-Cube Slack channel (http://slack.opendatacube.org/) or on the GIS Stack 
-Exchange (https://gis.stackexchange.com/questions/ask?tags=open-data-cube) 
-using the `open-data-cube` tag (you can view previously asked questions 
-here: https://gis.stackexchange.com/questions/tagged/open-data-cube). 
-
-If you would like to report an issue with this script, file one on 
-Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks
-
-Functions included:
-    xr_vectorize
-    xr_rasterize
-    subpixel_contours
-    interpolate_2d
-    contours_to_array
-    largest_region
-    transform_geojson_wgs_to_epsg
-    zonal_stats_parallel
-
-Last modified: November 2020
-
+Spatial analyses functions for Digital Earth Africa data.
 '''
 
 # Import required packages
@@ -867,7 +838,6 @@ def zonal_stats_parallel(shp,
 
         
 def reverse_geocode(coords, site_classes=None, state_classes=None):
-    
     """
     Takes a latitude and longitude coordinate, and performs a reverse 
     geocode to return a plain-text description of the location in the 
@@ -878,6 +848,7 @@ def reverse_geocode(coords, site_classes=None, state_classes=None):
     E.g.: `reverse_geocode(coords=(-35.282163, 149.128835))`
     
         'Canberra, Australian Capital Territory'
+
     Parameters
     ----------
     coords : tuple of floats
@@ -888,8 +859,11 @@ def reverse_geocode(coords, site_classes=None, state_classes=None):
         text location description. Because the contents of the geocoded 
         address can vary greatly depending on location, these strings
         are tested against the address one by one until a match is made.
-        Defaults to: `['city', 'town', 'village', 'suburb', 'hamlet', 
-                       'county', 'municipality']`.      
+
+        Defaults to:
+
+            ``['city', 'town', 'village', 'suburb', 'hamlet', 'county', 'municipality']``
+
     state_classes : list of strings, optional
         A list of strings used to define the state part of the plain 
         text location description. These strings are tested against the 
