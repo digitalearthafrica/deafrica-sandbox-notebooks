@@ -455,6 +455,16 @@ def load_ard(
             ds[fmask_band].attrs["flags_definition"], **categories_to_mask_ls
         )
         pq_mask = (ds[fmask_band] & mask) != 0
+        
+        # identify pixels that will become negative after rescaling (but not 0 values)
+        invalid = (
+                 ((ds[data_bands] < (-1.0 * -0.2 / 0.0000275)) & (ds[data_bands] > 0))
+                .to_array(dim="band")
+                .any(dim="band")
+            )
+        
+        #merge masks
+        pq_mask = pq_mask | invalid
 
     # sentinel 2
     if product_type == "s2":
@@ -487,6 +497,7 @@ def load_ard(
         total_obs = len(ds.time)
         ds = ds.sel(time=keep)
         pq_mask = pq_mask.sel(time=keep)
+
         if verbose:
             print(
                 f"Filtering to {len(ds.time)} out of {total_obs} "
@@ -519,7 +530,7 @@ def load_ard(
     # Mask data if either of the above masks were generated
     if mask is not None:
         ds_data = odc.algo.erase_bad(ds_data, where=mask)
-
+    
     # Automatically set dtype to either native or float32 depending
     # on whether masking was requested
     if dtype == "auto":
