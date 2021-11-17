@@ -1,16 +1,12 @@
 """
 Functions for computing remote sensing band indices on Digital Earth Africa
 data.
-
-.. autosummary::
-   :nosignatures:
-   :toctree: gen
-
 """
 
 # Import required packages
 import warnings
 import numpy as np
+
 
 # Define custom functions
 def calculate_indices(
@@ -77,6 +73,7 @@ def calculate_indices(
 
          * ``'c2'`` (for USGS Landsat Collection 2)
          * ``'s2'`` (for Sentinel-2)
+
          As of July 2021, options for ``'c1'`` (USGS Landsat Collection 1)
          have been removed as Collection 1 data has been archived. The 
          improved version of Landsat data can be accessed through Collection 2.
@@ -269,9 +266,6 @@ def calculate_indices(
                 "BAEI",
                 "AWEI_ns",
                 "AWEI_sh",
-                "TCW",
-                "TCG",
-                "TCB",
                 "EVI",
                 "LAI",
                 "SAVI",
