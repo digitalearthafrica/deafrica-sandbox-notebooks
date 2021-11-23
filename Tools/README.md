@@ -47,5 +47,8 @@ Currently, the `po` and `mo` files must be exported to `deafrica_tools/locales/f
 
 In python code, strings surrounded by an underscore function `_('')` will be translated.
 
-This function is declared as a global after [`deafrica_tools.set_lang('fr')`](deafrica_tools/__init__.py) is called.  
+This `_()` function is declared as a global after [`deafrica_tools.set_lang('fr')`](deafrica_tools/__init__.py) is called. 
+
+Calling `deafrica_tools.set_lang()` with no argument will use the language set by JupyterLab under **Settings -> Language**.
+
 See [wetlandsinsighttool.py](deafrica_tools/app/wetlandsinsighttool.py) as an example.
