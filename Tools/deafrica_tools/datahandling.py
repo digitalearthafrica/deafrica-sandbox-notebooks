@@ -464,7 +464,7 @@ def load_ard(
             )
         
         #merge masks
-        pq_mask = pq_mask | invalid
+        pq_mask = xr.ufuncs.logical_or(pq_mask, pq_mask)
 
     # sentinel 2
     if product_type == "s2":
