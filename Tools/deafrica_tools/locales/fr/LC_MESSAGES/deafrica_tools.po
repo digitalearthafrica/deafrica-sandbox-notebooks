@@ -21,7 +21,7 @@ msgstr "Sentinel-2 Geomedian"
 
 #: app/wetlandsinsighttool.py:103
 msgid "Water Observations from Space"
-msgstr "Observations de l'eau depuis l'espace"
+msgstr "Observations de l'eau depuis l'espace-WOfS"
 
 #: app/wetlandsinsighttool.py:116
 msgid "Wetlands Insight Tool"
@@ -29,7 +29,7 @@ msgstr "Outil d'analyse des zones humides"
 
 #: app/wetlandsinsighttool.py:117
 msgid "Select parameters and AOI"
-msgstr "Sélectionner les paramètres et l'AOI"
+msgstr "Sélectionner les paramètres et la zone d'intérêt"
 
 #: app/wetlandsinsighttool.py:141
 msgid "Total polygon area"
@@ -41,7 +41,7 @@ msgstr "La zone se situe dans la limite recommandée"
 
 #: app/wetlandsinsighttool.py:148
 msgid "Area is too large, please update your polygon"
-msgstr "La zone est trop grande, veuillez mettre à jour votre polygone."
+msgstr "La zone est trop grande, veuillez réduire votre polygone."
 
 #: app/wetlandsinsighttool.py:168
 msgid "Map Overlays"
@@ -85,7 +85,7 @@ msgstr "Progrès"
 
 #: app/wetlandsinsighttool.py:343
 msgid "WIT complete"
-msgstr "WIT complet"
+msgstr "WIT achevée"
 
 #: app/wetlandsinsighttool.py:345
 msgid "No polygon selected"
@@ -101,11 +101,11 @@ msgstr "humide"
 
 #: app/wetlandsinsighttool.py:384
 msgid "green veg"
-msgstr "légumes verts"
+msgstr "végétation verts"
 
 #: app/wetlandsinsighttool.py:385
 msgid "dry veg"
-msgstr "légumes secs"
+msgstr "végétation seche"
 
 #: app/wetlandsinsighttool.py:386
 msgid "bare soil"
