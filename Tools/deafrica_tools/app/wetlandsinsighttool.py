@@ -1,27 +1,6 @@
-# wetlandsinsighttool.py
 """
-Description: This file contains the wetlands insight tool class,
-which can be used to run an interactive version of the wetlands insight tool.
-
-License: The code in this notebook is licensed under the Apache License,
-Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth 
-Africa data is licensed under the Creative Commons by Attribution 4.0 
-license (https://creativecommons.org/licenses/by/4.0/).
-
-Contact: If you need assistance, please post a question on the Open Data 
-Cube Slack channel (http://slack.opendatacube.org/) or on the GIS Stack 
-Exchange (https://gis.stackexchange.com/questions/ask?tags=open-data-cube) 
-using the `open-data-cube` tag (you can view previously asked questions 
-here: https://gis.stackexchange.com/questions/tagged/open-data-cube). 
-
-If you would like to report an issue with this script, you can file one on 
-Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new
-
-Functions included:
-    
-
-Last modified: Oct 2021
-
+Wetlands insight tool widget, which can be used to run an interactive
+version of the wetlands insight tool.
 """
 
 # Import required packages
@@ -38,6 +17,7 @@ from ipyleaflet import (
     DrawControl,
     WidgetControl,
     LayerGroup,
+    LayersControl,
 )
 from traitlets import Unicode
 from ipywidgets import (
@@ -94,8 +74,10 @@ class wit_app(HBox):
         self.out_plot = "example_WIT.png"
         self.product_list = [
             ("None", "none"),
+            ("ESRI World Imagery", "esri_world_imagery"),
             ("Sentinel-2 Geomedian", "gm_s2_annual"),
             ("Water Observations from Space", "wofs_ls_summary_annual"),
+            
         ]
         self.product = self.product_list[0][1]
         self.product_year = "2020-01-01"
@@ -158,9 +140,11 @@ class wit_app(HBox):
         
         # Begin by displaying an empty layer group, and update the group with desired WMS on interaction.
         self.deafrica_layers = LayerGroup(layers=())
+        self.deafrica_layers.name = 'Map Overlays'
 
         # Create map widget
         self.m = deawidgets.create_map()
+        
         self.m.layout = make_box_layout()
         
         # Add tools to map widget
@@ -188,7 +172,7 @@ class wit_app(HBox):
         
         parameter_selection = VBox(
             [
-                HTML("<b>DE Africa Overlay:</b>"),
+                HTML("<b>Map Overlay:</b>"),
                 deaoverlay_dropdown,
                 HTML("<b>Start Date:</b>"),
                 startdate_picker,
@@ -278,6 +262,10 @@ class wit_app(HBox):
 
         if self.product == "none":
             self.deafrica_layers.clear_layers()
+        elif self.product == "esri_world_imagery":
+            self.deafrica_layers.clear_layers()
+            layer = basemap_to_tiles(basemaps.Esri.WorldImagery)
+            self.deafrica_layers.add_layer(layer)
         else:
             self.deafrica_layers.clear_layers()
             layer = deawidgets.create_dea_wms_layer(self.product, self.product_year)

@@ -1,38 +1,11 @@
-# widgetconstructors.py
 """
-Description: This file contains a set of python functions for easily defining widgets
-in the context of DE Africa. These are largely cutomised wrappers around existing widgets
+Functions for easily defining widgets in the context of DE Africa notebooks.
 
-License: The code in this notebook is licensed under the Apache License,
-Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth 
-Africa data is licensed under the Creative Commons by Attribution 4.0 
-license (https://creativecommons.org/licenses/by/4.0/).
-
-Contact: If you need assistance, please post a question on the Open Data 
-Cube Slack channel (http://slack.opendatacube.org/) or on the GIS Stack 
-Exchange (https://gis.stackexchange.com/questions/ask?tags=open-data-cube) 
-using the `open-data-cube` tag (you can view previously asked questions 
-here: https://gis.stackexchange.com/questions/tagged/open-data-cube). 
-
-If you would like to report an issue with this script, you can file one on 
-Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new
-
-Functions included:
-    create_datepicker
-    create_inputtext
-    create_boundedfloattext
-    create_dropdown
-    create_html
-    create_map
-    create_dea_wms_layer
-    create_drawcontrol
-    
-
-Last modified: Oct 2021
-
+These are largely customised wrappers around existing widgets.
 """
 
 import ipyleaflet as leaflet
+from ipyleaflet import LayersControl
 import ipywidgets as widgets
 from traitlets import Unicode
 
@@ -197,7 +170,7 @@ def create_html(value):
     return html
 
 
-def create_map(map_center=(4, 20), zoom_level=3, basemap=leaflet.basemaps.Esri.WorldImagery):
+def create_map(map_center=(4, 20), zoom_level=3, basemap=leaflet.basemaps.OpenStreetMap.Mapnik, basemap_name='Open Street Map'):
     '''
     Create an interactive ipyleaflet map
     
@@ -213,7 +186,9 @@ def create_map(map_center=(4, 20), zoom_level=3, basemap=leaflet.basemaps.Esri.W
         Defaults to 3 to view all of Africa
     basemap : ipyleaflet basemap (dict)
         Basemap to use, can be any from https://ipyleaflet.readthedocs.io/en/latest/api_reference/basemaps.html
-        Defaults to ESRI World Imagery (basemaps.Esri.WorldImagery)
+        Defaults to Open Street Map (basemaps.OpenStreetMap.Mapnik)
+    basemap_name : string
+        Layer name for the basemap
         
     Returns
     -------
@@ -222,9 +197,10 @@ def create_map(map_center=(4, 20), zoom_level=3, basemap=leaflet.basemaps.Esri.W
         
     '''
     
-    tiled_basemap = leaflet.basemap_to_tiles(basemap)
-    
-    m = leaflet.Map(center=map_center, zoom=zoom_level, basemap=tiled_basemap)
+    basemap_tiles = leaflet.basemap_to_tiles(basemap)
+    basemap_tiles.name = basemap_name
+
+    m = leaflet.Map(center=map_center, zoom=zoom_level, basemap=basemap_tiles, scroll_wheel_zoom=True)
     
     return m
 

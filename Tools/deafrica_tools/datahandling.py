@@ -1,28 +1,5 @@
 """
 Functions for loading and handling Digital Earth Africa data.
-
-License
--------
-The code in this notebook is licensed under the Apache License,
-Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth
-Africa data is licensed under the Creative Commons by Attribution 4.0
-license (https://creativecommons.org/licenses/by/4.0/).
-
-Contact
--------
-If you need assistance, please post a question on the Open Data
-Cube Slack channel (http://slack.opendatacube.org/) or on the GIS Stack
-Exchange (https://gis.stackexchange.com/questions/ask?tags=open-data-cube)
-using the `open-data-cube` tag (you can view previously asked questions
-here: https://gis.stackexchange.com/questions/tagged/open-data-cube).
-
-If you would like to report an issue with this script, you can file one on
-Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new
-
-.. autosummary::
-   :nosignatures:
-   :toctree: gen
-
 """
 
 # Import required packages
@@ -40,14 +17,9 @@ import pytz
 from collections import Counter
 from datacube.utils import masking
 from scipy.ndimage import binary_dilation
-from datacube.storage.masking import mask_invalid_data
 from odc.algo import mask_cleanup
 from copy import deepcopy
 import odc.algo
-from random import randint
-import numexpr as ne
-import dask
-import dask.array as da
 
 
 def _dc_query_only(**kw):
@@ -159,9 +131,9 @@ def load_ard(
     products : list
         A list of product names to load data from. For example:
 
-        * Landsat C2: `['ls5_sr', 'ls7_sr', 'ls8_sr']`
-        * Sentinel-2: `['s2_l2a']`
-        * Sentinel-1: `['s1_rtc']`
+        * Landsat C2: ``['ls5_sr', 'ls7_sr', 'ls8_sr']``
+        * Sentinel-2: ``['s2_l2a']``
+        * Sentinel-1: ``['s1_rtc']``
 
     min_gooddata : float, optional
         An optional float giving the minimum percentage of good quality
@@ -183,27 +155,29 @@ def load_ard(
     mask_filters : iterable of tuples, optional
         Iterable tuples of morphological operations - ("<operation>", <radius>)
         to apply on mask, where:
+
         operation: string, can be one of these morphological operations:
-                closing  = remove small holes in cloud - morphological closing
-                opening  = shrinks away small areas of the mask
-                dilation = adds padding to the mask
-                erosion  = shrinks bright regions and enlarges dark regions
+            * ``'closing'``  = remove small holes in cloud - morphological closing
+            * ``'opening'``  = shrinks away small areas of the mask
+            * ``'dilation'`` = adds padding to the mask
+            * ``'erosion'``  = shrinks bright regions and enlarges dark regions
+
         radius: int
-        e.g. mask_filters=[('erosion', 5),("opening", 2),("dilation", 2)]
+        e.g. ``mask_filters=[('erosion', 5),("opening", 2),("dilation", 2)]``
     mask_pixel_quality : bool, optional
         An optional boolean indicating whether to apply the poor data
         mask to all observations that were not filtered out for having
-        less good quality pixels than `min_gooddata`. E.g. if
-        `min_gooddata=0.99`, the filtered observations may still contain
-        up to 1% poor quality pixels. The default of False simply
+        less good quality pixels than ``min_gooddata``. E.g. if
+        ``min_gooddata=0.99``, the filtered observations may still contain
+        up to 1% poor quality pixels. The default of ``False`` simply
         returns the resulting observations without masking out these
-        pixels; True masks them and sets them to NaN using the poor data
+        pixels; ``True`` masks them and sets them to NaN using the poor data
         mask. This will convert numeric values to floating point values
         which can cause memory issues, set to False to prevent this.
     ls7_slc_off : bool, optional
         An optional boolean indicating whether to include data from
         after the Landsat 7 SLC failure (i.e. SLC-off). Defaults to
-        True, which keeps all Landsat 7 observations > May 31 2003.
+        ``True``, which keeps all Landsat 7 observations > May 31 2003.
     predicate : function, optional
         An optional function that can be passed in to restrict the
         datasets that are loaded by the function. A filter function
@@ -211,28 +185,30 @@ def load_ard(
         as returned from `dc.find_datasets`), and return a boolean.
         For example, a filter function could be used to return True on
         only datasets acquired in January:
-        `dataset.time.begin.month == 1`
+        ``dataset.time.begin.month == 1``
     dtype : string, optional
         An optional parameter that controls the data type/dtype that
-        layers are coerced to after loading. Valid values: 'native',
-        'auto', 'float{16|32|64}'. When 'auto' is used, the data will be
-        converted to `float32` if masking is used, otherwise data will
+        layers are coerced to after loading. Valid values: ''`native`'',
+        ``'auto'``, ``'float{16|32|64}'``.
+        When ``'auto'`` is used, the data will be
+        converted to ``'float32'`` if masking is used, otherwise data will
         be returned in the native data type of the data. Be aware that
         if data is loaded in its native dtype, nodata and masked
         pixels will be returned with the data's native nodata value
-        (typically -999), not NaN. NOTE: If loading Landsat, the data is
-        automatically rescaled so 'native' dtype will return a value error.
+        (typically ``-999``), not ``NaN``.
+        NOTE: If loading Landsat, the data is automatically rescaled so
+        'native' dtype will return a value error.
     verbose : bool, optional
         If True, print progress statements during loading
     **kwargs : dict, optional
-        A set of keyword arguments to `dc.load` that define the
+        A set of keyword arguments to ``dc.load`` that define the
         spatiotemporal query used to extract data. This typically
-        includes `measurements`, `x`, `y`, `time`, `resolution`,
-        `resampling`, `group_by` and `crs`. Keyword arguments can
-        either be listed directly in the `load_ard` call like any
-        other parameter (e.g. `measurements=['red']`), or by
-        passing in a query kwarg dictionary (e.g. `**query`). For a
-        list of possible options, see the `dc.load` documentation:
+        includes ``measurements``, ``x`, ``y``, ``time``, ``resolution``,
+        ``resampling``, ``group_by`` and ``crs``. Keyword arguments can
+        either be listed directly in the ``load_ard`` call like any
+        other parameter (e.g. ``measurements=['red']``), or by
+        passing in a query kwarg dictionary (e.g. ``**query``). For a
+        list of possible options, see the ``dc.load`` documentation:
         https://datacube-core.readthedocs.io/en/latest/dev/api/generate/datacube.Datacube.load.html
 
     Returns
@@ -422,7 +398,7 @@ def load_ard(
             datasets = dc.find_datasets(product=product, **query)
 
         # Remove Landsat 7 SLC-off observations if ls7_slc_off=False
-        if not ls7_slc_off and product in ["ls7_c2l2"]:
+        if not ls7_slc_off and product in ["ls7_sr"]:
             if verbose:
                 print("    Ignoring SLC-off observations for ls7")
             datasets = [
@@ -479,6 +455,16 @@ def load_ard(
             ds[fmask_band].attrs["flags_definition"], **categories_to_mask_ls
         )
         pq_mask = (ds[fmask_band] & mask) != 0
+        
+        # identify pixels that will become negative after rescaling (but not 0 values)
+        invalid = (
+                 ((ds[data_bands] < (-1.0 * -0.2 / 0.0000275)) & (ds[data_bands] > 0))
+                .to_array(dim="band")
+                .any(dim="band")
+            )
+        
+        #merge masks
+        pq_mask = xr.ufuncs.logical_or(pq_mask, pq_mask)
 
     # sentinel 2
     if product_type == "s2":
@@ -511,6 +497,7 @@ def load_ard(
         total_obs = len(ds.time)
         ds = ds.sel(time=keep)
         pq_mask = pq_mask.sel(time=keep)
+
         if verbose:
             print(
                 f"Filtering to {len(ds.time)} out of {total_obs} "
@@ -543,7 +530,7 @@ def load_ard(
     # Mask data if either of the above masks were generated
     if mask is not None:
         ds_data = odc.algo.erase_bad(ds_data, where=mask)
-
+    
     # Automatically set dtype to either native or float32 depending
     # on whether masking was requested
     if dtype == "auto":
