@@ -1,29 +1,5 @@
 """
-This module contains functions for conducting coastal analyses on Digital
-Earth Africa data.
-
-License
--------
-The code in this notebook is licensed under the Apache License,
-Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Digital Earth
-Africa data is licensed under the Creative Commons by Attribution 4.0
-license (https://creativecommons.org/licenses/by/4.0/).
-
-Contact
--------
-If you need assistance, post a question on the Open Data Cube
-Slack channel (http://slack.opendatacube.org/) or the GIS Stack Exchange
-(https://gis.stackexchange.com/questions/ask?tags=open-data-cube) using
-the `open-data-cube` tag (you can view previously asked questions here:
-https://gis.stackexchange.com/questions/tagged/open-data-cube).
-
-If you would like to report an issue with this script, you can file one
-on Github (https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new/).
-
-.. autosummary::
-   :nosignatures:
-   :toctree: gen
-
+Coastal analyses on Digital Earth Africa data.
 """
 
 # Import required packages
@@ -128,7 +104,7 @@ def tidal_tag(
         obs_tideheights = [predictedtide.tide_m for predictedtide in obs_predictedtides]
 
         # Assign tide heights to the dataset as a new variable
-        ds["tide_height"] = xr.DataArray(obs_tideheights, [("time", ds.time)])
+        ds["tide_height"] = xr.DataArray(obs_tideheights, [("time", ds.time.values)])
 
         # Optionally calculate the tide phase for each observation
         if ebb_flow:
@@ -153,7 +129,7 @@ def tidal_tag(
             ]
 
             # Assign tide phase to the dataset as a new variable
-            ds["ebb_flow"] = xr.DataArray(tidal_phase, [("time", ds.time)])
+            ds["ebb_flow"] = xr.DataArray(tidal_phase, [("time", ds.time.values)])
 
         # If swap_dims = True, make tide height the primary dimension
         # instead of time

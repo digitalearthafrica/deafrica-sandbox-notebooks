@@ -1,36 +1,87 @@
-# -*- coding: utf-8 -*-
-from setuptools import setup
+#!/usr/bin/env python3
 
-packages = \
-['deafrica_tools']
+import io
+import os
+from setuptools import find_packages, setup
 
-package_data = \
-{'': ['*']}
+# Where are we?
+IS_DEAFRICA_SANDBOX = ('sandbox' in os.getenv('JUPYTER_IMAGE', default=''))
 
-install_requires = \
-['dask-ml>=1.8.0,<2.0.0',
- 'datacube>=1.8.3,<2.0.0',
- 'geopandas>=0.8.2,<0.9.0',
- 'joblib>=1.0.1,<2.0.0',
- 'matplotlib>=3.3.4,<4.0.0',
- 'scikit-learn>=0.24.1,<0.25.0',
- 'tqdm>=4.57.0,<5.0.0']
+# What packages are required for this module to be executed?
+# These are all on the Sandbox so shouldn't need installing on those platforms.
+REQUIRED = [
+    # load_era5
+    'fsspec',
+    # classification
+    'numpy',
+    'xarray',
+    'geopandas',
+    'datacube',
+    'tqdm',
+    'dask',
+    'rasterio',
+    'scikit-learn',
+    # coastal
+    'matplotlib',
+    'pandas',
+    'scipy',
+    # 'otps',  # Hard to install, but available on Sandbox
+    # datahandling
+    'GDAL',
+    'odc-ui',
+    'numexpr',
+    # plotting
+    'folium',
+    'pyproj',
+    'branca',
+    'shapely',
+    'scikit-image',
+    # temporal
+    'hdstats',
+    # spatial
+    'OWSLib',
+    'fiona',
+    'shapely',
+    # app subpackage modules
+    'datetime'
+]
 
-setup_kwargs = {
-    'name': 'deafrica-tools',
-    'version': '0.1.0',
-    'description': '',
-    'long_description': None,
-    'author': 'Digital Earth Africa Team',
-    'author_email': None,
-    'maintainer': None,
-    'maintainer_email': None,
-    'url': 'https://github.com/digitalearthafrica/dea-common.git',
-    'packages': packages,
-    'package_data': package_data,
-    'install_requires': install_requires,
-    'python_requires': '>=3.6,<4.0',
+# What packages are optional?
+EXTRAS = {
+    'jupyter': ['IPython', 'ipywidgets', 'ipyleaflet'],
+    'boto': ['boto3'],
 }
 
+# Package meta-data.
+NAME = 'deafrica-tools'
+DESCRIPTION = 'Functions and algorithms for analysing Digital Earth Africa data.'
+URL = 'https://github.com/digitalearthafrica/deafrica-sandbox-notebooks'
+EMAIL = 'https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues'
+AUTHOR = 'Digital Earth Africa'
+REQUIRES_PYTHON = '>=3.6.0'    
+
+# Import the README and use it as the long-description.
+here = os.path.abspath(os.path.dirname(__file__))
+
+try:
+    with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
+        long_description = '\n' + f.read()
+except FileNotFoundError:
+    long_description = DESCRIPTION
+    
+setup_kwargs = {
+    'name': NAME,
+    'version': '0.1.1',
+    'description': DESCRIPTION,
+    'long_description': long_description,
+    'author': AUTHOR,
+    'author_email': EMAIL,
+    'python_requires': REQUIRES_PYTHON,
+    'url': URL,
+    'install_requires': REQUIRED if not IS_DEAFRICA_SANDBOX else [],
+    'packages': find_packages(),
+    'include_package_data':True,
+    'license':'Apache License 2.0'
+}
 
 setup(**setup_kwargs)
