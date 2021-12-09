@@ -1029,7 +1029,7 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
     lulc : xr.DataArray
         A DataArray containing LULC bit flags.
     product : str
-        'ESA' or 'ESRI'
+        'ESA', 'ESRI', or 'CGLS'
     legend : bool
         Whether to plot a legend. Default True.
     plot_kwargs : dict
@@ -1112,7 +1112,7 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
         except:
             AttributeError
             
-    if "cgls" in product:
+    if "CGLS" in product:
         try:
             labels = {0: {'color': '#282828', 'flag': 'unknown'},
                       20: {'color': '#FFBB22', 'flag': 'shrubs'},
@@ -1166,7 +1166,7 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
             cb.set_ticks([0, 10, 20, 30, 40, 50, 60, 70, 80, 88.5, 95, 101.5])
             cb.set_ticklabels(cblabels)
             
-        if "cgls" in product:
+        if "CGLS" in product:
             cb.set_ticks(ticks)
             cb.set_ticklabels(cblabels)
 
