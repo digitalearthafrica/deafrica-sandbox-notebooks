@@ -1029,7 +1029,7 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
     lulc : xr.DataArray
         A DataArray containing LULC bit flags.
     product : str
-        'ESA' or 'ESRI'
+        'ESA', 'ESRI', or 'CGLS'
     legend : bool
         Whether to plot a legend. Default True.
     plot_kwargs : dict
@@ -1111,6 +1111,41 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
             ]
         except:
             AttributeError
+            
+    if "CGLS" in product:
+        try:
+            labels = {0: {'color': '#282828', 'flag': 'unknown'},
+                      20: {'color': '#FFBB22', 'flag': 'shrubs'},
+                      30: {'color': '#FFFF4C', 'flag': 'herbaceous_vegetation'},
+                      40: {'color': '#F096FF', 'flag': 'cultivated_and_managed_vegetation_or_agriculture'},
+                      50: {'color': '#FA0000', 'flag': 'urban_or_built_up'},
+                      60: {'color': '#B4B4B4', 'flag': 'bare_or_sparse_vegetation'},
+                      70: {'color': '#F0F0F0', 'flag': 'snow_and_ice'},
+                      80: {'color': '#0032C8', 'flag': 'permanent_water_bodies'},
+                      90: {'color': '#0096A0', 'flag': 'herbaceous_wetland'},
+                      100: {'color': '#FAE6A0', 'flag': 'moss_and_lichen'},
+                      111: {'color': '#58481F', 'flag': 'closed_forest_evergreen_needle_leaf'},
+                      112: {'color': '#009900', 'flag': 'closed_forest_evergreen_broad_leaf'},
+                      113: {'color': '#70663E', 'flag': 'closed_forest_deciduous_needle_leaf'},
+                      114: {'color': '#00CC00', 'flag': 'closed_forest_deciduous_broad_leaf'},
+                      115: {'color': '#4E751F', 'flag': 'closed_forest_mixed'},
+                      116: {'color': '#007800', 'flag': 'closed_forest_not_matching_any_of_the_other_definitions'},
+                      121: {'color': '#666000', 'flag': 'open_forest_evergreen_needle_leaf'},
+                      122: {'color': '#8DB400', 'flag': 'open_forest_evergreen_broad_leaf'},
+                      123: {'color': '#8D7400', 'flag': 'open_forest_deciduous_needle_leaf'},
+                      124: {'color': '#A0DC00', 'flag': 'open_forest_deciduous_broad_leaf'},
+                      125: {'color': '#929900', 'flag': 'open_forest_mixed'},
+                      126: {'color': '#648C00', 'flag': 'open_forest_not_matching_any_of_the_other_definitions'},
+                      200: {'color': '#000080', 'flag': 'oceans_seas'}}
+
+            colors = [label['color'] for label in labels.values()]
+            cmap = ListedColormap([label['color'] for label in labels.values()])
+            norm = mcolours.BoundaryNorm(list(labels.keys())+[201], cmap.N+1, extend='max')
+            ticks = list(np.mean((list(list(labels.keys())+[201])[i+1], val)) for i, val in enumerate(list(labels.keys())))
+            cblabels=[label['flag'] for label in labels.values()]
+            
+        except:
+            AttributeError
 
     try:
         im = lulc.plot.imshow(cmap=cmap, norm=norm, add_colorbar=legend, **plot_kwargs)
@@ -1129,6 +1164,10 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
 
         if "ESA" in product:
             cb.set_ticks([0, 10, 20, 30, 40, 50, 60, 70, 80, 88.5, 95, 101.5])
+            cb.set_ticklabels(cblabels)
+            
+        if "CGLS" in product:
+            cb.set_ticks(ticks)
             cb.set_ticklabels(cblabels)
 
     return im
