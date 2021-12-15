@@ -36,19 +36,19 @@ def sklearn_flatten(input_xr):
     Reshape a DataArray or Dataset with spatial (and optionally
     temporal) structure into an np.array with the spatial and temporal
     dimensions flattened into one dimension.
-
+    
     This flattening procedure enables DataArrays and Datasets to be used
     to train and predict with sklearn models.
-
-    Last modified: November 2021
-
+    
+    Last modified: September 2019
+    
     Parameters
     ----------
     input_xr : xarray.DataArray or xarray.Dataset
         Must have dimensions 'x' and 'y', may have dimension 'time'.
         Dimensions other than 'x', 'y' and 'time' are unaffected by the
         flattening.
-
+        
     Returns
     ----------
     input_np : numpy.array
@@ -56,44 +56,39 @@ def sklearn_flatten(input_xr):
         input_xr.to_array().data), with dimensions 'x','y' and 'time'
         flattened into a single dimension, which is the first axis of
         the returned array. input_np contains no NaNs.
-
+        
     """
-    
-    # Cast input DataArrays to Dataset.
-    if isinstance(input_xr, xr.DataArray):
-        input_xr = input_xr.to_dataset()
-    
-    # Work around for input_xr Dataset with geographic coordinate reference system.
-    if input_xr.geobox.crs.geographic:
-        input_xr = input_xr.rename({"longitude": "x", "latitude": "y"})
-       
-    # Get the data type for the input_xr Dataset data values.
-    data_type = input_xr.to_array().data.dtype
+    # cast input Datasets to DataArray
+    if isinstance(input_xr, xr.Dataset):
+        input_xr = input_xr.to_array()
 
-    # Get the number of bands in the input_xr Dataset.
-    bands_list = list(input_xr.data_vars)
-    nbands = len(bands_list)
-    # Create a dictionary of the bands and their index in the list bands_list.
-    bands_dict = {k: v for k, v in enumerate(bands_list)}
-
-    # Get the dimensions x , y of the input_xr Dataset.
-    height = input_xr.dims["y"]
-    width = input_xr.dims["x"]
-    
-    # Get the dimension time of the input_xr Dataset.
-    # Create an empty numpy array, input_np, in which each column will hold a
-    # flattened band/measurement from the input_xr Dataset.
+    # stack across pixel dimensions, handling timeseries if necessary
     if "time" in input_xr.dims:
-        time = input_xr.dims["time"]
-        input_np = np.empty((height * width * time, nbands), dtype=data_type)
+        stacked = input_xr.stack(z=["x", "y", "time"])
     else:
-        input_np = np.empty((height * width, nbands), dtype=data_type)
+        stacked = input_xr.stack(z=["x", "y"])
 
-    # Loop through each band in the input_xr Dataset and add it
-    # to the numpy array model_input.
-    for i, band in bands_dict.items():
-        band_array = np.array(input_xr[band])
-        input_np[:, i - 1] = band_array.flatten()
+    # finding 'bands' dimensions in each pixel - these will not be
+    # flattened as their context is important for sklearn
+    pxdims = []
+    for dim in stacked.dims:
+        if dim != "z":
+            pxdims.append(dim)
+
+    # mask NaNs - we mask pixels with NaNs in *any* band, because
+    # sklearn cannot accept NaNs as input
+    mask = np.isnan(stacked)
+    if len(pxdims) != 0:
+        mask = mask.any(dim=pxdims)
+
+    # turn the mask into a numpy array (boolean indexing with xarrays
+    # acts weird)
+    mask = mask.data
+
+    # the dimension we are masking along ('z') needs to be the first
+    # dimension in the underlying np array for the boolean indexing to work
+    stacked = stacked.transpose("z", *pxdims)
+    input_np = stacked.data[~mask]
 
     return input_np
 
@@ -102,13 +97,13 @@ def sklearn_unflatten(output_np, input_xr):
     """
     Reshape a numpy array with no 'missing' elements (NaNs) and
     'flattened' spatiotemporal structure into a DataArray matching the
-    spatiotemporal structure of the DataArray
-
+    spatiotemporal structure of the DataArray.
+    
     This enables an sklearn model's prediction to be remapped to the
     correct pixels in the input DataArray or Dataset.
-
-    Last modified: November 2021
-
+    
+    Last modified: September 2019
+    
     Parameters
     ----------
     output_np : numpy.array
@@ -118,67 +113,56 @@ def sklearn_unflatten(output_np, input_xr):
         Must have dimensions 'x' and 'y', may have dimension 'time'.
         Dimensions other than 'x', 'y' and 'time' are unaffected by the
         flattening.
-
+        
     Returns
     ----------
-    output_xr : xarray.Dataset
-        An xarray.Dataset with the same dimensions 'x', 'y' and 'time'
+    output_xr : xarray.DataArray
+        An xarray.DataArray with the same dimensions 'x', 'y' and 'time'
         as input_xr, and the same valid (non-NaN) pixels. These pixels
         are set to match the data in output_np.
-
+        
     """
-    
-    # The  expected output of a sklearn model prediction should just be 
-    # a 1 dimensional numpy array, output_np, with the size/columns matching 
-    # the height * width * time  for the dimensions of the input_xr DataArray/Dataset.
 
-    # Cast the input DataArray to Dataset.
-    if isinstance(input_xr, xr.DataArray):
-        input_xr = input_xr.to_dataset()
-    
-    # Work around for input_xr Dataset with geographic coordinate reference system.
-    if input_xr.geobox.crs.geographic:
-        input_xr = input_xr.rename({"longitude": "x", "latitude": "y"})
-        
-    # Get the dimensions x , y of the input_xr Dataset.
-    height = input_xr.dims["y"]
-    width = input_xr.dims["x"]
-        
-    # Get the dimension time of the input_xr Dataset.
+    # the output of a sklearn model prediction should just be a numpy array
+    # with size matching x*y*time for the input DataArray/Dataset.
+
+    # cast input Datasets to DataArray
+    if isinstance(input_xr, xr.Dataset):
+        input_xr = input_xr.to_array()
+
+    # generate the same mask we used to create the input to the sklearn model
     if "time" in input_xr.dims:
-        time = input_xr.dims["time"]
-        # Reshape the output_np numpy array.
-        output_np = output_np.reshape((time, height, width)) 
-        # Convert the output_np numpy array into a xarray Dataset.
-        output_xr = xr.Dataset(
-            data_vars=dict(band=(["time", "y", "x"], output_np)),
-            coords=dict(
-                time=(["time"], input_xr.coords["time"].values),
-                y=(["y"], input_xr.coords["y"].values),
-                x=(["x"], input_xr.coords["x"].values),
-                spatial_ref=input_xr.coords["spatial_ref"].values,
-            ),
-            attrs=input_xr.attrs,
-        )
+        stacked = input_xr.stack(z=["x", "y", "time"])
     else:
-        # Reshape the output_np numpy array.
-        output_np = output_np.reshape((height, width))
-        # Convert the output_np numpy array into a xarray Dataset.
-        output_xr = xr.Dataset(
-            data_vars=dict(band=(["y", "x"], output_np)),
-            coords=dict(
-                y=(["y"], input_xr.coords["y"].values),
-                x=(["x"], input_xr.coords["x"].values),
-                spatial_ref=input_xr.coords["spatial_ref"].values,
-            ),
-            attrs=input_xr.attrs,
-        )
-        
-    output_xr = assign_crs(output_xr, input_xr.geobox.crs)
-    
-    # Work around for input_xr Dataset with geographic coordinate reference system.
-    if input_xr.geobox.crs.geographic:
-        output_xr = output_xr.rename({"x": "longitude", "y": "latitude"})
+        stacked = input_xr.stack(z=["x", "y"])
+
+    pxdims = []
+    for dim in stacked.dims:
+        if dim != "z":
+            pxdims.append(dim)
+
+    mask = np.isnan(stacked)
+    if len(pxdims) != 0:
+        mask = mask.any(dim=pxdims)
+
+    # handle multivariable output
+    output_px_shape = ()
+    if len(output_np.shape[1:]):
+        output_px_shape = output_np.shape[1:]
+
+    # use the mask to put the data in all the right places
+    output_ma = np.ma.empty((len(stacked.z), *output_px_shape))
+    output_ma[~mask] = output_np
+    output_ma[mask] = np.ma.masked
+
+    # set the stacked coordinate to match the input
+    output_xr = xr.DataArray(
+        output_ma,
+        coords={"z": stacked["z"]},
+        dims=["z", *["output_dim_" + str(idx) for idx in range(len(output_px_shape))]],
+    )
+
+    output_xr = output_xr.unstack()
 
     return output_xr
 
