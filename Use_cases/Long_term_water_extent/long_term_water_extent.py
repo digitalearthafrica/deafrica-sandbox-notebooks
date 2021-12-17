@@ -70,7 +70,7 @@ def resample_water_observations(ds, freq, date_format="%b %y"):
     # Mask for water
     water_ds = masking.make_mask(ds, wet=True)
 
-    resampled_ds = water_ds.resample(time=freq, label="left").max()
+    resampled_ds = water_ds.resample(time=freq, label="left").max().compute()
 
     resampled_labels = get_resampled_labels(water_ds, freq, date_format)
 
@@ -99,7 +99,7 @@ def resample_rainfall_observations(ds, freq, mask):
     # Calculate the total rainfall over each resampling period
     average_rainfall_resampled_ds = average_rainfall_ds.resample(
         time=freq, label="right"
-    ).sum(dim="time")
+    ).sum(dim="time").compute()
 
     return average_rainfall_resampled_ds.rainfall
 
