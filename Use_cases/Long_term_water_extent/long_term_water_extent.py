@@ -108,7 +108,7 @@ def compare_extent_and_rainfall(water_ds, rainfall_ds, rainfall_units, labels):
     """Create a combined plot of water extent and rainfall"""
     
     # plot daily total precipitation for this area
-    fig, ax1 = plt.subplots(figsize=(10, 4))
+    fig, ax1 = plt.subplots(figsize=(15, 5))
 
     plt.xticks(rotation=65)
 
@@ -159,7 +159,6 @@ def calculate_change_in_extent(start_date, end_date, ds):
 
     baseline_ds = ds.sel(time=start_date, method="nearest")
     analysis_ds = ds.sel(time=end_date, method="nearest")
-
     compare = ds.water.sel(time=[baseline_ds.time.values, analysis_ds.time.values])
 
     # The two period Extract the two periods(Baseline and analysis) dataset from
@@ -245,6 +244,6 @@ def calculate_change_in_extent(start_date, end_date, ds):
         loc="upper right",
     )
 
-    plt.title("Change in water extent: " + start_date + " to " + end_date)
+    plt.title("Change in water extent: " + str(baseline_ds.time.values)[0:10] + " to " + str(analysis_ds.time.values)[0:10])
 
     return fig
