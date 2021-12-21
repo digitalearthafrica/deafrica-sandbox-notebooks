@@ -8,13 +8,7 @@ Python functions and algorithms for developed to assist in analysing Digital Ear
 Installation
 ------------
 
-To work with this module on the Digital Earth Africa Sandbox from within the `deafrica-sandbox-notebooks` repo, you can add the Tools folder to the system path:
-
-       import sys
-       sys.path.insert(1, '../Tools/')
-       import dea_tools.datahandling  # or some other submodule
-
-This module is automatically installed on the Sandbox. If for some reason the module isn't avilable, you can also `pip install` the module.
+This module is automatically installed on the DE Africa Sandbox. If for some reason the module isn't avilable, you can also `pip install` the module.
 To do this on the Digital Earth Africa Sandbox, run `pip` from the terminal:
 
        pip install -e Tools/
