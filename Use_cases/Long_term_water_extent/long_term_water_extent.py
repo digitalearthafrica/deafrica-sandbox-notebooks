@@ -20,9 +20,11 @@ Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/
 
 # Import required packages
 import pandas as pd
+import xarray as xr
 import geopandas as gpd
 import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
+from skimage.filters import threshold_li
 from matplotlib.patches import Patch
 from datacube.utils import geometry
 from datacube.utils import masking
@@ -64,24 +66,33 @@ def get_resampled_labels(ds, freq, date_format="%b %y"):
     return labels
 
 
-def resample_water_observations(ds, freq, date_format="%b %y"):
+def resample_water_observations(ds, freq, radar=False, date_format="%b %y"):
     """For loaded wofs data, resample and calculate waterbody area"""
 
-    # Mask for water
-    water_ds = masking.make_mask(ds, wet=True)
-
-    resampled_ds = water_ds.resample(time=freq, label="left").max().compute()
-
-    resampled_labels = get_resampled_labels(water_ds, freq, date_format)
-
+    if radar == False:
+        # Mask for water
+        ds = masking.make_mask(ds, wet=True)
+    
+    resampled_ds = ds.resample(time=freq, label="left").max().compute()
+    resampled_labels = get_resampled_labels(ds, freq, date_format)
+    
+    #determine a threshold for Radar water index 
+    if radar == True:
+        threshold = threshold_li(resampled_ds.values)
+        resampled_ds = xr.where(resampled_ds > threshold, 1, 0)
+    
     # Calculate area of water
     pixel_length = ds.x.values[1] - ds.x.values[0]  # in metres
     m_per_km = 1000  # conversion from metres to kilometres
     area_per_pixel = pixel_length ** 2 / m_per_km ** 2
 
     resampled_area_ds = resampled_ds.sum(dim=["x", "y"]) * area_per_pixel
-
-    return resampled_ds, resampled_area_ds.water
+    
+    if radar == False:
+        return resampled_ds, resampled_area_ds.water
+    else:
+        return resampled_ds, resampled_area_ds
+    
 
 
 def resample_rainfall_observations(ds, freq, mask):
