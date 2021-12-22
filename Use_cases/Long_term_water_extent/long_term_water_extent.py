@@ -165,12 +165,15 @@ def compare_extent_and_rainfall(water_ds, rainfall_ds, rainfall_units, labels):
     return fig
 
 
-def calculate_change_in_extent(start_date, end_date, ds):
+def calculate_change_in_extent(start_date, end_date, ds, radar=False):
     """Create a plot showing areas where water has appeared or disappeared between two dates."""
 
     baseline_ds = ds.sel(time=start_date, method="nearest")
     analysis_ds = ds.sel(time=end_date, method="nearest")
-    compare = ds.water.sel(time=[baseline_ds.time.values, analysis_ds.time.values])
+    if radar == True:
+        compare = ds.sel(time=[baseline_ds.time.values, analysis_ds.time.values])
+    else:
+        compare = ds.water.sel(time=[baseline_ds.time.values, analysis_ds.time.values])
 
     # The two period Extract the two periods(Baseline and analysis) dataset from
     analyse_total_value = compare.isel(time=1).astype(int)
@@ -202,7 +205,9 @@ def calculate_change_in_extent(start_date, end_date, ds):
     land_color = light_green
     
     x_pix = baseline_ds.dims['x']
+    print("x_pix", x_pix)
     y_pix = baseline_ds.dims['y']
+    print("y_pix", y_pix)
 
     x_inch = 6
     y_inch = y_pix * (x_inch/x_pix)
