@@ -78,7 +78,8 @@ def resample_water_observations(ds, freq, radar=False, date_format="%b %y"):
     
     #determine a threshold for Radar water index 
     if radar == True:
-        threshold = threshold_li(resampled_ds.values)
+        threshold = threshold_li(resampled_ds.swi.values)
+        print('Automatic SWI threshold: '+str(round(threshold, 2)))
         resampled_ds = xr.where(resampled_ds > threshold, 1, 0)
     
     # Calculate area of water
@@ -91,7 +92,7 @@ def resample_water_observations(ds, freq, radar=False, date_format="%b %y"):
     if radar == False:
         return resampled_ds, resampled_area_ds.water
     else:
-        return resampled_ds, resampled_area_ds
+        return resampled_ds, resampled_area_ds.swi
     
 
 
@@ -171,7 +172,7 @@ def calculate_change_in_extent(start_date, end_date, ds, radar=False):
     baseline_ds = ds.sel(time=start_date, method="nearest")
     analysis_ds = ds.sel(time=end_date, method="nearest")
     if radar == True:
-        compare = ds.sel(time=[baseline_ds.time.values, analysis_ds.time.values])
+        compare = ds.swi.sel(time=[baseline_ds.time.values, analysis_ds.time.values])
     else:
         compare = ds.water.sel(time=[baseline_ds.time.values, analysis_ds.time.values])
 
@@ -205,9 +206,7 @@ def calculate_change_in_extent(start_date, end_date, ds, radar=False):
     land_color = light_green
     
     x_pix = baseline_ds.dims['x']
-    print("x_pix", x_pix)
     y_pix = baseline_ds.dims['y']
-    print("y_pix", y_pix)
 
     x_inch = 6
     y_inch = y_pix * (x_inch/x_pix)
