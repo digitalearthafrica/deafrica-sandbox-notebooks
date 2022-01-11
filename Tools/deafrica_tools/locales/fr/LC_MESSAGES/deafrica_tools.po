@@ -1,0 +1,120 @@
+msgid ""
+msgstr ""
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 2.4.1\n"
+"Project-Id-Version: deafrica_tools\n"
+"Language: fr\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+
+#: app/wetlandsinsighttool.py:100
+msgid "None"
+msgstr "Aucun"
+
+#: app/wetlandsinsighttool.py:101
+msgid "ESRI World Imagery"
+msgstr "Imagerie mondiale ESRI"
+
+#: app/wetlandsinsighttool.py:102
+msgid "Sentinel-2 Geomedian"
+msgstr "Sentinel-2 Geomedian"
+
+#: app/wetlandsinsighttool.py:103
+msgid "Water Observations from Space"
+msgstr "Observations de l'eau depuis l'espace-WOfS"
+
+#: app/wetlandsinsighttool.py:116
+msgid "Wetlands Insight Tool"
+msgstr "Outil d'analyse des zones humides"
+
+#: app/wetlandsinsighttool.py:117
+msgid "Select parameters and AOI"
+msgstr "Sélectionner les paramètres et la zone d'intérêt"
+
+#: app/wetlandsinsighttool.py:141
+msgid "Total polygon area"
+msgstr "Superficie totale du polygone"
+
+#: app/wetlandsinsighttool.py:145
+msgid "Area falls within recommended limit"
+msgstr "La zone se situe dans la limite recommandée"
+
+#: app/wetlandsinsighttool.py:148
+msgid "Area is too large, please update your polygon"
+msgstr "La zone est trop grande, veuillez réduire votre polygone"
+
+#: app/wetlandsinsighttool.py:168
+msgid "Map Overlays"
+msgstr "Superpositions de cartes"
+
+#: app/wetlandsinsighttool.py:193
+msgid "Run"
+msgstr "Exécuter"
+
+#: app/wetlandsinsighttool.py:200
+msgid "Map Overlay:"
+msgstr "Carte superposée :"
+
+#: app/wetlandsinsighttool.py:202
+msgid "Start Date:"
+msgstr "Date de début :"
+
+#: app/wetlandsinsighttool.py:204
+msgid "End Date:"
+msgstr "Date de fin :"
+
+#: app/wetlandsinsighttool.py:206
+msgid "Minimum Good Data:"
+msgstr "Minimum de bonnes données :"
+
+#: app/wetlandsinsighttool.py:208
+msgid "Resampling Frequency:"
+msgstr "Fréquence de rééchantillonnage :"
+
+#: app/wetlandsinsighttool.py:210
+msgid "Output CSV:"
+msgstr "Sortie CSV :"
+
+#: app/wetlandsinsighttool.py:212
+msgid "Output Plot:"
+msgstr "Tracé de sortie :"
+
+#: app/wetlandsinsighttool.py:325
+msgid "Progress"
+msgstr "Progrès"
+
+#: app/wetlandsinsighttool.py:343
+msgid "WIT complete"
+msgstr "WIT achevée"
+
+#: app/wetlandsinsighttool.py:345
+msgid "No polygon selected"
+msgstr "Aucun polygone sélectionné"
+
+#: app/wetlandsinsighttool.py:382
+msgid "open water"
+msgstr "eau libre"
+
+#: app/wetlandsinsighttool.py:383
+msgid "wet"
+msgstr "humide"
+
+#: app/wetlandsinsighttool.py:384
+msgid "green veg"
+msgstr "végétation verts"
+
+#: app/wetlandsinsighttool.py:385
+msgid "dry veg"
+msgstr "végétation seche"
+
+#: app/wetlandsinsighttool.py:386
+msgid "bare soil"
+msgstr "sol nu"
+
+#: app/wetlandsinsighttool.py:399
+msgid "Percentage Fractional Cover, Wetness, and Water"
+msgstr "Pourcentage de couverture fractionnée, humidité et eau"

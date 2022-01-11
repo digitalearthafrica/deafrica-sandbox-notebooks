@@ -10,6 +10,10 @@
 
 **Contact:** If you need assistance with any of the Jupyter Notebooks or Python code in this repository, please post a question on the [Open Data Cube Slack channel](http://slack.opendatacube.org/) or on the [GIS Stack Exchange](https://gis.stackexchange.com/questions/ask?tags=open-data-cube) using the `open-data-cube` tag (you can view `previously asked questions` [here](https://gis.stackexchange.com/questions/tagged/open-data-cube). If you would like to report an issue with this notebook, you can file one on the [Github issues page](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues)
 
+**Citing DE Africa Notebooks:** If you use any of the notebooks, code or tools in this repository in your work, please reference them using the following citation:
+
+    Krause, C., Dunn, B., Bishop-Taylor, R., Adams, C., Burton, C., Alger, M., Chua, S., Phillips, C., Newey, V., Kouzoubov, K., Leith, A., Ayers, D., Hicks, A., DEA Notebooks contributors 2021. Digital Earth Australia notebooks and tools repository. Geoscience Australia, Canberra. https://doi.org/10.26186/145234
+
 ---
 
 The Digital Earth Africa Notebooks repository (`deafrica-sandbox-notebooks`) hosts Jupyter Notebooks, Python scripts and workflows for analysing [Digital Earth Africa (DE Africa)](https://www.digitalearthafrica.org/) satellite data and derived products. This documentation is designed to provide a guide to getting started with DE Africa, and to showcase the wide range of geospatial analyses that can be achieved using DE Africa data and open-source software including [Open Data Cube](https://www.opendatacube.org/) and [xarray](http://xarray.pydata.org/en/stable/).
