@@ -39,6 +39,8 @@ REQUIRED = [
     # temporal
     'hdstats',
     # spatial
+    'rasterstats',
+    'geopy',
     'OWSLib',
     'fiona',
     'shapely',
