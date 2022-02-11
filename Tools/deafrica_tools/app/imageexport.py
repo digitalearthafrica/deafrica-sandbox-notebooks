@@ -35,11 +35,15 @@ def select_region_app(date,
         The exact date used to plot imagery on the interactive map
         (e.g. ``date='1988-01-01'``).
     satellites : str
-        The satellite data to plot on the interactive map. Three options
-        are currently supported:
+        The satellite data to plot on the interactive map. The 
+        following options are supported:
 
-            * ''`Landsat`'': data from the Landsat 5, 7 and 8 satellites
-            * ``'Sentinel-2'``: data from Sentinel-2A and Sentinel-2B
+            ``'Landsat-9'``: data from the Landsat 9 satellite
+            ``'Landsat-8'``: data from the Landsat 8 satellite
+            ``'Landsat-7'``: data from the Landsat 7 satellite
+            ``'Landsat-5'``: data from the Landsat 5 satellite
+            ``'Sentinel-2'``: data from Sentinel-2A and Sentinel-2B
+            ``'Sentinel-2 geomedian'``: data from the Sentinel-2 annual geomedian
 
     size_limit : int, optional
         An optional size limit for the area selection in sq km.
@@ -63,13 +67,16 @@ def select_region_app(date,
     # Load DEA WMS
     class TimeWMSLayer(WMSLayer):
         time = Unicode('').tag(sync=True, o=True)
-    
+
     # WMS layers
-    wms_params = {'Landsat-8': 'ls8_sr',
-                  'Landsat-7': 'ls7_sr',
-                  'Landsat-5': 'ls5_sr',
-                  'Sentinel-2': 's2_l2a',
-                  'Sentinel-2 geomedian': 'gm_s2_annual'}
+    wms_params = {
+        'Landsat-9': 'ls9_sr',
+        'Landsat-8': 'ls8_sr',
+        'Landsat-7': 'ls7_sr',
+        'Landsat-5': 'ls5_sr',
+        'Sentinel-2': 's2_l2a',
+        'Sentinel-2 geomedian': 'gm_s2_annual'
+    }
 
     time_wms = TimeWMSLayer(url='https://ows.digitalearth.africa/',
                             layers=wms_params[satellites],
@@ -97,10 +104,10 @@ def select_region_app(date,
               f'above and draw a new polygon.')
 
     else:
-        return {'geopolygon': geopolygon, 
+        return {'geopolygon': geopolygon,
                 'date': date,
                 'satellites': satellites}
-      
+
 
 def export_image_app(geopolygon,
                      date,
@@ -139,12 +146,13 @@ def export_image_app(geopolygon,
         The exact date used to extract imagery
         (e.g. `date='1988-01-01'`).
     satellites : str
-        The satellite data to be used to extract imagery. Four
-        options are currently supported:
+        The satellite data to be used to extract imagery. The 
+        following options are supported:
 
+            ``'Landsat-9'``: data from the Landsat 9 satellite
             ``'Landsat-8'``: data from the Landsat 8 satellite
-            ``'Landsat-7'``: data from the Landsat 8 satellite
-            ``'Landsat-5'``: data from the Landsat 8 satellite
+            ``'Landsat-7'``: data from the Landsat 7 satellite
+            ``'Landsat-5'``: data from the Landsat 5 satellite
             ``'Sentinel-2'``: data from Sentinel-2A and Sentinel-2B
             ``'Sentinel-2 geomedian'``: data from the Sentinel-2 annual geomedian
 
@@ -192,12 +200,20 @@ def export_image_app(geopolygon,
         Whether to export the image file with a machine-readable
         file name (e.g. ``<product>_<YYYY-MM-DD>_<site-state>_<description>.png``)
     """
-    
+
     ###########################
     # Set up satellite params #
     ###########################
 
     sat_params = {
+        'Landsat-9': {
+            'products': ['ls9_sr'],
+            'resolution': [-30, 30],
+            'styles': {
+                'True colour': ['red', 'green', 'blue'],
+                'False colour': ['swir_1', 'nir', 'green']
+            }
+        },
         'Landsat-8': {
             'products': ['ls8_sr'],
             'resolution': [-30, 30],
@@ -230,7 +246,7 @@ def export_image_app(geopolygon,
                 'False colour': ['swir_2', 'nir_1', 'green']
             }
         },
-         'Sentinel-2 geomedian': {
+        'Sentinel-2 geomedian': {
             'products': ['gm_s2_annual'],
             'resolution': [-10, 10],
             'styles': {
@@ -239,11 +255,11 @@ def export_image_app(geopolygon,
             }
         },
     }
-        
+
     #############
     # Load data #
     #############
-    
+
     # Connect to datacube database
     dc = datacube.Datacube(app='Exporting_satellite_images')
 
@@ -251,7 +267,7 @@ def export_image_app(geopolygon,
     client = create_local_dask_cluster(return_client=True)
 
     # Create query after adjusting interval time to UTC by
-    # adding a UTC offset of -10 hours. 
+    # adding a UTC offset of -10 hours.
     start_date = np.datetime64(date)
     query_params = {
         'time': (str(start_date)),
@@ -267,10 +283,10 @@ def export_image_app(geopolygon,
 
     # Get CRS and sensor
     crs = str(dss[0].crs)
-    
+
     if satellites == 'Sentinel-2 geomedian':
         sensor = satellites
-    else:    
+    else:
         sensor = dss[0].metadata_doc['properties']['eo:platform'].capitalize()
         sensor = sensor[0:-1].replace('_', '-') + sensor[-1].capitalize()
 
@@ -349,8 +365,8 @@ def export_image_app(geopolygon,
 
     # Export to file
     plt.imsave(fname=fname, arr=rgb_rescaled, format=output_format)
-    
-    #close dask client
+
+    # Close dask client
     client.shutdown()
-    
+
     print('Finished exporting image.')
