@@ -111,9 +111,11 @@ def load_ard(
         * ls5_sr ('sr' denotes surface reflectance)
         * ls7_sr
         * ls8_sr
+        * ls9_sr
         * ls5_st ('st' denotes surface temperature)
         * ls7_st
         * ls8_st
+        * ls9_st
 
     Sentinel-2:
         * s2_l2a
@@ -131,7 +133,7 @@ def load_ard(
     products : list
         A list of product names to load data from. For example:
 
-        * Landsat C2: ``['ls5_sr', 'ls7_sr', 'ls8_sr']``
+        * Landsat C2: ``['ls5_sr', 'ls7_sr', 'ls8_sr', 'ls9_sr']``
         * Sentinel-2: ``['s2_l2a']``
         * Sentinel-1: ``['s1_rtc']``
 
@@ -246,8 +248,8 @@ def load_ard(
     if not products:
         raise ValueError(
             "Please provide a list of product names to load data from. "
-            "Valid options are: Landsat C2 SR: ['ls5_sr', 'ls7_sr', 'ls8_sr'], or "
-            "Landsat C2 ST: ['ls5_st', 'ls7_st', 'ls8_st'], or "
+            "Valid options are: Landsat C2 SR: ['ls5_sr', 'ls7_sr', 'ls8_sr', 'ls9_sr'], or "
+            "Landsat C2 ST: ['ls5_st', 'ls7_st', 'ls8_st', 'ls9_st'], or "
             "Sentinel-2: ['s2_l2a'], or"
             "Sentinel-1: ['s1_rtc'], or"
         )
@@ -454,15 +456,17 @@ def load_ard(
         mask, _ = masking.create_mask_value(
             ds[fmask_band].attrs["flags_definition"], **categories_to_mask_ls
         )
+        
         pq_mask = (ds[fmask_band] & mask) != 0
         
-        # identify pixels that will become negative after rescaling (but not 0 values)
-        invalid = (
-                 ((ds[data_bands] < (-1.0 * -0.2 / 0.0000275)) & (ds[data_bands] > 0))
-                .to_array(dim="band")
-                .any(dim="band")
-            )
-        
+        # only run if data bands are present 
+        if measurements != ["pixel_quality"]: 
+            # identify pixels that will become negative after rescaling (but not 0 values)
+            invalid = (
+                    ((ds[data_bands] < (-1.0 * -0.2 / 0.0000275)) & (ds[data_bands] > 0))
+                    .to_array(dim="band")
+                    .any(dim="band")
+                    )
         #merge masks
         pq_mask = xr.ufuncs.logical_or(pq_mask, pq_mask)
 
