@@ -39,6 +39,8 @@ REQUIRED = [
     # temporal
     'hdstats',
     # spatial
+    'rasterstats',
+    'geopy',
     'OWSLib',
     'fiona',
     'shapely',
@@ -71,7 +73,7 @@ except FileNotFoundError:
     
 setup_kwargs = {
     'name': NAME,
-    'version': '0.1.0',
+    'version': '0.1.2',
     'description': DESCRIPTION,
     'long_description': long_description,
     'author': AUTHOR,
@@ -81,7 +83,8 @@ setup_kwargs = {
     'install_requires': REQUIRED if not IS_DEAFRICA_SANDBOX else [],
     'packages': find_packages(),
     'include_package_data':True,
-    'license':'Apache License 2.0'
+    'license':'Apache License 2.0',
+    'package_data': {'': ['locales/*/*/*.mo', 'locales/*/*/*.po']},
 }
 
 setup(**setup_kwargs)

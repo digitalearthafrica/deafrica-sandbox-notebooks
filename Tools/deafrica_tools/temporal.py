@@ -135,7 +135,7 @@ def _sos(vsos):
 
 def _veos(da, pos, method_eos="last"):
     """
-    vEOS = Value at the start of season
+    vEOS = Value at the end of season
     Params
     -----
     method_eos : str
