@@ -1029,7 +1029,7 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
     lulc : xr.DataArray
         A DataArray containing LULC bit flags.
     product : str
-        'ESA', 'ESRI', or 'CGLS'
+        'ESA', 'ESRI', 'CGLS', or 'CCI'
     legend : bool
         Whether to plot a legend. Default True.
     plot_kwargs : dict
@@ -1146,7 +1146,56 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
             
         except:
             AttributeError
-
+    if 'CCI' in product:
+        try:
+            labels = {0: {'color': '#282828', 'flag': 'no data'},
+                      10: {'color': '#EBEB34', 'flag': 'cropland, rainfed'},
+                      11: {'color': '#D9EB34', 'flag': 'cropland, rainfed, herbaceous cover'},
+                      12: {'color': '#EBDF34', 'flag': 'cropland, rainfed, tree or shrub cover'},
+                      20: {'color': '#34EBE2', 'flag': 'cropland, irrigated or post-flooding'},
+                      30: {'color': '#EBBD34', 'flag': 'mosaic cropland/natural vegetation'},
+                      40: {'color': '#eba534', 'flag': 'mosaic natural vegetation/cropland'},
+                      50: {'color': '#34eb46', 'flag': 'tree cover, broadleaved, evergreen, closed to open'},
+                      60: {'color': '#21750e', 'flag': 'tree cover, broadleaved, deciduous, closed to open'},
+                      61: {'color': '#449432', 'flag': 'tree cover, broadleaved, deciduous, closed'},
+                      62: {'color': '#5da64c', 'flag': 'tree cover, broadleaved, deciduous, open'},
+                      70: {'color': '#16470b', 'flag': 'tree cover, needleleaved, evergreen, closed to open'},
+                      71: {'color': '#237012', 'flag': 'tree cover, needleleaved, evergreen, closed'},
+                      72: {'color': '#237012', 'flag': 'tree cover, needleleaved, evergreen, open'},
+                      80: {'color': '#31a317', 'flag': 'tree cover, needleleaved, deciduous, closed to open'},
+                      81: {'color': '#57ed34', 'flag': 'tree cover, needleleaved, deciduous, closed'},
+                      82: {'color': '#81f765', 'flag': 'tree cover, needleleaved, deciduous, open'},
+                      90: {'color': '#b6ed64', 'flag': 'tree cover, mixed leaf type'},
+                      100: {'color': '#6f8f3f', 'flag': 'mosaic tree and shrub/herbaceous cover'},
+                      110: {'color': '#ad950c', 'flag': 'mosaic herbaceous cover/tree and shrub'},
+                      120: {'color': '#5e5209', 'flag': 'shrubland'},
+                      121: {'color': '#292302', 'flag': 'shrubland, evergreen'},
+                      122: {'color': '#a89008', 'flag': 'shrubland, deciduous'},
+                      130: {'color': '#f7bf07', 'flag': 'grassland'},
+                      140: {'color': '#f57feb', 'flag': 'lichens and mosses'},
+                      150: {'color': '#f57feb', 'flag': 'sparse vegetation'},
+                      151: {'color': '#fcf7a4', 'flag': 'sparse tree'},
+                      152: {'color': '#d4cf87', 'flag': 'sparse shrub'},
+                      153: {'color': '#b0aa54', 'flag': 'sparse herbaceous cover'},
+                      160: {'color': '#159638', 'flag': 'tree cover, flooded, fresh or brakish water'},
+                      170: {'color': '#22bf81', 'flag': 'tree cover, flooded, saline water'},
+                      180: {'color': '#44eba9', 'flag': 'shrub or herbaceous cover, flooded, fresh/saline/brakish water'},
+                      190: {'color': '#a3273c', 'flag': 'urban areas'},
+                      200: {'color': '#fffbcc', 'flag': 'bare areas'},
+                      201: {'color': '#b0afa4', 'flag': 'consolidated bare areas'},
+                      202: {'color': '#d6d4b6', 'flag': 'unconsolidated bare areas'},
+                      210: {'color': '#1A3EF0', 'flag': 'water bodies'},
+                      220: {'color': '#ffffff', 'flag': 'permanent snow and ice'}}
+                            
+            colors = [label['color'] for label in labels.values()]
+            cmap = ListedColormap([label['color'] for label in labels.values()])
+            norm = mcolours.BoundaryNorm(list(labels.keys())+[221], cmap.N+1, extend='max')
+            ticks = list(np.mean((list(list(labels.keys())+[221])[i+1], val)) for i, val in enumerate(list(labels.keys())))
+            cblabels=[label['flag'] for label in labels.values()]
+                            
+        except:
+            AttributeError
+                            
     try:
         im = lulc.plot.imshow(cmap=cmap, norm=norm, add_colorbar=legend, **plot_kwargs)
     except AttributeError:
@@ -1167,6 +1216,10 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
             cb.set_ticklabels(cblabels)
             
         if "CGLS" in product:
+            cb.set_ticks(ticks)
+            cb.set_ticklabels(cblabels)
+                            
+        if "CCI" in product:
             cb.set_ticks(ticks)
             cb.set_ticklabels(cblabels)
 
