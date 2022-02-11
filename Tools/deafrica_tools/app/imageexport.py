@@ -35,11 +35,15 @@ def select_region_app(date,
         The exact date used to plot imagery on the interactive map
         (e.g. ``date='1988-01-01'``).
     satellites : str
-        The satellite data to plot on the interactive map. Three options
-        are currently supported:
+        The satellite data to plot on the interactive map. The 
+        following options are supported:
 
-            * ''`Landsat`'': data from the Landsat 5, 7 and 8 satellites
-            * ``'Sentinel-2'``: data from Sentinel-2A and Sentinel-2B
+            ``'Landsat-9'``: data from the Landsat 9 satellite
+            ``'Landsat-8'``: data from the Landsat 8 satellite
+            ``'Landsat-7'``: data from the Landsat 7 satellite
+            ``'Landsat-5'``: data from the Landsat 5 satellite
+            ``'Sentinel-2'``: data from Sentinel-2A and Sentinel-2B
+            ``'Sentinel-2 geomedian'``: data from the Sentinel-2 annual geomedian
 
     size_limit : int, optional
         An optional size limit for the area selection in sq km.
@@ -142,12 +146,13 @@ def export_image_app(geopolygon,
         The exact date used to extract imagery
         (e.g. `date='1988-01-01'`).
     satellites : str
-        The satellite data to be used to extract imagery. Four
-        options are currently supported:
+        The satellite data to be used to extract imagery. The 
+        following options are supported:
 
+            ``'Landsat-9'``: data from the Landsat 9 satellite
             ``'Landsat-8'``: data from the Landsat 8 satellite
-            ``'Landsat-7'``: data from the Landsat 8 satellite
-            ``'Landsat-5'``: data from the Landsat 8 satellite
+            ``'Landsat-7'``: data from the Landsat 7 satellite
+            ``'Landsat-5'``: data from the Landsat 5 satellite
             ``'Sentinel-2'``: data from Sentinel-2A and Sentinel-2B
             ``'Sentinel-2 geomedian'``: data from the Sentinel-2 annual geomedian
 
