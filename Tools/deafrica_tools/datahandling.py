@@ -100,7 +100,7 @@ def load_ard(
     Loads analysis ready data.
 
     Loads and combines Landsat USGS Collections 2, Sentinel-2, and Sentinel-1 for
-    multiple sensors (i.e. ls5t, ls7e and ls8c for Landsat; s2a and s2b for Sentinel-2),
+    multiple sensors (i.e. ls5t, ls7e, ls8c and ls9 for Landsat; s2a and s2b for Sentinel-2),
     optionally applies pixel quality masks, and drops time steps that
     contain greater than a minimum proportion of good quality (e.g. non-
     cloudy or shadowed) pixels.
@@ -123,7 +123,7 @@ def load_ard(
     Sentinel-1:
         * s1_rtc
 
-    Last modified: August 2021
+    Last modified: Feb 2021
 
     Parameters
     ----------
@@ -392,7 +392,7 @@ def load_ard(
 
         if product_type == "ls":
             # handle LS seperately to S2/S1 due to collection_category
-            #force the user to load Tier 1
+            # force the user to load Tier 1
             datasets = dc.find_datasets(
                 product=product, collection_category='T1', **query
             )
@@ -421,7 +421,8 @@ def load_ard(
         )
 
     # If predicate is specified, use this function to filter the list
-    # of datasets prior to load
+    # of datasets prior to load (this now redundant as dc.load now supports
+    # a predicate filter)
     if predicate:
         if verbose:
             print(f"Filtering datasets using filter function")
@@ -460,13 +461,15 @@ def load_ard(
         pq_mask = (ds[fmask_band] & mask) != 0
         
         # only run if data bands are present 
-        if measurements != ["pixel_quality"]: 
-            # identify pixels that will become negative after rescaling (but not 0 values)
+        if len(data_bands) > 0: 
+            
+        # identify pixels that will become negative after rescaling (but not 0 values)
             invalid = (
                     ((ds[data_bands] < (-1.0 * -0.2 / 0.0000275)) & (ds[data_bands] > 0))
                     .to_array(dim="band")
                     .any(dim="band")
                     )
+
         #merge masks
         pq_mask = xr.ufuncs.logical_or(pq_mask, pq_mask)
 
