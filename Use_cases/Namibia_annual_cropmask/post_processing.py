@@ -33,10 +33,10 @@ def post_processing(
     #--Post process masking---------------------------------------------------------------
 
     # mask with WDPA
-    url_wdpa="s3://deafrica-input-datasets/protected_areas/WDPA_southern.tif"
-    wdpa=rio_slurp_xarray(url_wdpa, gbox=predicted.geobox)
-    wdpa = wdpa.astype(bool)
-    predict = predict.where(~wdpa, 0)
+#     url_wdpa="s3://deafrica-input-datasets/protected_areas/WDPA_southern.tif"
+#     wdpa=rio_slurp_xarray(url_wdpa, gbox=predicted.geobox)
+#     wdpa = wdpa.astype(bool)
+#     predict = predict.where(~wdpa, 0)
 
     #mask with WOFS
     wofs=dc.load(product='wofs_ls_summary_annual',
