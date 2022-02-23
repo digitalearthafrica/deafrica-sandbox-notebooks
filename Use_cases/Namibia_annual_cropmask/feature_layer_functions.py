@@ -37,8 +37,9 @@ def common_ops(ds, era):
 
 def add_chirps(ds,
                era,
+               dask_chunks,
                training=True,
-               dask_chunks={'x':-1, 'y':-1}):
+               ):
    
     # load rainfall climatology
     if era == "_S1":
@@ -140,9 +141,9 @@ def gm_mads_two_seasons_prediction(query):
       
     #create features
     epoch1 = common_ops(dss["S1"], era="_S1")
-    epoch1 = add_chirps(epoch1, era='_S1',training=False)
+    epoch1 = add_chirps(epoch1, era='_S1',training=False, dask_chunks=query['dask_chunks'])
     epoch2 = common_ops(dss["S2"], era="_S2")
-    epoch2 = add_chirps(epoch2, era='_S2', training=False)
+    epoch2 = add_chirps(epoch2, era='_S2', training=False, dask_chunks=query['dask_chunks'])
 
     # add slope
     url_slope ="https://deafrica-input-datasets.s3.af-south-1.amazonaws.com/srtm_dem/srtm_africa_slope.tif"
