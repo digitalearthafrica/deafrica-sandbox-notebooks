@@ -37,7 +37,7 @@ def common_ops(ds, era):
 
 def add_chirps(ds,
                era,
-               dask_chunks,
+               dask_chunks=None,
                training=True,
                ):
    
@@ -94,6 +94,7 @@ def gm_mads_two_seasons_training(query):
     #load S2 geomedian
     ds = dc.load(product='gm_s2_semiannual',
                  **query)
+    
     # load the data
     dss = {"S1": ds.isel(time=0),
            "S2": ds.isel(time=1)}
@@ -110,9 +111,8 @@ def gm_mads_two_seasons_training(query):
     slope = slope.to_dataset(name="slope")
 
     result = xr.merge([epoch1, epoch2, slope], compat="override")
-
-    return result.astype(np.float32).squeeze()
-
+    
+    return result.astype(np.float32).drop('time')
 
 def gm_mads_two_seasons_prediction(query):
     """
