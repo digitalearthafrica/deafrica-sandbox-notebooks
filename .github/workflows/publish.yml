@@ -1,0 +1,62 @@
+# The name of your workflow. GitHub displays the names of your workflows on your repository's actions page. 
+name: Publish deafrica-tools to PyPI
+# Specifies the triggers for this workflow. 
+on:
+  # Triggers the workflow to run  when 1) a push occurs on the main branch that includes i) tags beginning with v* (for version) 
+  # ii) changes to any file in Tools/ and/or a change to this workflow file or 
+  # 2) when a release has been published or 
+  # 3) by clicking the 'Run workflow' button on the Actions tab.
+  push:
+    branches:
+      - main
+    tags:
+      - v*
+    paths:
+      - 'Tools/**'
+      - '.github/workflows/publish.yml'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+# Groups together all the jobs that run in the workflow. A workflow run is made up of one or more jobs. Jobs run in parallel by default.
+jobs:
+  # Job unique identifier.
+  build-n-publish:
+    # Name for the job, which is displayed on GitHub.
+    name: Build and publish deafrica-tools to PyPI
+    # Specifies the runner environment the job will run in. Configures the job to run on the latest version of an Ubuntu Linux runner.
+    runs-on: ubuntu-latest
+    # Groups together all the steps that run in the job. A job contains a sequence of tasks called steps. Each item nested under this section is a separate action or shell script. 
+    steps:
+      # The uses keyword specifies that this step will run v2 of the actions/checkout action. This is an action that checks out your repository onto the runner, allowing you to run scripts or other actions against your code (such as build and test tools). You should use the checkout action any time your workflow will run against the repository's code.
+      - uses: actions/checkout@v2
+
+      - name: Build deafrica-tools
+        # The run keyword tells the job to execute a command on the runner.
+        run: |
+            python3 -m pip install setuptools_scm build
+            python3 -m setuptools_scm
+            cd Tools
+            python3 -m pip install --upgrade pip
+            python3 -m pip install --use-feature=in-tree-build --no-deps .
+            python3 -c "import deafrica_tools; print(deafrica_tools.__version__)"
+            python3 -m build
+            
+      - name: Publish distribution to PyPI
+        # You may pin to the exact commit or the version.
+        # uses: pypa/gh-action-pypi-publish@27b31702a0e7fc50959f5ad993c78deac1bdfc29
+        uses: pypa/gh-action-pypi-publish@v1.4.2
+        with:
+          # PyPI user
+          user: ${{ secrets.PYPI_USER }}
+          # Password for your PyPI user or an access token
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          # The target directory for distribution
+          packages_dir: Tools/dist
+          # Check metadata before uploading
+          verify_metadata: true
+          # Do not fail if a Python package distribution exists in the target package index
+          skip_existing: false
+          # Show verbose output.
+          verbose: true
+          
