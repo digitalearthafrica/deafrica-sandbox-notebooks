@@ -1,4 +1,4 @@
-__version__ = "0.1.0"
+__version__ = "0.1.3"
 
 __locales__ = __path__[0] + '/locales'
 
