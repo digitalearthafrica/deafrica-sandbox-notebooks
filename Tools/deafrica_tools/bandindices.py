@@ -55,6 +55,7 @@ def calculate_indices(
         * ``'NDCI'`` (Normalised Difference Chlorophyll Index, Mishra & Mishra, 2012)
         * ``'NDMI'`` (Normalised Difference Moisture Index, Gao 1996)
         * ``'NDSI'`` (Normalised Difference Snow Index, Hall 1995)
+        * ``'NDTI'`` (Normalised Difference Turbidity Index, Lacaux et al. 2007)
         * ``'NDVI'`` (Normalised Difference Vegetation Index, Rouse 1973)
         * ``'NDWI'`` (Normalised Difference Water Index, McFeeters 1996)
         * ``'SAVI'`` (Soil Adjusted Vegetation Index, Huete 1988)
@@ -221,6 +222,8 @@ def calculate_indices(
         "FMR": lambda ds: (ds.swir_1 / ds.nir),
         # Iron Oxide Ratio, Segal 1982
         "IOR": lambda ds: (ds.red / ds.blue),
+        # Normalized Difference Turbidity Index, Lacaux, J.P. et al. 2007
+        "NDTI": lambda ds: (ds.red - ds.green) / (ds.red + ds.green),
     }
     
     # Enhanced Normalised Difference Impervious Surfaces Index, Chen et al. 2019
