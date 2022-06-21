@@ -58,7 +58,7 @@ EXTRAS = {
 NAME = 'deafrica-tools'
 DESCRIPTION = 'Functions and algorithms for analysing Digital Earth Africa data.'
 URL = 'https://github.com/digitalearthafrica/deafrica-sandbox-notebooks'
-EMAIL = 'https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues'
+EMAIL = 'systems@digitalearthafrica.org'
 AUTHOR = 'Digital Earth Africa'
 REQUIRES_PYTHON = '>=3.6.0'    
 
@@ -73,7 +73,7 @@ except FileNotFoundError:
     
 setup_kwargs = {
     'name': NAME,
-    'version': '0.1.2',
+    'version': '0.1.3',
     'description': DESCRIPTION,
     'long_description': long_description,
     'author': AUTHOR,
