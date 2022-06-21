@@ -22,7 +22,6 @@ from ipyleaflet import basemaps, basemap_to_tiles
 
 # Load utility functions
 from deafrica_tools.datahandling import load_ard, mostcommon_crs
-from deafrica_tools.coastal import tidal_tag
 from deafrica_tools.dask import create_local_dask_cluster
 
 
@@ -182,6 +181,7 @@ def run_filmstrip_app(
         # Optionally calculate tides for each timestep in the satellite
         # dataset and drop any observations out side this range
         if tide_range != (0.0, 1.0):
+            from deafrica_tools.coastal import tidal_tag
             ds = tidal_tag(ds=ds, tidepost_lat=None, tidepost_lon=None)
             min_tide, max_tide = ds.tide_height.quantile(tide_range).values
             ds = ds.sel(time=(ds.tide_height >= min_tide) &
