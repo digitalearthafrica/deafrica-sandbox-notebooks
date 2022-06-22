@@ -109,7 +109,7 @@ def _vsos(da, pos, method_sos="first"):
     # find where the first order slope is postive
     pos_green_deriv = green_deriv.where(green_deriv > 0)
     # positive slopes on greening side
-    pos_greenup = greenup.where(~xr.ufuncs.isnan(pos_green_deriv))
+    pos_greenup = greenup.where(~np.isnan(pos_green_deriv))
     # find the median
     median = pos_greenup.median("time")
     # distance of values from median
