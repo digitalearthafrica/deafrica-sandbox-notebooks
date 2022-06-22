@@ -151,7 +151,7 @@ def _veos(da, pos, method_eos="last"):
     # find the first order slopes
     senesce_deriv = senesce.differentiate("time")
     # find where the fst order slope is negative
-    neg_senesce_deriv = senesce_deriv.where(~xr.ufuncs.isnan(senesce_deriv < 0))
+    neg_senesce_deriv = senesce_deriv.where(~np.isnan(senesce_deriv < 0))
     # negative slopes on senescing side
     neg_senesce = senesce.where(neg_senesce_deriv)
     # find medians
