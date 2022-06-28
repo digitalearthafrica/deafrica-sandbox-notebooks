@@ -53,7 +53,7 @@ jobs:
             cd Tools/ 
             python3 -m pip install --upgrade pip
             python3 -m pip install --upgrade build twine
-            python3 -m pip install --use-feature=in-tree-build --no-deps .
+            python3 -m pip install --no-deps .
             python3 -c "import deafrica_tools; print(deafrica_tools.__version__)"
             python3 -m build --sdist --wheel --outdir dist/
             twine check dist/*
