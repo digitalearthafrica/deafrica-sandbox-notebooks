@@ -56,28 +56,32 @@ EXTRAS = {
 
 # Package meta-data.
 NAME = 'deafrica-tools'
+VERSION = '0.1.4'
 DESCRIPTION = 'Functions and algorithms for analysing Digital Earth Africa data.'
-URL = 'https://github.com/digitalearthafrica/deafrica-sandbox-notebooks'
-EMAIL = 'systems@digitalearthafrica.org'
-AUTHOR = 'Digital Earth Africa'
-REQUIRES_PYTHON = '>=3.6.0'    
-
 # Set the value of long_description to the contents (not the path) of the README file itself.
 this_directory = Path(__file__).parent
-long_description = (this_directory / "README.md").read_text()
+LONG_DESCRIPTION = (this_directory / 'README.md').read_text()
 # Set the long_description_content_type to an accepted Content-Type-style value for your README file’s markup.
-long_description_content_type='text/markdown'
+LONG_DESCRIPTION_CONTENT_TYPE = 'text/markdown'
+AUTHOR = 'Digital Earth Africa'
+AUTHOR_EMAIL = 'systems@digitalearthafrica.org'
+REQUIRES_PYTHON = '>=3.6.0'    
+URL = 'https://github.com/digitalearthafrica/deafrica-sandbox-notebooks'
+BUG_TRACKER_URL = 'https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues' 
+
+
     
 setup_kwargs = {
     'name': NAME,
-    'version': '0.1.4',
+    'version': VERSION,
     'description': DESCRIPTION,
-    'long_description': long_description,
-    'long_description_content_type' : long_description_content_type,
+    'long_description': LONG_DESCRIPTION,
+    'long_description_content_type' : LONG_DESCRIPTION_CONTENT_TYPE,
     'author': AUTHOR,
-    'author_email': EMAIL,
+    'author_email': AUTHOR_EMAIL,
     'python_requires': REQUIRES_PYTHON,
     'url': URL,
+    'project_urls' : {'Bug Tracker': BUG_TRACKER_URL},
     'install_requires': REQUIRED if not IS_DEAFRICA_SANDBOX else [],
     'packages': find_packages(),
     'include_package_data':True,
