@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-import io
 import os
+from pathlib import Path
 from setuptools import find_packages, setup
 
 # Where are we?
@@ -62,20 +62,18 @@ EMAIL = 'systems@digitalearthafrica.org'
 AUTHOR = 'Digital Earth Africa'
 REQUIRES_PYTHON = '>=3.6.0'    
 
-# Import the README and use it as the long-description.
-here = os.path.abspath(os.path.dirname(__file__))
-
-try:
-    with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
-        long_description = '\n' + f.read()
-except FileNotFoundError:
-    long_description = DESCRIPTION
+# Set the value of long_description to the contents (not the path) of the README file itself.
+this_directory = Path(__file__).parent
+long_description = (this_directory / "README.md").read_text()
+# Set the long_description_content_type to an accepted Content-Type-style value for your README file’s markup.
+long_description_content_type='text/markdown'
     
 setup_kwargs = {
     'name': NAME,
-    'version': '0.1.3',
+    'version': '0.1.4',
     'description': DESCRIPTION,
     'long_description': long_description,
+    'long_description_content_type' : long_description_content_type,
     'author': AUTHOR,
     'author_email': EMAIL,
     'python_requires': REQUIRES_PYTHON,
