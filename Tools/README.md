@@ -10,12 +10,6 @@ This module is automatically installed on the Digital Earth Africa Sandbox. If f
 To do this on the Digital Earth Africa Sandbox, run `pip` from the terminal:
 
 ```
-pip install deafrica-tools
-```
-
-or 
-
-```
 pip install -e Tools/
 ```
        
