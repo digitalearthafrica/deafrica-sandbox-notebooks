@@ -990,7 +990,6 @@ def plot_wofs(wofs, legend=True, **plot_kwargs):
         128,
         160,
         192,
-        255,
     ]
     norm = mcolours.BoundaryNorm(np.array(bounds) - 0.1, cmap.N)
     cblabels = [
@@ -1016,7 +1015,7 @@ def plot_wofs(wofs, legend=True, **plot_kwargs):
         except AttributeError:
             cb = im.cbar
         ticks = cb.get_ticks()
-        cb.set_ticks(ticks + np.diff(ticks, append=256) / 2)
+        cb.set_ticks(ticks + np.diff(ticks, append=193) / 2)
         cb.set_ticklabels(cblabels)
     return im
 
@@ -1208,7 +1207,7 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
             cb = im.cbar
 
         if "ESRI" in product:
-            cb.set_ticks(np.arange(0, 12, 1) + 0.5)
+            cb.set_ticks(np.arange(0, 11, 1)+0.5)
             cb.set_ticklabels(cblabels)
 
         if "ESA" in product:
