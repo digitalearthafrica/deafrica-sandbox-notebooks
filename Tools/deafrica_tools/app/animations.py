@@ -57,53 +57,23 @@ warnings.filterwarnings("ignore")
 
 # WMS params and satellite style bands
 sat_params = {
-    "Landsat-5": {
-        "products": ["ls5_sr"],
+    "Landsat": {
+        "products": ["ls5_sr", "ls7_sr", "ls8_sr", "ls9_sr"],
         "styles": {
-            "True colour": ("true_colour", ["SR_B3", "SR_B2", "SR_B1"]),
+            "True colour": ("true_colour", ["red", "green", "blue"]),
             "False colour": (
                 "false_colour",
-                ["SR_B5", "SR_B4", "SR_B2"],
-            ),
-        },
-    },
-    "Landsat-7": {
-        "products": ["ls7_sr"],
-        "styles": {
-            "True colour": ("true_colour", ["SR_B3", "SR_B2", "SR_B1"]),
-            "False colour": (
-                "false_colour",
-                ["SR_B5", "SR_B4", "SR_B2"],
-            ),
-        },
-    },
-    "Landsat-8": {
-        "products": ["ls8_sr"],
-        "styles": {
-            "True colour": ("true_colour", ["SR_B4", "SR_B3", "SR_B2"]),
-            "False colour": (
-                "false_colour",
-                ["SR_B6", "SR_B5", "SR_B3"],
-            ),
-        },
-    },
-    "Landsat-9": {
-        "products": ["ls9_sr"],
-        "styles": {
-            "True colour": ("true_colour", ["SR_B4", "SR_B3", "SR_B2"]),
-            "False colour": (
-                "false_colour",
-                ["SR_B6", "SR_B5", "SR_B3"],
+                ["swir_1", "nir", "green"],
             ),
         },
     },
     "Sentinel-2": {
         "products": ["s2_l2a"],
         "styles": {
-            "True colour": ("simple_rgb", ["B04", "B03", "B02"]),
+            "True colour": ("simple_rgb", ["red", "green", "blue"]),
             "False colour": (
                 "infrared_green",
-                ["B12", "B08", "B03"],
+                ["swir_2", "nir_1", "green"],
             ),
         },
     },
@@ -156,7 +126,10 @@ def extract_data(self):
     # Convert to geopolygon
     geopolygon = Geometry(geom=self.gdf_drawn.geometry[0], crs=self.gdf_drawn.crs)
 
-    # Create query
+    # Create query.
+    start_date = np.datetime64(self.start_date)
+    end_date = np.datetime64(self.end_date)
+    
     self.query_params = {
         "time": (str(start_date), str(end_date)),
         "geopolygon": geopolygon,
@@ -303,10 +276,7 @@ class animation_app(HBox):
         self.start_date = start_date.strftime("%Y-%m-%d")
         self.end_date = end_date.strftime("%Y-%m-%d")
         self.dealayer_list = [
-            ("Landsat-5", "Landsat-5"),
-            ("Landsat-7", "Landsat-7"),
-            ("Landsat-8", "Landsat-8"),
-            ("Landsat-9", "Landsat-9"),
+            ("Landsat", "Landsat"),
             ("Sentinel-2", "Sentinel-2"),
         ]
         self.dealayer = self.dealayer_list[0][1]
@@ -509,8 +479,9 @@ class animation_app(HBox):
 
         checkbox_rolling_median = deawidgets.create_checkbox(
             self.rolling_median,
-            "Apply rolling median to produce<br>smooth, cloud-free animations",
-            layout={"width": "85%"},
+            "Apply rolling median<br>to produce smooth, <br> cloud-free animations",
+            layout={"width": "90%",
+                   "height": "4em"},
         )
         text_rolling_median_window = widgets.IntText(
             value=20,
@@ -543,7 +514,7 @@ class animation_app(HBox):
             layout={"width": "95%"},
         )
         checkbox_cloud_mask = deawidgets.create_checkbox(
-            self.cloud_mask, "Mask out cloudy pixels", layout={"width": "95%"}
+            self.cloud_mask, "Mask out cloudy <br> pixels", layout={"width": "95%", "height": "auto"}
         )
         slider_power = widgets.FloatSlider(
             value=1.0,
@@ -660,12 +631,12 @@ class animation_app(HBox):
 
         parameter_selection = VBox(
             [
+                HTML("<b>Satellite imagery:</b>"),
+                dropdown_dealayer,
                 HTML("<b>Start date:</b>"),
                 date_picker_start,
                 HTML("<b>End date:</b>"),
                 date_picker_end,
-                HTML("<b>Satellite imagery:</b>"),
-                dropdown_dealayer,
                 HTML("<b>Style:</b>"),
                 dropdown_styles,
                 HTML("<b>Colour percentile stretch:</b>"),
@@ -835,7 +806,7 @@ class animation_app(HBox):
     def update_dealayer(self, change):
         self.dealayer = change.new
 
-        if change.new == "ga_ls_ard_3":
+        if change.new == "Landsat":
             self.text_resolution.value = 30
 
         else:
