@@ -10,11 +10,11 @@ import ipywidgets as widgets
 from traitlets import Unicode
 
 
-def create_datepicker(description='', layout={'width': '85%'}):
+def create_datepicker(description='', value=None, layout={'width': '85%'}):
     '''
     Create a DatePicker widget
     
-    Last modified: October 2021
+    Last modified: July 2022
     
     Parameters
     ----------
@@ -32,7 +32,8 @@ def create_datepicker(description='', layout={'width': '85%'}):
     date_picker = widgets.DatePicker(
         description=description,
         layout=layout,
-        disabled=False
+        disabled=False,
+        value=value
     )
 
     return date_picker
@@ -334,3 +335,33 @@ def create_drawcontrol(
     draw_control.polyline = polyline_options
 
     return draw_control
+
+
+def create_checkbox(value, description="", layout={'width': '85%'}):
+    '''
+    Create a Checkbox widget
+    
+    Last modified: July 2022
+    
+    Parameters
+    ----------
+    value : string
+        initial value of the widget; True or False
+    description : string
+        description label to attach
+    layout : dictionary
+        any layout commands for the widget
+        
+    Returns
+    -------
+    dropdown : ipywidgets.widgets.widget_selection.Dropdown
+        
+    '''
+
+    checklist = widgets.Checkbox(value=value,
+                                 description=description,
+                                 layout=layout,
+                                 disabled=False,
+                                 indent=False)
+
+    return checklist
