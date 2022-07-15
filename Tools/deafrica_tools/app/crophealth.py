@@ -100,7 +100,7 @@ def load_crophealth_data(lat, lon, buffer, date):
     # Calculate the normalised difference vegetation index (NDVI) across
     # all pixels for each image.
     # This is stored as an attribute of the data
-    ds = calculate_indices(ds, index='NDVI', collection='s2')
+    ds = calculate_indices(ds, index='NDVI', satellite_mission='s2')
 
     # Return the data
     return(ds)
