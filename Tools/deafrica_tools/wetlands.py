@@ -128,7 +128,7 @@ def WIT_drill(
     
     with HiddenPrints(): #suppres the prints from this func
         tcw = calculate_indices(
-            ds_ls, index=["TCW"], normalise=False, collection="c2", drop=True
+            ds_ls, index=["TCW"], normalise=False, satellite_mission="ls", drop=True
         )
     
     if resample_frequency is not None:

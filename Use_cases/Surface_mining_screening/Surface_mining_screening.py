@@ -117,7 +117,7 @@ def process_data(gdf, geom, start_year, end_year, product='s2'):
                          **query)
         
         # For loaded Sentinel-2 Geomedian data, compute the annual geomedian and Calcute NDVI
-        ds = calculate_indices(ds, ['NDVI'], collection='s2')
+        ds = calculate_indices(ds, ['NDVI'], satellite_mission='s2')
     
     #load wofs summary
     ds_wofs = dc.load(product="wofs_ls_summary_annual",
