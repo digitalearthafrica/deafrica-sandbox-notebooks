@@ -1092,7 +1092,7 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
                     np.array([227, 226, 195]) / 255,
                 ]
             )
-            bounds = [0, 1, 2, 4, 5, 7, 8, 9, 10, 11]
+            bounds = [-0.5, 0.5, 1.5, 3, 4.5, 6, 7.5, 8.5, 9.5, 10.5, 11.5]
             norm = mcolours.BoundaryNorm(np.array(bounds), cmap.N)
             cblabels = [
                 "no data",
@@ -1106,6 +1106,7 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
                 "clouds",
                 "rangeland",
             ]
+            ticks = list(np.mean((bounds[i+1], val)) for i, val in enumerate(bounds[:-1]))
         except:
             AttributeError
 
@@ -1246,7 +1247,7 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
             cb.set_ticklabels(cblabels)
 
         if "IO" in product:
-            cb.set_ticks(np.array([0, 1, 2, 4, 5, 7, 8, 9, 10, 11])+0.5)
+            cb.set_ticks(ticks)
             cb.set_ticklabels(cblabels)
 
         if "ESA" in product:
