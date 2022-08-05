@@ -1,3 +1,4 @@
+import sys
 import datacube
 import xarray as xr
 from deafrica_tools.datahandling import load_ard
@@ -5,17 +6,100 @@ from deafrica_tools.bandindices import calculate_indices
 from odc.algo import xr_geomedian
 
 
+def geomedian_with_indices_wrapper(
+    ds, indices=["NDVI", "LAI", "SAVI", "MSAVI", "MNDWI"], satellite_mission="s2"
+):
+
+    ds_geomedian = xr_geomedian(ds)
+
+    ds_geomedian = calculate_indices(
+        ds_geomedian,
+        index=indices,
+        drop=False,
+        satellite_mission=satellite_mission,
+    )
+
+    return ds_geomedian
+
+
+def indices_wrapper(
+    ds, indices=["NDVI", "LAI", "SAVI", "MSAVI", "MNDWI"], satellite_mission="s2"
+):
+
+    ds = calculate_indices(
+        ds,
+        index=indices,
+        drop=False,
+        satellite_mission=satellite_mission,
+    )
+
+    return ds
+
+
+def median_wrapper(ds):
+
+    ds = ds.median(dim="time")
+
+    return ds
+
+
+def mean_wrapper(ds):
+
+    ds = ds.mean(dim="time")
+
+    return ds
+
+
+def apply_function_over_custom_times(ds, func, func_name, time_ranges):
+
+    output_list = []
+
+    for timelabel, timeslice in time_ranges.items():
+
+        if isinstance(timeslice, slice):
+            ds_timeslice = ds.sel(time=timeslice)
+        else:
+            ds_timeslice = ds.sel(time=timeslice, method="nearest")
+
+        ds_modified = func(ds_timeslice)
+
+        rename_dict = {
+            key: f"{key}_{func_name}_{timelabel}" for key in list(ds_modified.keys())
+        }
+
+        ds_modified = ds_modified.rename(name_dict=rename_dict)
+
+        if "time" in list(ds_modified.coords):
+            ds_modified = ds_modified.reset_coords().drop_vars(["time", "spatial_ref"])
+
+        output_list.append(ds_modified)
+
+    return output_list
+
+
+
 # Define functions to load features
 def feature_layers(query):
 
     # Connnect to datacube
     dc = datacube.Datacube(app="crop_type_ml")
-
-#     # ----------------- S2 BIMONTHLY GEOMEDIANS -----------------
-#     # These are designed to take the geomedian for every two months,
-#     # Starting 6 calendar months before the initial collection date.
-#     # This is controlled through the input query
-
+    
+    # Check query for required time ranges and remove them
+    if all([key in query.keys() for key in ["time_ranges", "annual_geomedian_times", "semiannual_geomedian_times"]]):
+        pass    
+    else:
+        print("Dictionary is missing one of the required keys: time_ranges, annual_geomedian_times, or semiannual_geomedian_times")
+        sys.exit(1)
+         
+    # ----------------- STORE TIME RANGES FOR CUSTOM QUERIES -----------------
+    # This removes these items from the query so it can be used for loads
+    time_ranges = query.pop("time_ranges")
+    annual_geomedian_times = query.pop("annual_geomedian_times")
+    semiannual_geomedian_times = query.pop("semiannual_geomedian_times")
+    
+    
+    # ----------------- DEFINE MEASUREMENTS TO USE FOR EACH PRODUCT -----------------
+    
     s2_measurements = [
         "blue",
         "green",
@@ -27,6 +111,22 @@ def feature_layers(query):
         "red_edge_2",
         "red_edge_3",
     ]
+    
+    s2_geomad_measurements = s2_measurements + ["smad", "emad", "bcmad"]
+
+    s2_indices = ["NDVI", "LAI", "SAVI", "MSAVI", "MNDWI"]
+
+    s1_measurements = ["vv", "vh"]
+
+    fc_measurements = ["bs", "pv", "npv", "ue"]
+
+    rainfall_measurements = ["rainfall"]
+
+    slope_measurements = ["slope"]
+    
+    # ----------------- S2 CUSTOM GEOMEDIANS -----------------
+    # These are designed to take the geomedian for every range in time_ranges
+    # This is controlled through the input query
 
     ds = load_ard(
         dc=dc,
@@ -37,318 +137,135 @@ def feature_layers(query):
         **query,
     )
 
-    # Resample, apply geomedian function
-    grouped = ds.resample(time="2MS")
-    ds_bimonthly_geomedian = grouped.map(xr_geomedian)
-
-    # Compute Indices
-    ds_bimonthly_geomedian = calculate_indices(
-        ds_bimonthly_geomedian,
-        index=["NDVI", "LAI", "SAVI", "MSAVI", "MNDWI"],
-        drop=False,
-        collection="s2",
-    ).squeeze()
-
-    # Split into multiple datasets, dropping time on each
-    ds_bimonthly_geomedian_list = [
-        ds_bimonthly_geomedian.isel({"time": i}).reset_coords().drop_vars(["time"])
-        for i in range(ds_bimonthly_geomedian.sizes["time"])
-    ]
-
-    # Rename
-    for i in range(len(ds_bimonthly_geomedian_list)):
-        months_prior = 6 - i * 2
-        rename_dict = {
-            key: f"{key}_geomed_{months_prior}monthsprior"
-            for key in list(ds_bimonthly_geomedian_list[i].keys())
-        }
-        ds_bimonthly_geomedian_list[i] = ds_bimonthly_geomedian_list[i].rename(
-            name_dict=rename_dict
+    # Apply geomedian over time ranges and calculate band indices
+    ds_s2_geomad_list = apply_function_over_custom_times(
+            ds, geomedian_with_indices_wrapper, "s2", time_ranges
         )
 
-    # ----------------- S2 Annual GEOMEDIAN -----------------
-    # Load this for the year prior to the data collection
+    # ----------------- S2 ANNUAL GEOMEDIAN -----------------
 
-    # Update query to use year prior
-    geomad_query = query.copy()
-    year_for_annual_geomedian = str(query["time"][1].year - 1)
-    geomad_query.update({"time": (year_for_annual_geomedian)})
-
+    # Update query to use annual_geomedian_times
+    ds_annual_geomad_query = query.copy()
+    query_times = list(annual_geomedian_times.values())
+    ds_annual_geomad_query.update({"time": (query_times[0], query_times[-1])})
+    
     # load s2 annual geomedian
-    ds_annual_geomedian = dc.load(
-        product="gm_s2_annual", measurements=s2_measurements, **geomad_query
+    ds_s2_geomad = dc.load(
+        product="gm_s2_annual",
+        measurements=s2_geomad_measurements,
+        **ds_annual_geomad_query,
+    )
+    
+    # Calculate band indices
+    ds_s2_annual_list = apply_function_over_custom_times(
+        ds_s2_geomad, indices_wrapper, "s2", annual_geomedian_times
+    )
+    
+    # ----------------- S2 SEMIANNUAL GEOMEDIAN -----------------
+    
+    # Update query to use semiannual_geomedian_times
+    ds_semiannual_geomad_query = query.copy()
+    query_times = list(semiannual_geomedian_times.values())
+    ds_semiannual_geomad_query.update({"time": (query_times[0], query_times[-1])})
+    
+    # load s2 semiannual geomedian
+    ds_s2_semiannual_geomad = dc.load(
+        product="gm_s2_semiannual",
+        measurements=s2_geomad_measurements,
+        **ds_semiannual_geomad_query,
     )
 
-    # calculate some band indices
-    ds_annual_geomedian = calculate_indices(
-        ds_annual_geomedian,
-        index=["NDVI", "LAI", "SAVI", "MSAVI", "MNDWI"],
-        drop=False,
-        collection="s2",
-    ).squeeze()
+    # Calculate band indices
+    ds_s2_semiannual_list = apply_function_over_custom_times(
+        ds_s2_semiannual_geomad, indices_wrapper, "s2", semiannual_geomedian_times
+    )
 
-    # Rename
-    annual_rename_dict = {
-        key: f"{key}_geomed_{year_for_annual_geomedian}annual"
-        for key in list(ds_annual_geomedian.keys())
-    }
-    ds_annual_geomedian = ds_annual_geomedian.rename(name_dict=annual_rename_dict)
+    # ----------------- S1 CUSTOM GEOMEDIANS -----------------
 
-#     # ----------------- S1 BIMONTHLY GEOMEDIANS -----------------
-
+    # Update query to suit Sentinel 1
     s1_query = query.copy()
     s1_query.update({"sat_orbit_state": "ascending"})
 
+    # Load s1
     s1_ds = load_ard(
         dc=dc,
         products=["s1_rtc"],
-        measurements=["vv", "vh"],
+        measurements=s1_measurements,
         group_by="solar_day",
         verbose=False,
         **s1_query,
     )
 
-    # Resample, apply geomedian function, compute result to store in memory
-    grouped_s1 = s1_ds.resample(time="2MS")
-    ds_s1_bimonthly_geomedian = grouped_s1.map(xr_geomedian)
+    # Apply geomedian
+    s1_ds_list = apply_function_over_custom_times(
+        s1_ds, xr_geomedian, "s1_xrgm", time_ranges
+    )
 
-    # Split into multiple datasets, dropping time on each
-    ds_s1_bimonthly_geomedian_list = [
-        ds_s1_bimonthly_geomedian.isel({"time": i}).reset_coords().drop_vars(["time"])
-        for i in range(ds_s1_bimonthly_geomedian.sizes["time"])
-    ]
+    # -------- LANDSAT BIMONTHLY FRACTIONAL COVER -----------
 
-    # Rename
-    for i in range(len(ds_s1_bimonthly_geomedian_list)):
-        months_prior = 6 - i * 2
-        rename_dict = {
-            key: f"{key}_s1_geomed_{months_prior}monthsprior"
-            for key in list(ds_s1_bimonthly_geomedian_list[i].keys())
-        }
-        ds_s1_bimonthly_geomedian_list[i] = ds_s1_bimonthly_geomedian_list[i].rename(
-            name_dict=rename_dict
-        )
-
-#     # -------- LANDSAT BIMONTHLY FRACTIONAL COVER -----------
-
-    # load all available fc data
-    ds_fc = dc.load(product="fc_ls", collection_category="T1", **query)
+    # Update query to suit fractional cover
+    fc_query = query.copy()
+    fc_query.update({"resampling": "bilinear", "measurements": fc_measurements})
     
-    ds_fc_median = ds_fc.resample(time="2MS").median()
+    # load fractional cover
+    ds_fc = dc.load(product="fc_ls", collection_category="T1", **fc_query)
     
-    # Split into multiple datasets, dropping time on each
-    ds_fc_bimonthly_median_list = [
-        ds_fc_median.isel({"time": i}).reset_coords().drop_vars(["time", "spatial_ref"])
-        for i in range(ds_fc_median.sizes["time"])
-    ]
+    # Apply median
+    fc_ds_list = apply_function_over_custom_times(
+        ds_fc, median_wrapper, "median", time_ranges
+    )
+    
+    # -------- CHIRPS MONTHLY RAINFALL -----------
+    
+    # Update query to suit CHIRPS rainfall
+    rainfall_query = query.copy()
+    rainfall_query.update(
+        {"resampling": "bilinear", "measurements": rainfall_measurements}
+    )
+    
+    # Load rainfall and update no data values
+    ds_rainfall = dc.load(product="rainfall_chirps_monthly", **rainfall_query)
 
-    # Rename
-    for i in range(len(ds_fc_bimonthly_median_list)):
-        months_prior = 6 - i * 2
-        rename_dict = {
-            key: f"{key}_fc_{months_prior}monthsprior"
-            for key in list(ds_fc_bimonthly_median_list[i].keys())
+    RAINFALL_NODATA = -9999.0
+    ds_rainfall = ds_rainfall.where(
+        ds_rainfall.rainfall != RAINFALL_NODATA, other=np.nan
+    )
+
+    # Apply mean
+    rainfall_ds_list = apply_function_over_custom_times(
+        ds_rainfall, mean_wrapper, "mean", time_ranges
+    )
+    
+    # -------- DEM SLOPE -----------
+    slope_query = query.copy()
+    slope_query.update(
+        {
+            "resampling": "bilinear",
+            "measurements": slope_measurements,
+            "time": "2000-01-01",
         }
-        ds_fc_bimonthly_median_list[i] = ds_fc_bimonthly_median_list[i].rename(name_dict=rename_dict)
+    )    
+    
+    # Load slope data and update no data values and coordinates
+    ds_slope = dc.load(product="dem_srtm_deriv", **slope_query)
+
+    SLOPE_NODATA = -9999.0
+    ds_slope = (ds_slope.where(ds_slope != SLOPE_NODATA, np.nan))
+    
+    ds_slope = ds_slope.squeeze("time").reset_coords("time", drop=True)
         
     # ----------------- FINAL MERGED XARRAY -----------------
 
     # Create a list to keep all items for final merge
     ds_list = []
-    ds_list.extend(ds_bimonthly_geomedian_list)
-    ds_list.append(ds_annual_geomedian)
-    ds_list.extend(ds_s1_bimonthly_geomedian_list)
-    ds_list.extend(ds_fc_bimonthly_median_list)
+    ds_list.extend(ds_s2_geomad_list)
+    ds_list.extend(ds_s2_annual_list)
+    ds_list.extend(ds_s2_semiannual_list)
+    ds_list.extend(s1_ds_list)
+    ds_list.extend(fc_ds_list)
+    ds_list.extend(rainfall_ds_list)
+    ds_list.append(ds_slope)
 
     ds_final = xr.merge(ds_list)
 
     return ds_final
-
-
-# # Define functions to load features
-# def feature_layers(query):
-
-#     # Connnect to datacube
-#     dc = datacube.Datacube(app="crop_type_ml")
-
-# #     # ----------------- S2 BIMONTHLY GEOMEDIANS -----------------
-# #     # These are designed to take the geomedian for every two months,
-# #     # Starting 6 calendar months before the initial collection date.
-# #     # This is controlled through the input query
-
-#     s2_measurements = [
-#         "blue",
-#         "green",
-#         "red",
-#         "nir",
-#         "swir_1",
-#         "swir_2",
-#         "red_edge_1",
-#         "red_edge_2",
-#         "red_edge_3",
-#     ]
-
-# #     ds = dc.load(
-# #         product="s2_l2a",
-# #         measurements=s2_measurements,
-# #         **query,
-# #     )
-
-#     ds = load_ard(
-#         dc=dc,
-#         products=["s2_l2a"],
-#         measurements=s2_measurements,
-#         group_by="solar_day",
-#         verbose=False,
-#         **query,
-#     )
-
-#     # Resample, apply geomedian function
-#     grouped = ds.resample(time="2MS")
-#     ds_bimonthly_geomedian = grouped.map(xr_geomedian)
-
-#     # Compute Indices
-#     ds = calculate_indices(
-#         ds,
-#         index=["NDVI", "LAI", "SAVI", "MSAVI", "MNDWI"],
-#         drop=False,
-#         collection="s2",
-#     ).squeeze()
-
-#     # Split into multiple datasets, dropping time on each
-#     ds_bimonthly_geomedian_list = [
-#         ds_bimonthly_geomedian.isel({"time": i}).reset_coords().drop_vars(["time"])
-#         for i in range(ds_bimonthly_geomedian.sizes["time"])
-#     ]
-
-#     # Rename
-#     for i in range(len(ds_bimonthly_geomedian_list)):
-#         months_prior = 6 - i * 2
-#         rename_dict = {
-#             key: f"{key}_geomed_{months_prior}monthsprior"
-#             for key in list(ds_bimonthly_geomedian_list[i].keys())
-#         }
-#         ds_bimonthly_geomedian_list[i] = ds_bimonthly_geomedian_list[i].rename(
-#             name_dict=rename_dict
-#         )
-
-#     # ----------------- S2 Annual GEOMEDIAN -----------------
-#     # Load this for the year prior to the data collection
-
-#     # Update query to use year prior
-#     geomad_query = query.copy()
-#     year_for_annual_geomedian = str(query["time"][1].year - 1)
-#     geomad_query.update({"time": (year_for_annual_geomedian)})
-
-#     # load s2 annual geomedian
-#     ds_annual_geomedian = dc.load(
-#         product="gm_s2_annual", measurements=s2_measurements, **geomad_query
-#     )
-
-#     # calculate some band indices
-#     ds_annual_geomedian = calculate_indices(
-#         ds_annual_geomedian,
-#         index=["NDVI", "LAI", "SAVI", "MSAVI", "MNDWI"],
-#         drop=False,
-#         collection="s2",
-#     ).squeeze()
-
-#     # Rename
-#     annual_rename_dict = {
-#         key: f"{key}_geomed_{year_for_annual_geomedian}annual"
-#         for key in list(ds_annual_geomedian.keys())
-#     }
-#     ds_annual_geomedian = ds_annual_geomedian.rename(name_dict=annual_rename_dict)
-
-# #     # ----------------- S1 BIMONTHLY GEOMEDIANS -----------------
-
-#     s1_query = query.copy()
-#     s1_query.update({"sat_orbit_state": "ascending"})
-
-#     s1_ds = load_ard(
-#         dc=dc,
-#         products=["s1_rtc"],
-#         measurements=["vv", "vh"],
-#         group_by="solar_day",
-#         verbose=False,
-#         **s1_query,
-#     )
-
-#     # Resample, apply geomedian function, compute result to store in memory
-#     grouped_s1 = s1_ds.resample(time="2MS")
-#     ds_s1_bimonthly_geomedian = grouped_s1.map(xr_geomedian)
-
-#     # Split into multiple datasets, dropping time on each
-#     ds_s1_bimonthly_geomedian_list = [
-#         ds_s1_bimonthly_geomedian.isel({"time": i}).reset_coords().drop_vars(["time"])
-#         for i in range(ds_s1_bimonthly_geomedian.sizes["time"])
-#     ]
-
-#     # Rename
-#     for i in range(len(ds_s1_bimonthly_geomedian_list)):
-#         months_prior = 6 - i * 2
-#         rename_dict = {
-#             key: f"{key}_s1_geomed_{months_prior}monthsprior"
-#             for key in list(ds_s1_bimonthly_geomedian_list[i].keys())
-#         }
-#         ds_s1_bimonthly_geomedian_list[i] = ds_s1_bimonthly_geomedian_list[i].rename(
-#             name_dict=rename_dict
-#         )
-
-# #     # ----------------- MONTHLY RAINFALL --------------------
-
-# #     ds_rf_month = dc.load(
-# #         product="rainfall_chirps_monthly",
-# #         **query,
-# #     )
-
-# #     # Split into multiple datasets, dropping time on each
-# #     ds_rf_monthly_list = [
-# #         ds_rf_month.isel({"time": i}).reset_coords().drop_vars(["time", "spatial_ref"])
-# #         for i in range(ds_rf_month.sizes["time"])
-# #     ]
-
-# #     # Rename
-# #     for i in range(len(ds_rf_monthly_list)):
-# #         months_prior = 6 - i * 1
-# #         rename_dict = {
-# #             key: f"{key}_{months_prior}monthsprior"
-# #             for key in list(ds_rf_monthly_list[i].keys())
-# #         }
-# #         ds_rf_monthly_list[i] = ds_rf_monthly_list[i].rename(name_dict=rename_dict)
-
-# #     # -------- LANDSAT BIMONTHLY FRACTIONAL COVER -----------
-
-#     # load all available fc data
-#     ds_fc = dc.load(product="fc_ls", collection_category="T1", **query)
-    
-#     ds_fc_median = ds_fc.resample(time="2MS").median()
-    
-#     # Split into multiple datasets, dropping time on each
-#     ds_fc_bimonthly_median_list = [
-#         ds_fc_median.isel({"time": i}).reset_coords().drop_vars(["time", "spatial_ref"])
-#         for i in range(ds_fc_median.sizes["time"])
-#     ]
-
-#     # Rename
-#     for i in range(len(ds_fc_bimonthly_median_list)):
-#         months_prior = 6 - i * 2
-#         rename_dict = {
-#             key: f"{key}_fc_{months_prior}monthsprior"
-#             for key in list(ds_fc_bimonthly_median_list[i].keys())
-#         }
-#         ds_fc_bimonthly_median_list[i] = ds_fc_bimonthly_median_list[i].rename(name_dict=rename_dict)
-        
-#     # ----------------- FINAL MERGED XARRAY -----------------
-
-#     # Create a list to keep all items for final merge
-#     ds_list = []
-#     ds_list.extend(ds_bimonthly_geomedian_list)
-#     ds_list.append(ds_annual_geomedian)
-#     ds_list.extend(ds_s1_bimonthly_geomedian_list)
-# #     ds_list.extend(ds_rf_monthly_list)
-#     ds_list.extend(ds_fc_bimonthly_median_list)
-
-#     ds_final = xr.merge(ds_list)
-
-#     return ds_final
