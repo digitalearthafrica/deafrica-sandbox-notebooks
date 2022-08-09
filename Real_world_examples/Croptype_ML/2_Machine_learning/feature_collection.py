@@ -88,33 +88,58 @@ def apply_function_over_custom_times(ds, func, func_name, time_ranges):
 # Define functions to load features
 def feature_layers(query):
     """Compute feature layers according to datacube query"""
+    
+#     query = static_query.copy() # include to make sure original query isn't modified
 
     # Connnect to datacube
     dc = datacube.Datacube(app="crop_type_ml")
 
-    # Check query for required time ranges and remove them
-    if all(
-        [
-            key in query.keys()
-            for key in [
-                "time_ranges",
-                "annual_geomedian_times",
-                "semiannual_geomedian_times",
-            ]
-        ]
-    ):
-        pass
-    else:
-        print(
-            "Query missing at least one of time_ranges, annual_geomedian_times, or semiannual_geomedian_times"
-        )
-        sys.exit(1)
+#     # Check query for required time ranges and remove them
+#     if all(
+#         [
+#             key in query.keys()
+#             for key in [
+#                 "time_ranges",
+#                 "annual_geomedian_times",
+#                 "semiannual_geomedian_times",
+#             ]
+#         ]
+#     ):
+#         pass
+#     else:
+#         print(
+#             "Query missing at least one of time_ranges, annual_geomedian_times, or semiannual_geomedian_times"
+#         )
+#         sys.exit(1)
 
-    # ----------------- STORE TIME RANGES FOR CUSTOM QUERIES -----------------
-    # This removes these items from the query so it can be used for loads
-    time_ranges = query.pop("time_ranges")
-    annual_geomedian_times = query.pop("annual_geomedian_times")
-    semiannual_geomedian_times = query.pop("semiannual_geomedian_times")
+#     # ----------------- STORE TIME RANGES FOR CUSTOM QUERIES -----------------
+#     # This removes these items from the query so it can be used for loads
+#     time_ranges = query.pop("time_ranges")
+#     annual_geomedian_times = query.pop("annual_geomedian_times")
+#     semiannual_geomedian_times = query.pop("semiannual_geomedian_times")
+
+    # ----------------- HARDCODE TIME RANGES FOR CUSTOM QUERIES -----------------
+    # This means the function can be used without modifying the datacube query
+    
+    time_ranges = {
+        "Q3_2021": slice("2021-08-01", "2022-10-31"),
+        "Q4_2021": slice("2021-11-01", "2022-01-31"),
+        "Q1_2022": slice("2022-02-01", "2022-04-30"),
+    }
+    
+    # !!! FOR ZAMBIA, S1 DATA IS MISSING FOR HALF THE COUNTRY IN 2022 !!!
+    s1_time_ranges = {
+        "Q3_2021": slice("2021-08-01", "2022-10-31"),
+        "Q4_2021": slice("2021-11-01", "2022-01-31"),
+    }
+    
+    annual_geomedian_times = {
+        "annual_2021": "2021-01-01",
+    }
+    semiannual_geomedian_times = {
+        "semiannual_2021_01": "2021-01-01",
+        "semiannual_2021_06": "2021-06-01",
+    }
 
     # ----------------- DEFINE MEASUREMENTS TO USE FOR EACH PRODUCT -----------------
 
@@ -214,7 +239,7 @@ def feature_layers(query):
 
     # Apply geomedian
     s1_geomad_list = apply_function_over_custom_times(
-        s1_ds, xr_geomedian, "s1_xrgm", time_ranges
+        s1_ds, xr_geomedian, "s1_xrgm", s1_time_ranges
     )
 
     # -------- LANDSAT BIMONTHLY FRACTIONAL COVER -----------
@@ -268,7 +293,7 @@ def feature_layers(query):
     slope_nodata = -9999.0
     ds_slope = ds_slope.where(ds_slope != slope_nodata, np.nan)
 
-    ds_slope = ds_slope.squeeze("time").reset_coords("time", drop=True)
+    ds_slope = ds_slope.squeeze("time")#.reset_coords("time", drop=True)
 
     # ----------------- FINAL MERGED XARRAY -----------------
 
