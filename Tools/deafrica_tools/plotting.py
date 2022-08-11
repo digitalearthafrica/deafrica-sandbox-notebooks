@@ -1028,7 +1028,7 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
     lulc : xr.DataArray
         A DataArray containing LULC bit flags.
     product : str
-        'ESA', 'ESRI', 'CGLS', or 'CCI'
+        'ESA', 'IO', 'CGLS', or 'CCI', 'ESRI'
     legend : bool
         Whether to plot a legend. Default True.
     plot_kwargs : dict
@@ -1040,6 +1040,7 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
     """
 
     if "ESRI" in product:
+        # this is for the orignal ESRI/IO 10 class product for 2020
         try:
             cmap = mcolours.ListedColormap(
                 [
@@ -1071,6 +1072,41 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
                 "snow/ice",
                 "clouds",
             ]
+        except:
+            AttributeError
+
+    if "IO" in product:
+        # this is for the ESRI/IO 9 class multiyear product; same color as preview
+        try:
+            cmap = mcolours.ListedColormap(
+                [
+                    np.array([0, 0, 0]) / 255,
+                    np.array([65, 155, 223]) / 255,
+                    np.array([57, 125, 73]) / 255,
+                    np.array([122, 135, 198]) / 255,
+                    np.array([228, 150, 53]) / 255,
+                    np.array([196, 40, 27]) / 255,
+                    np.array([165, 155, 143]) / 255,
+                    np.array([168, 235, 255]) / 255,
+                    np.array([97, 97, 97]) / 255,
+                    np.array([227, 226, 195]) / 255,
+                ]
+            )
+            bounds = [-0.5, 0.5, 1.5, 3, 4.5, 6, 7.5, 8.5, 9.5, 10.5, 11.5]
+            norm = mcolours.BoundaryNorm(np.array(bounds), cmap.N)
+            cblabels = [
+                "no data",
+                "water",
+                "trees",
+                "flooded vegetation",
+                "crops",
+                "built area",
+                "bare ground",
+                "snow/ice",
+                "clouds",
+                "rangeland",
+            ]
+            ticks = list(np.mean((bounds[i+1], val)) for i, val in enumerate(bounds[:-1]))
         except:
             AttributeError
 
@@ -1208,6 +1244,10 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
 
         if "ESRI" in product:
             cb.set_ticks(np.arange(0, 11, 1)+0.5)
+            cb.set_ticklabels(cblabels)
+
+        if "IO" in product:
+            cb.set_ticks(ticks)
             cb.set_ticklabels(cblabels)
 
         if "ESA" in product:
