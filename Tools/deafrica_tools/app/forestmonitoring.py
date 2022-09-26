@@ -144,6 +144,9 @@ def load_gfclayer(self):
     # Mask pixels representing no loss (encoded as 0) in the "lossyear" layer.
     if self.gfclayer == "lossyear":
         ds = ds.where(ds != 0)
+    # Mask pixels representing no gain (encoded as 0) in the "gain" layer. 
+    elif self.gfclayer == "gain":
+        ds = ds.where(ds != 0)
 
     # Create a mask from the area of interest GeoDataFrame.
     mask = xr_rasterize(self.gdf_drawn, ds)
@@ -177,18 +180,57 @@ def get_basemap(basemap_url):
 
 
 def plot_gfclayer(self):
+    
+    # Create the basemap.
+    plot_basemap = get_basemap(self.basemap.url).opts(height=500, width=700)
+    
+    # Pass the ds xarray.Dataset to hv.Dataset
+    # to create and object called "dataset."
+    dataset = gv.Dataset(
+        data=self.gfclayer_ds,
+        kdims=list(self.gfclayer_ds.dims),
+        vdims=self.gfclayer,
+    )
 
-    if self.gfclayer == "lossyear":
-        # Create the basemap.
-        plot_basemap = get_basemap(self.basemap.url).opts(height=500, width=700)
-
-        # Pass the ds xarray.Dataset to hv.Dataset
-        # to create and object called "dataset."
-        dataset = gv.Dataset(
-            data=self.gfclayer_ds,
-            kdims=list(self.gfclayer_ds.dims),
-            vdims=self.gfclayer,
+    if self.gfclayer == "gain":
+        # Color map to use to plot. 
+        cmap = "Greens"
+        # Ticks to be displayed on the colorbar.
+        ticks = [1]
+        ticker = bokeh.models.FixedTicker(ticks=ticks)
+        # Ticklabels for the displayed ticks on the colorbar.
+        ticklabels = ["gain"]
+        major_label_overrides = dict(zip(ticks, ticklabels))
+        
+        # Pass the dataset to gv.image to create an object called "image" which is
+        # an image element.
+        # Elements are the simplest viewable components in HoloViews/GeoViews.
+        image = dataset.to(gv.Image).opts(
+            colorbar=True,
+            cmap=cmap,
+            title=f"Forest cover gain during the period 2000–2012",
+            clabel="Global forest cover gain 2000–2012",
+            colorbar_opts={
+                "ticker": ticker,
+                "major_label_overrides": major_label_overrides,
+            },
+            height=500,
+            width=700,
         )
+    
+    if self.gfclayer == "treecover2000":
+        # Color map to use to plot.
+        cmap = "Greens"
+        image = dataset.to(gv.Image).opts(
+            colorbar=True,
+            cmap=cmap,
+            title=f"Tree cover in the year 2000",
+            clabel="Percentage tree canopy cover for the year 2000",
+            height=500,
+            width=700,
+        )
+        
+    if self.gfclayer == "lossyear":
         # Number of years from 2000 represented in the GFC lossyear.
         no_years = 21
         # Color map to use to plot.
@@ -219,19 +261,16 @@ def plot_gfclayer(self):
             height=500,
             width=700,
         )
-
-        # Overlays are a collection of HoloViews objects to be displayed overlaid
-        # on one another with the same axes.
-        # Overlays are containers created by using the * operator on elements.
-        overlay = plot_basemap * image
-        # Convert the geoviews object to a displayable pane.
-        map_pane = pn.panel(overlay)
-        # Convert the pane to an ipywidget.
-        map_widget = pn.ipywidget(map_pane)
-        map_widget.layout = make_box_layout()
-    else:
-        print("Please select a valid Global Forest Change layer")
-
+  
+    # Overlays are a collection of HoloViews objects to be displayed overlaid
+    # on one another with the same axes.
+    # Overlays are containers created by using the * operator on elements.
+    overlay = plot_basemap * image
+    # Convert the geoviews object to a displayable pane.
+    map_pane = pn.panel(overlay)
+    # Convert the pane to an ipywidget.
+    map_widget = pn.ipywidget(map_pane)
+    map_widget.layout = make_box_layout()
     return map_widget
 
 
@@ -283,7 +322,8 @@ class forest_monitoring_app(HBox):
         # Global Forest Change layers available plotting.
         self.gfclayers_list = [
             ("Year of gross forest cover loss event", "lossyear"),
-            # ("Global forest cover gain 2000–2012", "gain")
+            ("Global forest cover gain 2000–2012", "gain"),
+            ("Tree canopy cover for the year 2000", "treecover2000")
         ]
         # Set the default GFC layer to be plotted / initial value for the widget.
         self.gfclayer = self.gfclayers_list[0][1]
