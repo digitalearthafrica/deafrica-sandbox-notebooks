@@ -3,6 +3,7 @@ Coastal analyses on Digital Earth Africa data.
 """
 
 # Import required packages
+import re
 import numpy as np
 import xarray as xr
 import pandas as pd
@@ -555,10 +556,15 @@ def get_coastlines(bbox: tuple,
 
     # Query WFS
     wfs = WebFeatureService(url=WFS_ADDRESS, version="1.1.0")
+    
+    # Get the list of available layers.
+    available_layers = list(wfs.contents.keys())
+    
     if layer == "shorelines":
-        layer_name = "coastline_v0.3.0:coastlines_v0.3.0"  
-    else:
-        layer_name = "coastline_v0.3.0:coastlines_v0.3.0_rates_of_change"
+        layer_name = list(filter(re.compile(r".*coastlines_v\d{1,2}\.\d{1,2}\.\d{1,2}$").match, available_layers))[0]
+    elif layer == "statistics":
+        layer_name = list(filter(re.compile(".*coastlines_v\d{1,2}\.\d{1,2}\.\d{1,2}_rates_of_change$").match, available_layers))[0]
+    
     response = wfs.getfeature(
         typename=layer_name,
         bbox=tuple(bbox) + (crs,),
