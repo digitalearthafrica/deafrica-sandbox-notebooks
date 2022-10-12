@@ -12,8 +12,9 @@ import matplotlib.pyplot as plt
 from scipy import stats
 from otps import TimePoint
 from otps import predict_tide
-from datacube.utils.geometry import CRS
 from shapely.geometry import box
+from packaging.version import Version
+from datacube.utils.geometry import CRS
 from owslib.wfs import WebFeatureService
 
 # Fix converters for tidal plot
@@ -513,6 +514,7 @@ def transect_distances(transects_gdf, lines_gdf, mode='distance'):
 def get_coastlines(bbox: tuple,
                    crs="EPSG:4326",
                    layer="shorelines",
+                   layer_version="latest",
                    drop_wms=True) -> gpd.GeoDataFrame:
     """
     Get DE Africa Coastlines data for a provided bounding box using WFS.
@@ -534,6 +536,9 @@ def get_coastlines(bbox: tuple,
         Which DE Africa Coastlines layer to load. Options include the annual
         shoreline vectors ("shorelines") and the rates of change 
         statistics points ("statistics"). Defaults to "shorelines".
+    layer_version : str, optional
+        Which version of the DE Africa Coastlines layer to load. 
+        Defaults to the latest version. 
     drop_wms : bool, optional
         Whether to drop WMS-specific attribute columns from the data.
         These columns are used for visualising the dataset on DE Africa Maps,
@@ -559,11 +564,25 @@ def get_coastlines(bbox: tuple,
     
     # Get the list of available layers.
     available_layers = list(wfs.contents.keys())
+    # Join the list into a comma separated string. 
+    available_layers  = ", ".join(available_layers)
+    # Find the coastlines data versions available. 
+    versions = re.findall("\d{1,2}\.\d{1,2}\.\d{1,2}", available_layers)
+    versions = list(set(versions))
+    versions = sorted(versions, key=lambda x: Version(x), reverse=True)
     
+    # Get the appropriate layer version number. 
+    if layer_version == "latest" :
+        version = versions[0]
+    elif layer_version not in versions:
+        raise ValueError("Please enter a valid version number. To see the available versions for the data, visit the Layer Preview section of https://geoserver.digitalearth.africa/geoserver .")
+    else:
+        version = layer_version
+        
     if layer == "shorelines":
-        layer_name = list(filter(re.compile(r".*coastlines_v\d{1,2}\.\d{1,2}\.\d{1,2}$").match, available_layers))[0]
+        layer_name = f"coastline_v{version}:coastlines_v{version}"
     elif layer == "statistics":
-        layer_name = list(filter(re.compile(".*coastlines_v\d{1,2}\.\d{1,2}\.\d{1,2}_rates_of_change$").match, available_layers))[0]
+        layer_name = f"coastline_v{version}:coastlines_v{version}_rates_of_change"
     
     response = wfs.getfeature(
         typename=layer_name,
