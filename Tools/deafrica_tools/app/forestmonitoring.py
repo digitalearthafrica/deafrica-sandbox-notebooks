@@ -389,8 +389,8 @@ class forest_monitoring_app(HBox):
 
         # Create the map widget.
         self.m = deawidgets.create_map(
-            map_center=(5.65, 26.17),
-            zoom_level=13,
+            map_center=(-18.45, 28.93),
+            zoom_level=11,
         )
         self.m.layout = make_box_layout()
 
