@@ -3,7 +3,7 @@ Coastal analyses on Digital Earth Africa data.
 """
 
 # Import required packages
-import re
+import requests
 import numpy as np
 import xarray as xr
 import pandas as pd
@@ -13,7 +13,6 @@ from scipy import stats
 from otps import TimePoint
 from otps import predict_tide
 from shapely.geometry import box
-from packaging.version import Version
 from datacube.utils.geometry import CRS
 from owslib.wfs import WebFeatureService
 
@@ -514,14 +513,12 @@ def transect_distances(transects_gdf, lines_gdf, mode='distance'):
 def get_coastlines(bbox: tuple,
                    crs="EPSG:4326",
                    layer="shorelines",
-                   layer_version="latest",
                    drop_wms=True) -> gpd.GeoDataFrame:
     """
     Get DE Africa Coastlines data for a provided bounding box using WFS.
     
     For a full description of the DE Africa Coastlines dataset, refer to the 
     official Digital Earth Africa product description:
-    <insert url here>
     
     Parameters
     ----------
@@ -536,9 +533,6 @@ def get_coastlines(bbox: tuple,
         Which DE Africa Coastlines layer to load. Options include the annual
         shoreline vectors ("shorelines") and the rates of change 
         statistics points ("statistics"). Defaults to "shorelines".
-    layer_version : str, optional
-        Which version of the DE Africa Coastlines layer to load. 
-        Defaults to the latest version. 
     drop_wms : bool, optional
         Whether to drop WMS-specific attribute columns from the data.
         These columns are used for visualising the dataset on DE Africa Maps,
@@ -559,36 +553,22 @@ def get_coastlines(bbox: tuple,
     except:
         pass
 
-    # Query WFS
-    wfs = WebFeatureService(url=WFS_ADDRESS, version="1.1.0")
-    
-    # Get the list of available layers.
-    available_layers = list(wfs.contents.keys())
-    # Join the list into a comma separated string. 
-    available_layers  = ", ".join(available_layers)
-    # Find the coastlines data versions available. 
-    versions = re.findall("\d{1,2}\.\d{1,2}\.\d{1,2}", available_layers)
-    versions = list(set(versions))
-    versions = sorted(versions, key=lambda x: Version(x), reverse=True)
-    
-    # Get the appropriate layer version number. 
-    if layer_version == "latest" :
-        version = versions[0]
-    elif layer_version not in versions:
-        raise ValueError("Please enter a valid version number. To see the available versions for the data, visit the Layer Preview section of https://geoserver.digitalearth.africa/geoserver .")
-    else:
-        version = layer_version
-        
+    # Get the available layers in the coastlines:DEAfrica_Coastlines group.
+    describe_layer_url = "https://geoserver.digitalearth.africa/geoserver/wms?service=WMS&version=1.1.1&request=DescribeLayer&layers=coastlines:DEAfrica_Coastlines&outputFormat=application/json"
+    describe_layer_response = requests.get(describe_layer_url).json()
+    available_layers = [layer["layerName"] for layer in describe_layer_response['layerDescriptions']]
+
+    # Get the layer name. 
     if layer == "shorelines":
-        layer_name = f"coastline_v{version}:coastlines_v{version}"
-    elif layer == "statistics":
-        layer_name = f"coastline_v{version}:coastlines_v{version}_rates_of_change"
-    
-    response = wfs.getfeature(
-        typename=layer_name,
-        bbox=tuple(bbox) + (crs,),
-        outputFormat="json",
-    )
+        layer_name = [i for i in available_layers if "shorelines" in i]
+    else:
+        layer_name = [i for i in available_layers if "rates_of_change" in i]
+
+    # Query WFS.
+    wfs = WebFeatureService(url=WFS_ADDRESS, version="1.1.0")
+    response = wfs.getfeature(typename=layer_name,
+                              bbox=tuple(bbox) + (crs,),
+                              outputFormat="json")
 
     # Load data as a geopandas.GeoDataFrame.
     coastlines_gdf = gpd.read_file(response)
@@ -596,7 +576,7 @@ def get_coastlines(bbox: tuple,
     # Clip to extent of bounding box.
     extent = gpd.GeoSeries(box(*bbox), crs=crs).to_crs(coastlines_gdf.crs)
     coastlines_gdf = coastlines_gdf.clip(extent)
-    
+
     # Optionally drop WMS-specific columns.
     if drop_wms:
         coastlines_gdf = coastlines_gdf.loc[:, ~coastlines_gdf.columns.str.contains("wms_")]

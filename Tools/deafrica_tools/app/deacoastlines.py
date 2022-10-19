@@ -5,7 +5,6 @@ interactively extract shoreline data using transects.
 
 # Import required packages
 import fiona
-import re
 import os
 import sys
 import datacube
@@ -41,16 +40,6 @@ import ipywidgets as widgets
 import deafrica_tools.app.widgetconstructors as deawidgets
 from deafrica_tools.coastal import get_coastlines, transect_distances
 from owslib.wms import WebMapService
-
-def get_deafrica_coastlines_wmslayer(WMS_ADDRESS):
-    # Connect to the WMS.
-    wms = WebMapService(url=WMS_ADDRESS, version="1.1.1")
-    # Get the available layers.
-    available_layers = list(wms.contents.keys())
-    # Get the DEAfricaCoastlines layer from the list of layers. 
-    layer_name = list(filter(re.compile(r".*DEAfricaCoastlines$").match, available_layers))[0]
-    return layer_name
-
 
 def make_box_layout():
     return Layout(
@@ -161,7 +150,7 @@ class transect_app(HBox):
 
         # Load DEACoastLines WMS
         deacl_url = "https://geoserver.digitalearth.africa/geoserver/wms"
-        deacl_layer = get_deafrica_coastlines_wmslayer(deacl_url)
+        deacl_layer = "coastlines:DEAfrica_Coastlines"
         deacoastlines = WMSLayer(
             url=deacl_url,
             layers=deacl_layer,
@@ -375,7 +364,7 @@ class transect_app(HBox):
 
         # Load DE Africa CoastLines WMS
         deacl_url = "https://geoserver.digitalearth.africa/geoserver/wms"
-        deacl_layer = get_deafrica_coastlines_wmslayer(deacl_url)
+        deacl_layer = "coastlines:DEAfrica_Coastlines"
         deacoastlines = WMSLayer(
             url=deacl_url,
             layers=deacl_layer,
