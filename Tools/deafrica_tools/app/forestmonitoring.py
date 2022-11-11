@@ -622,7 +622,7 @@ class forest_monitoring_app(HBox):
         # Create the header widget.
         header_title_text = "<h3>Digital Earth Africa Forest Change</h3>"
         instruction_text = """<p>Select the desired Global Forest Change layer, then zoom in and draw a polygon to
-                                select an area for which to plot the selected Global Forest Change layer.</p>"""
+                                select an area for which to plot the selected Global Forest Change layer. Alternatively, <b>upload a vector file</b> of the area of interest.</p>"""
         self.header = deawidgets.create_html(
             value=f"{header_title_text}{instruction_text}"
         )
@@ -727,7 +727,16 @@ class forest_monitoring_app(HBox):
         checkbox_max_size.observe(self.update_checkbox_max_size, "value")
         # # Combine the checkbox_max_size_html text and the checkbox_max_size widget in a single container.
         enable_max_size = VBox([checkbox_max_size_html, checkbox_max_size])
-
+        
+        # Add widget to enable uploading a geojson or ESRI shapefile. 
+        self.gdf_uploaded = None
+        fileupload_aoi = widgets.FileUpload(accept="", multiple=True)
+        # Register the update function to be called for the file upload. 
+        fileupload_aoi.observe(self.update_fileupload_aoi, "value")
+        fileupload_html = deawidgets.create_html(value=f"""</br><i><b>Advanced</b></br>Upload a GeoJSON or ESRI Shapefile (<5 mb) containing a single area of interest.</i>""")
+        fileupload = VBox([fileupload_html, fileupload_aoi])
+        
+        
         ## Put the app controls widgets into a single container.
         parameter_selection = VBox(
             [
@@ -735,6 +744,7 @@ class forest_monitoring_app(HBox):
                 gfclayer_selection,
                 timerange_selection,
                 enable_max_size,
+                fileupload
             ]
         )
         parameter_selection.layout = make_box_layout()
@@ -746,6 +756,8 @@ class forest_monitoring_app(HBox):
         # Register the update function to be called when the run_button button
         # is clicked.
         run_button.on_click(self.run_app)
+        
+        
 
         ###########################
         # WIDGETS FOR APP OUTPUTS #
@@ -792,7 +804,10 @@ class forest_monitoring_app(HBox):
             Defines the action to take once something is drawn on the
             map widget.
             """
-
+            # Remove previously uploaded data if present
+            self.gdf_uploaded = None
+            fileupload_aoi._counter = 0
+            
             self.target = target
             self.action = action
 
@@ -806,7 +821,6 @@ class forest_monitoring_app(HBox):
             io.seek(0)
             gdf = gpd.read_file(io)
             gdf.crs = "EPSG:4326"
-            gdf.to_file("gdf_drawn.geojson", driver="GeoJSON")
 
             # Convert the GeoDataFrame to WGS 84 / NSIDC EASE-Grid 2.0 Global and compute the area.
             gdf_drawn_nsidc = gdf.copy().to_crs("EPSG:6933")
@@ -868,9 +882,9 @@ class forest_monitoring_app(HBox):
         # Place app widgets and components in app layout.
         # [rows, columns]
         grid[0, :] = self.header
-        grid[1:5, 0:4] = parameter_selection
-        grid[5, 0:4] = run_button
-        grid[6:, 0:4] = self.status_info
+        grid[1:6, 0:4] = parameter_selection
+        grid[6, 0:4] = run_button
+        grid[7:, 0:4] = self.status_info
         grid[6:, 4:] = self.output_plot
         grid[1:6, 4:] = self.m
         # Display using HBox children attribute
@@ -907,47 +921,95 @@ class forest_monitoring_app(HBox):
         checkbox_max_size CheckBox is checked.
         """
         self.max_size = change.new
+        
+    def update_fileupload_aoi(self, change):
+
+        # Clear any drawn data if present
+        self.gdf_drawn = None
+    
+        # Save to file
+        for uploaded_filename in change.new.keys():
+            with open(uploaded_filename, "wb") as output_file:
+                content = change.new[uploaded_filename]['content']
+                output_file.write(content)
+
+        with self.status_info:
+
+            try:            
+
+                print('Loading vector data...', end='\r')
+                valid_files = [
+                    file for file in change.new.keys()
+                    if file.lower().endswith(('.shp', '.geojson'))
+                ]
+                valid_file = valid_files[0]
+                aoi_gdf = (gpd.read_file(valid_file).to_crs(
+                    "EPSG:4326").explode().reset_index(drop=True))
+
+                # Create a geodata
+                geodata = GeoData(geo_dataframe=aoi_gdf,
+                                  style={
+                                      'color': 'black',
+                                      'weight': 3
+                                  })
+
+                # Add to map
+                xmin, ymin, xmax, ymax = aoi_gdf.total_bounds
+                self.m.fit_bounds([[ymin, xmin], [ymax, xmax]])
+                self.m.add_layer(geodata)
+
+                # If completed, add to attribute
+                self.gdf_uploaded = aoi_gdf
+
+            except IndexError:
+                print(
+                    "Cannot read uploaded files. Please ensure that data is "
+                    "in either GeoJSON or ESRI Shapefile format.",
+                    end='\r')
+                self.gdf_uploaded = None
+
+            except fiona.errors.DriverError:
+                print(
+                    "Shapefile is invalid. Please ensure that all shapefile "
+                    "components (e.g. .shp, .shx, .dbf, .prj) are uploaded.",
+                    end='\r')
+                self.gdf_uploaded = None
 
     def run_app(self, change):
 
         # Clear progress bar and output areas before running.
         self.status_info.clear_output()
         self.output_plot.clear_output()
+        
+        with self.status_info:
+            # Load the area of interest from the map or uploaded files.
+            if self.gdf_uploaded is not None:
+                aoi_gdf = self.gdf_uploaded
+            elif self.gdf_drawn is not None:
+                aoi_gdf = self.gdf_drawn
+            else:
+                print(f'No valid polygon drawn on the map or uploaded. Please draw a valid a transect on the map, or upload a GeoJSON or ESRI Shapefile.',
+                      end='\r')
+                aoi_gdf = None
 
-        # Verify that the polygon was drawn.
-        if self.gdf_drawn is not None:
-            # Load the seleced Global Forest Change layer
-            # and add it to the self.gfclayer_ds attribute.
-            with self.status_info:
+            # If valid area of interest data returned. Load the selected Global Forest Change data.
+            if aoi_gdf is not None:
+                
                 if self.gfclayer_ds is None:
                     if self.gfclayer != "alllayers":
-                        self.gfclayer_ds = load_gfclayer(
-                            gdf_drawn=self.gdf_drawn, gfclayer=self.gfclayer
-                        )
+                        self.gfclayer_ds = load_gfclayer(gdf_drawn=aoi_gdf, gfclayer=self.gfclayer)
                     else:
-                        self.gfclayer_ds = load_all_gfclayers(gdf_drawn=self.gdf_drawn)
+                        self.gfclayer_ds = load_all_gfclayers(gdf_drawn=aoi_gdf)
                 else:
                     print("Using previously loaded data")
-
-            # Plot the selected Global Forest Change layer.
-            if self.gfclayer_ds is not None:
-                with self.output_plot:
-                    plot_gfclayer(
-                        gfclayer_ds=self.gfclayer_ds,
-                        start_year=self.start_year,
-                        end_year=self.end_year,
-                        gfclayer=self.gfclayer,
-                    )
-            else:
-                with self.status_info:
-                    print(
-                        f"No Global Forest Change {self.gfclayer} layer data found in the selected area. Please select a new polygon over an area with data."
-                        ""
-                    )
-
-        # If no valid polygon was drawn.
-        else:
-            with self.status_info:
-                print(
-                    'Please draw a valid polygon on the map, then click on "Geneate plot"'
-                )
+                
+                # Plot the selected Global Forest Change layer.
+                if self.gfclayer_ds is not None:
+                    with self.output_plot:
+                        plot_gfclayer(gfclayer_ds=self.gfclayer_ds,
+                                      start_year=self.start_year,
+                                      end_year=self.end_year,
+                                      gfclayer=self.gfclayer)
+                else:
+                    with self.status_info:
+                        print(f"No Global Forest Change {self.gfclayer} layer data found in the selected area. Please select a new polygon over an area with data.")
