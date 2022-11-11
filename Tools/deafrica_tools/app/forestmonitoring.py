@@ -32,7 +32,6 @@ from traitlets import Unicode
 warnings.filterwarnings("ignore")
 warnings.simplefilter("ignore")
 
-
 def make_box_layout():
     """
     Defines a number of CSS properties that impact how a widget is laid out.
@@ -44,7 +43,6 @@ def make_box_layout():
         height="100%",
     )
 
-
 def create_expanded_button(description, button_style):
     """
     Defines a number of CSS properties to create a button to handle mouse clicks.
@@ -55,22 +53,7 @@ def create_expanded_button(description, button_style):
         layout=Layout(width="auto", height="auto"),
     )
 
-
-def update_map_layers(self):
-    """
-    Updates map widget to add new basemap when selected
-    using menu options.
-    """
-    # Clear data load parameters to trigger data reload.
-    self.gfclayer_ds = None
-
-    # Remove all layers from the map_layers Layers Group.
-    self.map_layers.clear_layers()
-    # Add the selected basemap to the layer Group.
-    self.map_layers.add_layer(self.basemap)
-    
-    
-def load_gfclayer(self):
+def load_gfclayer(gdf_drawn, gfclayer):
     """
     Loads the selected Global Forest Change layer for the
     area drawn on the map widget.
@@ -81,12 +64,12 @@ def load_gfclayer(self):
     # Get the coordinates of the top-left corner for each Global Forest Change tile,
     # covering the area of interest.
     min_lat, max_lat = (
-        self.gdf_drawn.bounds.miny.item(),
-        self.gdf_drawn.bounds.maxy.item(),
+        gdf_drawn.bounds.miny.item(),
+        gdf_drawn.bounds.maxy.item(),
     )
     min_lon, max_lon = (
-        self.gdf_drawn.bounds.minx.item(),
-        self.gdf_drawn.bounds.maxx.item(),
+        gdf_drawn.bounds.minx.item(),
+        gdf_drawn.bounds.maxx.item(),
     )
 
     lats = np.arange(
@@ -112,7 +95,7 @@ def load_gfclayer(self):
             coord_list.append(coord_str)
 
     # Load each Global Forest Change tile covering the area of interest.
-    base_url = f"https://storage.googleapis.com/earthenginepartners-hansen/GFC-2021-v1.9/Hansen_GFC-2021-v1.9_{self.gfclayer}_"
+    base_url = f"https://storage.googleapis.com/earthenginepartners-hansen/GFC-2021-v1.9/Hansen_GFC-2021-v1.9_{gfclayer}_"
     dask_chunks = dict(x=2048, y=2048)
 
     tile_list = []
@@ -135,21 +118,21 @@ def load_gfclayer(self):
     ds = ds.rename({"y": "latitude", "x": "longitude"})
 
     # Mask pixels representing no loss (encoded as 0) in the "lossyear" layer.
-    if self.gfclayer == "lossyear":
+    if gfclayer == "lossyear":
         ds = ds.where(ds != 0)
     # Mask pixels representing no gain (encoded as 0) in the "gain" layer.
-    elif self.gfclayer == "gain":
+    elif gfclayer == "gain":
         ds = ds.where(ds != 0)
     # Mask pixels with 0 percentage tree canopy cover.
-    elif self.gfclayer == "treecover2000":
+    elif gfclayer == "treecover2000":
         ds = ds.where(ds != 0)
 
     # Create a mask from the area of interest GeoDataFrame.
-    mask = xr_rasterize(self.gdf_drawn, ds)
+    mask = xr_rasterize(gdf_drawn, ds)
     # Mask the dataset.
     ds = ds.where(mask)
     # Convert the xarray.DataArray to a dataset.
-    ds = ds.to_dataset(name=self.gfclayer)
+    ds = ds.to_dataset(name=gfclayer)
     # Compute.
     ds = ds.compute()
     # Assign the "EPSG:4326" CRS to the dataset.
@@ -160,73 +143,29 @@ def load_gfclayer(self):
     client.close()
     return ds
 
+def load_all_gfclayers(gdf_drawn):
+    gfclayers = ["treecover2000", "gain", "lossyear"]
 
-def plot_gfclayer(self):
+    dataset_list = []
+    for layer in gfclayers:
+        ds = load_gfclayer(gdf_drawn, gfclayer=layer)
+        dataset_list.append(ds)
 
-    if self.gfclayer == "gain":
-        ds = self.gfclayer_ds[self.gfclayer]
+    dataset = xr.merge(dataset_list)
+    return dataset
 
-        # Define some plotting parameters.
-        color = "#6CAE75"
-        figure_width = 10
-        figure_length = 10
-        title = f"Forest Cover Gain from 2000 to 2012"
+def get_gfclayer_treecover2000(gfclayer_ds, gfclayer="treecover2000"):
+    """
+    Preprocess the Global Forest change "treecover2020" layer.
+    """
+    ds = gfclayer_ds[gfclayer]
 
-        # Get the pixel count for each unique pixel value in the layer.
-        counts = np.unique(ds, return_counts=True)
-        # Remove the counts for pixels with the value np.nan.
-        index = np.argwhere(np.isnan(counts[0]))
-        counts_dict = dict(
-            zip(np.delete(counts[0], index), np.delete(counts[1], index))
-        )
+    # Check if the dataarray is empty.
+    condition = ds.isnull().all().item()
 
-        # Reproject the dataset to EPSG:6933 which uses metres.
-        ds_reprojected = ds.rio.reproject("EPSG:6933")
-        # Get the area per pixel.
-        pixel_length = ds_reprojected.geobox.resolution[1]
-        m_per_km = 1000
-        per_pixel_area = (pixel_length / m_per_km) ** 2
-
-        # Save the results as a pandas DataFrame.
-        df = pd.DataFrame(
-            data={"Forest Cover Gain in km$^2$": [counts_dict[1.0] * per_pixel_area]}
-        )
-        # Get the total area.
-        print_statement = f'Total Forest Cover Gain from 2000 to 2012: {round(df["Forest Cover Gain in km$^2$"].sum(), 2)} km2'
-        
-        # Plot the figure.
-        fig, ax = plt.subplots(figsize=(figure_width, figure_length))
-        im = ds.plot(cmap=mcolors.ListedColormap([color]), add_colorbar=False, ax=ax)
-        # Add a legend to the plot.
-        im.axes.legend(
-            [Patch(facecolor=color)],
-            ["Global forest cover gain 2000–2012"],
-            loc="lower left",
-            bbox_to_anchor=(1.0, 0.5),
-            frameon=False,
-        )
-        # Add a title to the plot.
-        plt.title(title)
-        plt.show()
-        
-        print(print_statement)
-        
-        ## Export the results.
-        file_name = f"forest_cover_gain_from_2000_to_2012"
-        print(f"\nExporting results as: \n\t{file_name}.csv and \n\t{file_name}.png")
-        # Export the results as a csv file.
-        df.to_csv(f"{file_name}.csv", index=False)
-        # Save the plot.
-        plt.savefig(f"{file_name}.png")
-        
-    if self.gfclayer == "treecover2000":
-        ds = self.gfclayer_ds[self.gfclayer]
-
-        # Define some plotting parameters.
-        figure_width = 10
-        figure_length = 10
-        title = f"Tree Canopy Cover for the Year 2000"
-
+    if condition:
+        return None
+    else:
         # Mask the dataset.
         mask = np.isnan(ds)
         ds_masked = ds.where(mask, 1)
@@ -248,12 +187,142 @@ def plot_gfclayer(self):
 
         # Save the results as a pandas DataFrame.
         df = pd.DataFrame(
-            data={"Tree Cover in km$^2$": [counts_dict[1.0] * per_pixel_area]}
+            data={
+                "Year": ["2000"],
+                "Tree Cover in km$^2$": np.fromiter(counts_dict.values(), dtype=float)
+                * per_pixel_area,
+            }
         )
+
         # Get the total area.
-        print_statement = f'Total Forest Cover in 2000: {round(df["Tree Cover in km$^2$"].sum(), 2)} km2'
-    
-        # Plot the figure.
+        print_statement = f'Total Forest Cover in {df["Year"].item()}: {round(df["Tree Cover in km$^2$"].item(), 4)} km2'
+
+        # File name to use when exporting results.
+        file_name = f"forest_cover_in_2000"
+
+        return ds, df, print_statement, file_name
+
+def get_gfclayer_gain(gfclayer_ds, gfclayer="gain"):
+    """
+    Preprocess the Global Forest Change "gain" layer.
+    """
+    ds = gfclayer_ds[gfclayer]
+
+    # Check if the dataarray is empty.
+    condition = ds.isnull().all().item()
+
+    if condition:
+        return None
+    else:
+        # Get the pixel count for each unique pixel value in the layer.
+        counts = np.unique(ds, return_counts=True)
+        # Remove the counts for pixels with the value np.nan.
+        index = np.argwhere(np.isnan(counts[0]))
+        counts_dict = dict(
+            zip(np.delete(counts[0], index), np.delete(counts[1], index))
+        )
+
+        # Reproject the dataset to EPSG:6933 which uses metres.
+        ds_reprojected = ds.rio.reproject("EPSG:6933")
+        # Get the area per pixel.
+        pixel_length = ds_reprojected.geobox.resolution[1]
+        m_per_km = 1000
+        per_pixel_area = (pixel_length / m_per_km) ** 2
+
+        # Save the results as a pandas DataFrame.
+        df = pd.DataFrame(
+            data={
+                "Year": ["2000-2012"],
+                "Forest Cover Gain in km$^2$": np.fromiter(
+                    counts_dict.values(), dtype=float
+                )
+                * per_pixel_area,
+            }
+        )
+
+        # Get the total area.
+        print_statement = f'Total Forest Cover Gain {df["Year"].item()}: {round(df["Forest Cover Gain in km$^2$"].item(), 4)} km2'
+
+        # File name to use when exporting results.
+        file_name = f"forest_cover_gain_from_2000_to_2012"
+
+        return ds, df, print_statement, file_name
+
+def get_gfclayer_lossyear(gfclayer_ds, start_year, end_year, gfclayer="lossyear"):
+    """
+    Preprocess the Global Forest Change "lossyear" layer.
+    """
+
+    ds = gfclayer_ds[gfclayer]
+
+    # Mask the dataset to the selected time range.
+    selected_years = list(range(start_year, end_year + 1))
+    mask = ds.isin(selected_years)
+    ds = ds.where(mask)
+
+    # Check if the dataarray is empty.
+    condition = ds.isnull().all().item()
+
+    if condition:
+        return None
+    else:
+        # Get the pixel count for each unique pixel value in the layer.
+        counts = np.unique(ds, return_counts=True)
+        # Remove the counts for pixels with the value np.nan.
+        index = np.argwhere(np.isnan(counts[0]))
+        counts_dict = dict(
+            zip(np.delete(counts[0], index), np.delete(counts[1], index))
+        )
+
+        # Reproject the dataset to EPSG:6933 which uses metres
+        ds_reprojected = ds.rio.reproject("EPSG:6933")
+        # Get the area per pixel.
+        pixel_length = ds_reprojected.geobox.resolution[1]
+        m_per_km = 1000
+        per_pixel_area = (pixel_length / m_per_km) ** 2
+
+        # For each year get the area of loss.
+        # Save the results as a pandas DataFrame.
+        df = pd.DataFrame(
+            {
+                "Year": 2000 + np.fromiter(counts_dict.keys(), dtype=int),
+                "Forest Cover Loss in km$^2$": np.fromiter(
+                    counts_dict.values(), dtype=float
+                )
+                * per_pixel_area,
+            }
+        )
+
+        # Get the total area.
+        print_statement = f'Total Forest Cover Loss from {start_year + 2000} to {end_year + 2000}: {round(df["Forest Cover Loss in km$^2$"].sum(), 4)} km2'
+
+        # File name to use when exporting results.
+        file_name = f"forest_cover_loss_from_{start_year + 2000}_to_{end_year + 2000}"
+
+        return ds, df, print_statement, file_name
+
+def plot_gfclayer_treecover2000(gfclayer_ds, gfclayer="treecover2000"):
+    """
+    Plot the Global Forest Change "treecover2000" layer.
+    """
+
+    if get_gfclayer_treecover2000(gfclayer_ds) is None:
+        print(
+            f"No Global Forest Change {gfclayer} layer data found in the selected area. Please select a new polygon over an area with data."
+        )
+    else:
+        ds, df, print_statement, file_name = get_gfclayer_treecover2000(gfclayer_ds)
+
+        # Export the dataframe as a csv.
+        df.to_csv(f"{file_name}.csv", index=False)
+        print(f'Table exported to "{file_name}.csv"')
+
+        # Define the plotting parameters.
+        figure_width = 10
+        figure_length = 10
+        title = f"Tree Canopy Cover for the Year 2000"
+
+        # Plot the dataset.
         fig, ax = plt.subplots(figsize=(figure_width, figure_length))
         im = ds.plot(cmap="Greens", add_colorbar=False, ax=ax)
         # Add a colorbar to the plot.
@@ -263,63 +332,89 @@ def plot_gfclayer(self):
         )
         # Add a title to the plot.
         plt.title(title)
+        # Save the plot.
+        plt.savefig(f"{file_name}.png")
+        print(f'Figure exported to "{file_name}.png"')
         plt.show()
 
         print(print_statement)
-        
-        ## Export the results.
-        file_name = f"forest_cover_in_2000"
-        print(f"\nExporting results as: \n\t{file_name}.csv and \n\t{file_name}.png")
-        # Export the results as a csv file.
+
+def plot_gfclayer_gain(gfclayer_ds, gfclayer="gain"):
+    """
+    Plot the Global Forest Change "gain" layer.
+    """
+
+    if get_gfclayer_gain(gfclayer_ds) is None:
+        print(
+            f"No Global Forest Change {gfclayer} layer data found in the selected area. Please select a new polygon over an area with data."
+        )
+    else:
+        ds, df, print_statement, file_name = get_gfclayer_gain(gfclayer_ds)
+
+        # Export the dataframe as a csv.
         df.to_csv(f"{file_name}.csv", index=False)
+        print(f'Table exported to "{file_name}.csv"')
+
+        # Define the plotting parameters.
+        color = "#6CAE75"
+        figure_width = 10
+        figure_length = 10
+        title = f"Forest Cover Gain from 2000 to 2012"
+
+        # Plot the dataset.
+        fig, ax = plt.subplots(figsize=(figure_width, figure_length))
+        im = ds.plot(cmap=mcolors.ListedColormap([color]), add_colorbar=False, ax=ax)
+        # Add a legend to the plot.
+        im.axes.legend(
+            [Patch(facecolor=color)],
+            ["Global forest cover gain 2000–2012"],
+            loc="lower left",
+            bbox_to_anchor=(1.0, 0.5),
+            frameon=False,
+        )
+        # Add a title to the plot.
+        plt.title(title)
         # Save the plot.
         plt.savefig(f"{file_name}.png")
-        
-    if self.gfclayer == "lossyear":
-        ds = self.gfclayer_ds[self.gfclayer]
+        print(f'Figure exported to "{file_name}.png"')
+        plt.show()
 
-        # Mask the dataset to the selected time range.
-        selected_years = list(range(self.start_year, self.end_year + 1))
-        mask = ds.isin(selected_years)
-        ds = ds.where(mask)
+        print(print_statement)
 
-        ## Get the area of loss for the selected time range.
-        selected_years_str = [str(2000 + i) for i in selected_years]
-        selected_years_dict = dict(zip(selected_years, selected_years_str))
-        # Get the pixel count for each unique pixel value in the layer.
-        counts = np.unique(ds, return_counts=True)
-        # Remove the counts for pixels with the value np.nan.
-        index = np.argwhere(np.isnan(counts[0]))
-        counts_dict = dict(
-            zip(np.delete(counts[0], index), np.delete(counts[1], index))
+def plot_gfclayer_lossyear(gfclayer_ds, start_year, end_year, gfclayer="lossyear"):
+    """
+    Plot the Global Forest change "lossyear" layer.
+    """
+
+    if (
+        get_gfclayer_lossyear(gfclayer_ds, start_year, end_year, gfclayer="lossyear")
+        is None
+    ):
+        print(
+            f"No Global Forest Change {gfclayer} layer data found in the selected area. Please select a new polygon over an area with data."
         )
-        # Reproject the dataset to EPSG:6933 which uses metres
-        ds_reprojected = ds.rio.reproject("EPSG:6933")
-        # Get the area per pixel.
-        pixel_length = ds_reprojected.geobox.resolution[1]
-        m_per_km = 1000
-        per_pixel_area = (pixel_length / m_per_km) ** 2
-        # For each year get the area of loss.
-        area_dict = {}
-        for k, v in counts_dict.items():
-            area_dict[selected_years_dict[k]] = v * per_pixel_area
-
-        # Save the results as a pandas DataFrame.
-        df = pd.DataFrame(
-            data={
-                "Year": area_dict.keys(),
-                "Forest Cover Loss in km$^2$": area_dict.values(),
-            }
+    else:
+        ds, df, print_statement, file_name = get_gfclayer_lossyear(
+            gfclayer_ds, start_year, end_year, gfclayer="lossyear"
         )
-        # Get the total area.
-        print_statement = rf'Total Forest Cover Loss from {df["Year"].min()} to {df["Year"].max()}: {round(df["Forest Cover Loss in km$^2$"].sum(), 2)} km2'
 
-        ## Define some plotting parameters.
+        # Export the dataframe as a csv.
+        df.to_csv(f"{file_name}.csv", index=False)
+        print(f'Table exported to "{file_name}.csv"')
+
+        # Define the plotting parameters.
         figure_width = 10
         figure_length = 15
         nrows = 2
         ncols = 1
-        title = f"Forest Cover Loss from {selected_years_str[0]} to {selected_years_str[-1]}"
+        title = f"Forest Cover Loss from {start_year + 2000} to {end_year + 2000}"
+
+        # Location of transition from one color to the next on the colormap.
+        color_levels = list(np.arange(1 - 0.5, 22, 1))
+        # Ticks to be displayed.
+        ticks = list(np.arange(1, 22))
+        tick_labels = list(2000 + np.arange(1, 22))
+
         # Define the color map to use when plotting.
         color_list = [
             "#e6194b",
@@ -344,12 +439,10 @@ def plot_gfclayer(self):
             "#808080",
             "#7A306C",
         ]
-        cmap = mcolors.ListedColormap(colors=color_list, N=len(selected_years))
-        # Location of transition from one color to the next.
-        color_levels = list(np.arange(self.start_year - 0.5, self.end_year + 1, 1))
+        cmap = mcolors.ListedColormap(colors=color_list, N=21)
         norm = mcolors.BoundaryNorm(boundaries=color_levels, ncolors=cmap.N)
 
-        # Plot the figure.
+        # Plot the dataset.
         fig, (ax1, ax2) = plt.subplots(
             nrows, ncols, figsize=(figure_width, figure_length)
         )
@@ -357,9 +450,9 @@ def plot_gfclayer(self):
         # Add a title to the subplot.
         ax1.set_title(title)
         # Add a colorbar to the subplot.
-        cbar = plt.colorbar(mappable=im, ticks=selected_years)
+        cbar = plt.colorbar(mappable=im, ticks=ticks)
         cbar.set_label("Year of gross forest cover loss event", labelpad=-60, y=0.25)
-        cbar.set_ticklabels(selected_years_str)
+        cbar.set_ticklabels(tick_labels)
         # Plot the second subplot.
         df.plot(
             x="Year",
@@ -368,19 +461,156 @@ def plot_gfclayer(self):
             title=title,
             ax=ax2,
         )
-        plt.show()
-        
-        print(print_statement)
-        
-        ## Export the results.
-        file_name = f"forest_cover_loss_from_{selected_years_str[0]}_to_{selected_years_str[-1]}"
-        print(f"\nExporting results as: \n\t{file_name}.csv and \n\t{file_name}.png")
-        # Export the results as a csv file.
-        df.to_csv(f"{file_name}.csv", index=False)
         # Save the plot.
         plt.savefig(f"{file_name}.png")
-        
-        
+        print(f'Figure exported to "{file_name}.png"')
+        plt.show()
+
+        print(print_statement)
+
+def plot_gfclayer_all(gfclayer_ds, start_year, end_year):
+    """
+    Plot all the Global Forest Change Layers loaded.
+    """
+
+    # Define the plotting parameters.
+    figure_width = 10
+    figure_length = 10
+    treecover_color = "Greens"
+    gain_color = "yellow"
+    lossyear_color = "red"
+
+    print_statement_list = []
+    filename_list = ["\nTables exported as: "]
+
+    figure_fn = "global_forest_change_all_layers.png"
+
+    # Define the figure.
+    fig, ax = plt.subplots(figsize=(figure_width, figure_length))
+    if (
+        get_gfclayer_treecover2000(
+            gfclayer_ds[["treecover2000"]], gfclayer="treecover2000"
+        )
+        is None
+    ):
+        print(
+            f"No Global Forest Change 'treecover2000' layer data found in the selected area. Please select a new polygon over an area with data."
+        )
+    else:
+        (
+            ds_treecover2000,
+            df_treecover2000,
+            print_statement_treecover2000,
+            file_name_treecover2000,
+        ) = get_gfclayer_treecover2000(
+            gfclayer_ds[["treecover2000"]], gfclayer="treecover2000"
+        )
+        # Plot the treecover2000 layer as the background layer.
+        background = ds_treecover2000.plot(
+            cmap=treecover_color, add_colorbar=False, ax=ax
+        )
+        # Add a colorbar to the treecover2000 plot.
+        cbar = plt.colorbar(mappable=background)
+        cbar.set_label(
+            "Percentage tree canopy cover for year 2000", labelpad=-65, y=0.25
+        )
+        # Export the dataframe as a csv.
+        df_treecover2000.to_csv(f"{file_name_treecover2000}.csv", index=False)
+        # Add the print statement to the list.
+        print_statement_list.append(print_statement_treecover2000)
+        # Add the file name to the list.
+        filename_list.append(f'"{file_name_treecover2000}.csv"')
+
+    if get_gfclayer_gain(gfclayer_ds[["gain"]], gfclayer="gain") is None:
+        print(
+            f"No Global Forest Change 'gain' layer data found in the selected area. Please select a new polygon over an area with data."
+        )
+    else:
+        ds_gain, df_gain, print_statement_gain, file_name_gain = get_gfclayer_gain(
+            gfclayer_ds[["gain"]], gfclayer="gain"
+        )
+        # Plot the gain layer.
+        ds_gain.plot(
+            ax=ax, cmap=mcolors.ListedColormap([gain_color]), add_colorbar=False
+        )
+        # Export the dataframe as a csv.
+        df_gain.to_csv(f"{file_name_gain}.csv", index=False)
+        # Add the print statement to the list.
+        print_statement_list.append(print_statement_gain)
+        # Add the file name to the list.
+        filename_list.append(f'"{file_name_gain}.csv"')
+
+    if (
+        get_gfclayer_lossyear(
+            gfclayer_ds[["lossyear"]], start_year, end_year, gfclayer="lossyear"
+        )
+        is None
+    ):
+        print(
+            f"No Global Forest Change 'lossyear' layer data found in the selected area. Please select a new polygon over an area with data."
+        )
+    else:
+        (
+            ds_lossyear,
+            df_lossyear,
+            print_statement_lossyear,
+            file_name_lossyear,
+        ) = get_gfclayer_lossyear(
+            gfclayer_ds[["lossyear"]], start_year, end_year, gfclayer="lossyear"
+        )
+        # Plot the lossyear layer.
+        ds_lossyear.plot(
+            ax=ax, cmap=mcolors.ListedColormap([lossyear_color]), add_colorbar=False
+        )
+        # Export the dataframe as a csv.
+        df_lossyear.to_csv(f"{file_name_lossyear}.csv", index=False)
+        # Add the print statement to the list.
+        print_statement_list.append(print_statement_lossyear)
+        # Add the file name to the list.
+        filename_list.append(f'"{file_name_lossyear}.csv"')
+
+    # Add a legend to the plot.
+    ax.legend(
+        [Patch(facecolor=gain_color), Patch(facecolor=lossyear_color)],
+        [
+            "Global forest cover \n gain 2000–2012",
+            f"Global forest cover \n loss {str(2000+start_year)}-{str(2000+end_year)}",
+        ],
+        loc="lower right",
+        bbox_to_anchor=(-0.1, 0.75),
+        frameon=False,
+    )
+
+    plt.title("Global Forest Change Layers")
+    plt.savefig(figure_fn)
+    plt.show()
+    print(*print_statement_list, sep="\n")
+    print(*filename_list, sep="\n\t")
+    print(f'\nFigure saved as "{figure_fn}"');
+
+def plot_gfclayer(gfclayer_ds, start_year, end_year, gfclayer):
+    if gfclayer == "treecover2000":
+        plot_gfclayer_treecover2000(gfclayer_ds, gfclayer)
+    elif gfclayer == "lossyear":
+        plot_gfclayer_lossyear(gfclayer_ds, start_year, end_year, gfclayer)
+    elif gfclayer == "gain":
+        plot_gfclayer_gain(gfclayer_ds, gfclayer)
+    elif gfclayer == "alllayers":
+        plot_gfclayer_all(gfclayer_ds, start_year, end_year)
+
+def update_map_layers(self):
+    """
+    Updates map widget to add new basemap when selected
+    using menu options.
+    """
+    # Clear data load parameters to trigger data reload.
+    self.gfclayer_ds = None
+
+    # Remove all layers from the map_layers Layers Group.
+    self.map_layers.clear_layers()
+    # Add the selected basemap to the layer Group.
+    self.map_layers.add_layer(self.basemap)
+
 class forest_monitoring_app(HBox):
     def __init__(self):
         super().__init__()
@@ -431,6 +661,7 @@ class forest_monitoring_app(HBox):
             ("Year of gross forest cover loss event", "lossyear"),
             ("Global forest cover gain 2000–2012", "gain"),
             ("Tree canopy cover for the year 2000", "treecover2000"),
+            ("All layers", "alllayers"),
         ]
         # Set the default GFC layer to be plotted / initial value for the widget.
         self.gfclayer = self.gfclayers_list[0][1]
@@ -575,6 +806,7 @@ class forest_monitoring_app(HBox):
             io.seek(0)
             gdf = gpd.read_file(io)
             gdf.crs = "EPSG:4326"
+            gdf.to_file("gdf_drawn.geojson", driver="GeoJSON")
 
             # Convert the GeoDataFrame to WGS 84 / NSIDC EASE-Grid 2.0 Global and compute the area.
             gdf_drawn_nsidc = gdf.copy().to_crs("EPSG:6933")
@@ -671,7 +903,7 @@ class forest_monitoring_app(HBox):
 
     def update_checkbox_max_size(self, change):
         """
-        Sets the value of self.max_size to True when tcolor_selectionhe
+        Sets the value of self.max_size to True when the
         checkbox_max_size CheckBox is checked.
         """
         self.max_size = change.new
@@ -688,24 +920,24 @@ class forest_monitoring_app(HBox):
             # and add it to the self.gfclayer_ds attribute.
             with self.status_info:
                 if self.gfclayer_ds is None:
-                    self.gfclayer_ds = load_gfclayer(self)
+                    if self.gfclayer != "alllayers":
+                        self.gfclayer_ds = load_gfclayer(
+                            gdf_drawn=self.gdf_drawn, gfclayer=self.gfclayer
+                        )
+                    else:
+                        self.gfclayer_ds = load_all_gfclayers(gdf_drawn=self.gdf_drawn)
                 else:
                     print("Using previously loaded data")
 
             # Plot the selected Global Forest Change layer.
             if self.gfclayer_ds is not None:
                 with self.output_plot:
-                    ## Check if the dataset is empty.
-                    array = self.gfclayer_ds[self.gfclayer].values
-                    # Check if the array is entirely composed of nans.
-                    condition = np.all(np.isnan(array))
-                    # If the condition is not true (dataset is not empty) plot the layer.
-                    if not condition:
-                        plot_gfclayer(self)
-                    else:
-                        print(
-                            f"No Global Forest Change {self.gfclayer} layer data found in the selected area. Please select a new polygon over an area with data."
-                        )
+                    plot_gfclayer(
+                        gfclayer_ds=self.gfclayer_ds,
+                        start_year=self.start_year,
+                        end_year=self.end_year,
+                        gfclayer=self.gfclayer,
+                    )
             else:
                 with self.status_info:
                     print(
