@@ -239,7 +239,7 @@ def plot_data(self, fname):
         bands=sat_params[self.dealayer]["styles"][self.style][1],
         interval=self.interval,
         width_pixels=self.width,
-        show_gdf=None,
+        show_gdf=deacoastlines_overlay(to_plot) if self.deacoastlines else None,
         gdf_kwargs={"linewidth": 3},
         percentile_stretch=(self.vmin, self.vmax),
         image_proc_funcs=funcs_list,
@@ -251,6 +251,40 @@ def plot_data(self, fname):
     plt.show()
     with self.status_info:
         print(f"\nImage successfully exported to:\n{fname}.")
+
+
+def deacoastlines_overlay(ds):
+
+    import geopandas as gpd
+    import pandas as pd
+    import matplotlib
+    from shapely.geometry import box, Point
+    from deafrica_tools.coastal import get_coastlines
+
+    # Get bounding box of data
+    xmin, ymin, xmax, ymax = ds.geobox.geographic_extent.boundingbox
+    bounds = [xmin, ymin, xmax, ymax]
+
+    # Load data
+    deacl_gdf = get_coastlines(bbox=bounds)
+
+    # Clip to extent of satellite data
+    bbox = gpd.GeoDataFrame(geometry=[ds.geobox.extent.geom], crs=ds.geobox.crs)
+    deacl_gdf = gpd.overlay(deacl_gdf, bbox.to_crs(deacl_gdf.crs))
+    deacl_gdf = deacl_gdf.dissolve("year")  # values("year", ascending=True)
+
+    # Apply colours
+    norm = matplotlib.colors.Normalize(vmin=0, vmax=len(deacl_gdf.index))
+    cmap = matplotlib.cm.get_cmap("inferno")
+    rgba = cmap(norm(deacl_gdf.reset_index().index))
+    deacl_gdf["color"] = list(rgba)
+    deacl_gdf["start_time"] = pd.to_datetime(deacl_gdf.index) + pd.DateOffset(months=0)
+    deacl_gdf = deacl_gdf.sort_index()
+
+    if len(deacl_gdf.index) > 0:
+        return deacl_gdf
+    else:
+        return None
 
         
 class animation_app(HBox):
@@ -309,6 +343,7 @@ class animation_app(HBox):
             ("Yearly", "1Y"),
         ]
         self.resample_freq = self.resample_list[0][1]
+        self.deacoastlines = False
 
         # Drawing params
         self.target = None
@@ -549,6 +584,9 @@ class animation_app(HBox):
                 "display": "none",
             },
         )
+        checkbox_deacoastlines = deawidgets.create_checkbox(
+            self.deacoastlines, "Add DE Africa Coastlines overlay", layout={"width": "95%"}
+        )
         checkbox_max_size = deawidgets.create_checkbox(
             self.max_size, "Enable", layout={"width": "95%"}
         )
@@ -564,6 +602,7 @@ class animation_app(HBox):
                 dropdown_resampling,
                 HTML("</br>"),
                 checkbox_cloud_mask,
+                checkbox_deacoastlines,
                 HTML("</br>Apply power transformation to darken bright features:"),
                 slider_power,
                 HTML("</br>Apply unsharp masking to sharpen imagery:"),
@@ -622,7 +661,7 @@ class animation_app(HBox):
         checkbox_unsharp_mask.observe(self.update_checkbox_unsharp_mask, "value")
         text_unsharp_mask_radius.observe(self.update_text_unsharp_mask_radius, "value")
         text_unsharp_mask_amount.observe(self.update_text_unsharp_mask_amount, "value")
-        #checkbox_deacoastlines.observe(self.update_deacoastlines, "value")
+        checkbox_deacoastlines.observe(self.update_deacoastlines, "value")
         checkbox_max_size.observe(self.update_checkbox_max_size, "value")
 
         ##################################
@@ -776,6 +815,10 @@ class animation_app(HBox):
     def update_checkbox_max_size(self, change):
         self.max_size = change.new
 
+    # Add DE Africa Coastlines overlay
+    def update_deacoastlines(self, change):
+        self.deacoastlines = change.new
+        
     # Apply cloud mask in load_ard
     def update_checkbox_cloud_mask(self, change):
         self.cloud_mask = change.new
