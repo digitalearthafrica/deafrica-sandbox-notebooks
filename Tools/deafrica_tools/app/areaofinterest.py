@@ -1,3 +1,8 @@
+# areaofinterest.py
+'''
+Upload area of interest as a a GeoJSON or ESRI Shapefile and draw it on a map 
+'''
+
 import geopandas as gpd
 import ipywidgets as widgets
 import deafrica_tools.app.widgetconstructors as deawidgets
