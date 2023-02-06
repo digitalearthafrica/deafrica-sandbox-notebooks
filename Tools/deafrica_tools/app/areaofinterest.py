@@ -1,6 +1,6 @@
 # areaofinterest.py
 """
-Upload area of interest as a a GeoJSON or ESRI Shapefile and draw it on a map 
+Upload area of interest as a GeoJSON or ESRI Shapefile and draw it on a map 
 """
 
 import geopandas as gpd
