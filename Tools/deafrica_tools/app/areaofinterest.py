@@ -28,6 +28,7 @@ def define_area(lat=None, lon=None, buffer=None, shapefile_path=None):
         lon_range = (lon - buffer, lon + buffer)
         box_geom = box(min(lon_range), min(lat_range), max(lon_range), max(lat_range))
         aoi = gpd.GeoDataFrame(geometry=[box_geom], crs='EPSG:4326')
+    
     # Define area using shapefile
     elif shapefile_path is not None:
         aoi = gpd.read_file(shapefile_path).to_crs("EPSG:4326")
