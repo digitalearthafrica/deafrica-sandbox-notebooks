@@ -3,6 +3,12 @@ Functions for working with the Wetlands Insight Tool (WIT)
 """
 
 # Import required packages
+
+# Force GeoPandas to use Shapely instead of PyGEOS
+# In a future release, GeoPandas will switch to using Shapely by default.
+import os
+os.environ['USE_PYGEOS'] = '0'
+
 import warnings
 import numpy as np
 import pandas as pd
