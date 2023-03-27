@@ -5,6 +5,12 @@ Functions for loading and interacting with data in the crop health notebook,
 '''
 
 # Load modules
+
+# Force GeoPandas to use Shapely instead of PyGEOS
+# In a future release, GeoPandas will switch to using Shapely by default.
+import os
+os.environ['USE_PYGEOS'] = '0'
+
 from ipyleaflet import (
     Map,
     GeoJSON,
