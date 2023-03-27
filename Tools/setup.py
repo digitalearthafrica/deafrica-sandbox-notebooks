@@ -56,7 +56,7 @@ EXTRAS = {
 
 # Package meta-data.
 NAME = 'deafrica-tools'
-VERSION = '1.0.3'
+VERSION = '1.0.4'
 DESCRIPTION = 'Functions and algorithms for analysing Digital Earth Africa data.'
 # Set the value of long_description to the contents (not the path) of the README file itself.
 this_directory = Path(__file__).parent
