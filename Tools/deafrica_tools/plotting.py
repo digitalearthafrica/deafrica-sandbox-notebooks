@@ -22,7 +22,7 @@ import matplotlib.animation as animation
 from datetime import datetime
 import matplotlib.cm as cm
 from matplotlib import colors as mcolours
-from pyproj import Proj, transform
+from pyproj import Transformer
 from IPython.display import display
 from matplotlib.colors import ListedColormap
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
@@ -287,7 +287,8 @@ def display_map(x, y, crs="EPSG:4326", margin=-0.5, zoom_bias=0):
     # Convert each corner coordinates to lat-lon
     all_x = (x[0], x[1], x[0], x[1])
     all_y = (y[0], y[0], y[1], y[1])
-    all_longitude, all_latitude = transform(Proj(crs), Proj("EPSG:4326"), all_x, all_y)
+    transformer = Transformer.from_crs(crs, "EPSG:4326")
+    all_longitude, all_latitude = transformer.transform(all_x, all_y)
 
     # Calculate zoom level based on coordinates
     lat_zoom_level = (
