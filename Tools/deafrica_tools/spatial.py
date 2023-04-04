@@ -675,6 +675,8 @@ def contours_to_arrays(gdf, col):
     of each vertex in the input GeoDataFrame.
         
     """        
+    # Explode multi-part geometries into multiple single geometries.
+    gdf = gdf.explode(ignore_index=True)
 
     coords_zvals = []
 
