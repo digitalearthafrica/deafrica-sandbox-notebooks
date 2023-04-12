@@ -4,8 +4,8 @@ import numpy as np
 import xarray as xr
 
 
-def wofs_classify(dataset_in, clean_mask=None, x_coord='longitude', y_coord='latitude',
-                  time_coord='time', no_data=-9999, mosaic=False, enforce_float64=False):
+def wofs_classify(dataset_in, clean_mask=None, x_coord='x', y_coord='y',
+                  time_coord='time', no_data=np.nan, mosaic=False, enforce_float64=False):
     """
     Description:
       Performs WOfS algorithm on given dataset.
@@ -181,12 +181,12 @@ def wofs_classify(dataset_in, clean_mask=None, x_coord='longitude', y_coord='lat
 #     nir = dataset_in.nir
 #     swir1 = dataset_in.swir_1
 #     swir2 = dataset_in.swir_2
-    blue = dataset_in.B02
-    green = dataset_in.B03
-    red = dataset_in.B04
-    nir = dataset_in.B08
-    swir1 = dataset_in.B11
-    swir2 = dataset_in.B12
+    blue = dataset_in.blue
+    green = dataset_in.green
+    red = dataset_in.red
+    nir = dataset_in.nir
+    swir1 = dataset_in.swir_1
+    swir2 = dataset_in.swir_2
 
     # Enforce float calculations - float64 if user specified, otherwise float32 will do
     dtype = blue.values.dtype  # This assumes all dataset bands will have
