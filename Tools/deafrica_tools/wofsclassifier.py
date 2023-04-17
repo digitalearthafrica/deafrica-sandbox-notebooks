@@ -215,7 +215,6 @@ def wofs_classify(dataset_in, clean_mask=None, x_coord='x', y_coord='y',
     shape = blue.values.shape
     #print('decision time!')
     classified = _run_regression(blue.values, green.values, red.values, nir.values, swir1.values, swir2.values)
-
     classified_clean = np.full(classified.shape, no_data, dtype='float64')
     classified_clean[clean_mask] = classified[clean_mask]  # Contains data for clear pixels
 
