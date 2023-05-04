@@ -1,14 +1,10 @@
-"""
-Function for defining an area of interest using either a point and buffer or a shapefile or geojson file. 
-"""
-
 import geopandas as gpd
 from shapely.geometry import box
 from geojson import Feature, Point, FeatureCollection
 
 def define_area(lat=None, lon=None, buffer=None, shapefile_path=None):
-    """
-    Define an area of interest using either a point and buffer or a shapefile or geojson file.
+    '''
+    Define an area of interest using either a point and buffer or a shapefile.
     
     Parameters:
     -----------
@@ -18,14 +14,14 @@ def define_area(lat=None, lon=None, buffer=None, shapefile_path=None):
         The longitude of the center point of the area of interest.
     buffer : float, optional
         The buffer around the center point, in degrees.
-    vector_path : str, optional
-        The path to a shapefile or geojson defining the area of interest.
+    shapefile_path : str, optional
+        The path to a shapefile defining the area of interest.
     
     Returns:
     --------
     feature_collection : dict
         A GeoJSON feature collection representing the area of interest.
-    """
+    '''
     # Define area using point and buffer
     if lat is not None and lon is not None and buffer is not None:
         lat_range = (lat - buffer, lat + buffer)
@@ -34,11 +30,11 @@ def define_area(lat=None, lon=None, buffer=None, shapefile_path=None):
         aoi = gpd.GeoDataFrame(geometry=[box_geom], crs='EPSG:4326')
     
     # Define area using shapefile
-    elif vector_path is not None:
-        aoi = gpd.read_file(vector_path).to_crs("EPSG:4326")
+    elif shapefile_path is not None:
+        aoi = gpd.read_file(shapefile_path).to_crs("EPSG:4326")
     # If neither option is provided, raise an error
     else:
-        raise ValueError("Either lat/lon/buffer or path to a vector file must be provided.")
+        raise ValueError("Either lat/lon/buffer or shapefile_path must be provided.")
     
     # Convert the GeoDataFrame to a GeoJSON FeatureCollection
     features = [Feature(geometry=row["geometry"], properties=row.drop("geometry").to_dict()) for _, row in aoi.iterrows()]
