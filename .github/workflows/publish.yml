@@ -16,7 +16,7 @@ on:
     types: [published]
   workflow_dispatch:
 
-# Group together all the jobs that run in the workflow. 
+# Groups together all the jobs that run in the workflow. 
 # A workflow run is made up of one or more jobs. 
 # Jobs run in parallel by default.
 jobs:
@@ -31,7 +31,7 @@ jobs:
     defaults:
       run:
         working-directory: ./Tools
-    # Group together all the steps that run in the job. 
+    # Groups together all the steps that run in the job. 
     # A job contains a sequence of tasks called steps. 
     # Each item nested under this section is a separate action or shell script. 
     steps:
