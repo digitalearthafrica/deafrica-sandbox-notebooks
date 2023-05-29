@@ -67,11 +67,11 @@ numexpr = "2.8.4"
 datetime = "5.1"
 # scipy = "1.10.1"
 
+# Package sources for discovery and installation of dependencies.
 [[tool.poetry.source]]
 name = "PyPI"
 priority = "default"
 
-# Package sources for discovery and installation of dependencies.
 
 [[tool.poetry.source]]
 name = "packages.dea.ga.gov.au"
