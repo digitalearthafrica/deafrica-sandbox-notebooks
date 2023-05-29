@@ -56,10 +56,10 @@ jobs:
         run: |
           curl -sSL https://install.python-poetry.org | python3 - --version 1.5.0
           poetry --version
+      - name: Read the pyproject.toml, resolve and install the dependencies
+        run: poetry install --verbose
       - name: Build the source (sdist) and wheel archives
         run: poetry build --verbose
-      - name: Read the pyproject.toml, resolve and install the dependencies
-        run: poetry install --no-root --verbose
       - name: Set credentials for the PyPI repository
         run: poetry config pypi-token.pypi ${{ secrets.PYPI_API_TOKEN }}
       - name: Publish distribution 📦 to PyPI
