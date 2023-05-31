@@ -5,15 +5,13 @@ name: Publish deafrica-tools to PyPI
 on:
   # Triggers the workflow to run  when 
   # 1) a push is made to the main branch that includes changes to any file in the `Tools/` directory,
-  # 2) when a release has been published or 
-  # 3) by clicking the 'Run workflow' button on the Actions tab.
+  # or
+  # by clicking the 'Run workflow' button on the Actions tab.
   push:
     branches:
       - main
     paths:
       - 'Tools/**'
-  release:
-    types: [published]
   workflow_dispatch:
 
 # Groups together all the jobs that run in the workflow. 
