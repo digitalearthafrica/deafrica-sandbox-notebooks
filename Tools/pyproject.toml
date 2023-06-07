@@ -32,7 +32,7 @@ pandas = "2.0.1"
 xarray = "2023.4.2"
 dask-ml = "2023.3.24"
 botocore = "1.27.59"
-datacube = {version = "1.8.12", extras = ["celery", "performance", "s3"]}
+datacube = {version = "1.8.13", extras = ["celery", "performance", "s3"]}
 scikit-learn = "1.2.2"
 tqdm = "4.65.0"
 requests = "2.30.0"
