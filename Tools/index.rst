@@ -12,7 +12,6 @@ Core modules
 .. autosummary::
    :toctree: gen
 
-   deafrica_tools.areaofinterest
    deafrica_tools.bandindices
    deafrica_tools.classification
    deafrica_tools.coastal
