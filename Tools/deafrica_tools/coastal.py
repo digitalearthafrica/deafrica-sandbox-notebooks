@@ -16,6 +16,8 @@ from shapely.geometry import box
 from datacube.utils.geometry import CRS
 from owslib.wfs import WebFeatureService
 
+from dea_tools.datahandling import parallel_apply
+
 # Fix converters for tidal plot
 from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
