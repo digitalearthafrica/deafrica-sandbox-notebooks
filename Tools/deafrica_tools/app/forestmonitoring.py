@@ -1,3 +1,7 @@
+'''
+Functions for loading and interacting with Global Forest Change data in the forest monitoring notebook, inside the Real_world_examples folder.
+'''
+
 import json
 import warnings
 from io import BytesIO
