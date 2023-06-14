@@ -141,12 +141,12 @@ def calculate_indices(
         "NDVI": lambda ds: (ds.nir - ds.red) / (ds.nir + ds.red),
         # Enhanced Vegetation Index, Huete 2002
         "EVI": lambda ds: (
-            (2.5 * (ds.nir - ds.red)) / (ds.nir + 6 * ds.red - 7.5 * ds.blue + 1)
+            2.5 * ((ds.nir - ds.red) / (ds.nir + 6 * ds.red - 7.5 * ds.blue + 1))
         ),
         # Leaf Area Index, Boegh 2002
         "LAI": lambda ds: (
             3.618
-            * ((2.5 * (ds.nir - ds.red)) / (ds.nir + 6 * ds.red - 7.5 * ds.blue + 1))
+            * ((2.5 * (ds.nir - ds.red)) / (ds.nir + (6 * ds.red) - (7.5 * ds.blue) + 1))
             - 0.118
         ),
         # Soil Adjusted Vegetation Index, Huete 1988

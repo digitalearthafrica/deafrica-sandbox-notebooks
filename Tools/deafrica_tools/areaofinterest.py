@@ -1,3 +1,7 @@
+"""
+Function for defining an area of interest using either a point and buffer or a shapefile file. 
+"""
+
 # Import required packages
 
 # Force GeoPandas to use Shapely instead of PyGEOS
