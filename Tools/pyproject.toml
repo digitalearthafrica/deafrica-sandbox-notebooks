@@ -22,13 +22,13 @@ packages = [{include = "deafrica_tools"}]
 [tool.poetry.dependencies]
 # declaring the python version for which your package is compatible is mandatory
 python = ">=3.9,<3.12"
-geopandas = "0.13.0"
+geopandas = "0.13.2"
 shapely = "2.0.1"
 geojson = "3.0.1"
 numpy = "1.23.5"
 dask = {version = "2023.3.1", extras = ["array", "complete", "dataframe"]}
 joblib = "1.2.0"
-pandas = "2.0.1"
+pandas = "2.0.2"
 xarray = "2023.4.2"
 dask-ml = "2023.3.24"
 botocore = "1.27.59"
@@ -38,7 +38,7 @@ tqdm = "4.65.0"
 requests = "2.30.0"
 matplotlib = "3.7.1"
 otps = {version = "0.3.2", source = "packages.dea.ga.gov.au"}
-owslib = "0.29.1"
+owslib = "0.29.2"
 aiohttp = "3.8.4"
 gdal = "3.6.3"
 pytz = "2023.3"
