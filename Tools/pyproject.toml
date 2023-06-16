@@ -65,9 +65,10 @@ traitlets = "5.9.0"
 rioxarray = "0.14.1"
 numexpr = "2.8.4"
 datetime = "5.1"
-# scipy = "1.10.1"
+scipy = "1.10.1"
 
 # Package sources for discovery and installation of dependencies.
+
 [[tool.poetry.source]]
 name = "PyPI"
 priority = "default"
