@@ -3,6 +3,12 @@ Functions for working with the Wetlands Insight Tool (WIT)
 """
 
 # Import required packages
+
+# Force GeoPandas to use Shapely instead of PyGEOS
+# In a future release, GeoPandas will switch to using Shapely by default.
+import os
+os.environ['USE_PYGEOS'] = '0'
+
 import warnings
 import numpy as np
 import pandas as pd
@@ -211,7 +217,7 @@ def WIT_drill(
     BSPVNPV = fc_int.argmax(dim="variable")
     
     #int dytype remocves NaNs so we need to create mask again
-    FC_mask = xr.ufuncs.isfinite(fc_ds_noTCW).all(dim="variable")
+    FC_mask = np.isfinite(fc_ds_noTCW).all(dim="variable")
     BSPVNPV = BSPVNPV.where(FC_mask)
 
     # Restack the Fractional cover dataset all together
