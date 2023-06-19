@@ -1,3 +1,7 @@
+"""
+Function for defining an area of interest using either a point and buffer or a shapefile file. 
+"""
+
 import geopandas as gpd
 from shapely.geometry import box
 from geojson import Feature, Point, FeatureCollection
