@@ -1,75 +1,65 @@
-# The name of your workflow. GitHub displays the names of your workflows on your repository's actions page. 
+# The name of your workflow. 
+# GitHub displays the names of your workflows on your repository's actions page. 
 name: Publish deafrica-tools to PyPI
-# Specifies the triggers for this workflow. 
+# Define which events can cause the workflow to run. 
 on:
   # Triggers the workflow to run  when 
-  # 1) a push occurs on the main branch that includes changes to any file in the Tools/ directory,
-  # 2) when a release has been published or 
-  # 3) by clicking the 'Run workflow' button on the Actions tab.
+  # 1) a push is made to the main branch that includes changes to any file in the `Tools/` directory,
+  # or
+  # by clicking the 'Run workflow' button on the Actions tab.
   push:
     branches:
       - main
     paths:
       - 'Tools/**'
-  release:
-    types: [published]
   workflow_dispatch:
 
-# Groups together all the jobs that run in the workflow. A workflow run is made up of one or more jobs. Jobs run in parallel by default.
+# Groups together all the jobs that run in the workflow. 
+# A workflow run is made up of one or more jobs. 
+# Jobs run in parallel by default.
 jobs:
   # Job unique identifier.
   build-n-publish:
     # Name for the job, which is displayed on GitHub.
     name: Build and publish deafrica-tools to PyPI
-    # Specifies the runner environment the job will run in. Configure the job to run on the latest version of an Ubuntu Linux runner.
+    # Specifies the runner environment the job will run in. 
+    # Configure the job to run on the latest version of an Ubuntu Linux runner.
     runs-on: ubuntu-latest
-    # Groups together all the steps that run in the job. A job contains a sequence of tasks called steps. Each item nested under this section is a separate action or shell script. 
+    # Set default working directory for all run steps in the job
+    defaults:
+      run:
+        working-directory: ./Tools
+    # Groups together all the steps that run in the job. 
+    # A job contains a sequence of tasks called steps. 
+    # Each item nested under this section is a separate action or shell script. 
     steps:
-      # The uses keyword specifies that this step will run v2 of the actions/checkout action. This is an action that checks out your repository onto the runner (downloads your repository into the CI runner), allowing you to run scripts or other actions against your code (such as build and test tools). You should use the checkout action any time your workflow will run against the repository's code.
+      # The uses keyword specifies that this step will run v3 of the actions/checkout action. 
+      # This is an action that checks out your repository onto the runner (downloads your repository into the CI runner), 
+      # allowing you to run scripts or other actions against your code (such as build and test tools). 
+      # You should use the checkout action any time your workflow will run against the repository's code.
       - name: Checkout the digitalearthafrica/deafrica-sandbox-notebooks repository
-        uses: actions/checkout@v2
-      # This action sets up a Python environment for use in the workflow by installing and activating Python 3.10.
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v3
+        uses: actions/checkout@v3
+      # This action sets up a Python environment for use in the workflow by installing and activating Python 3.10.6
+      - name: Set up Python 3.10.6
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.10" # Version range or exact version of a Python version to use, using SemVer's version range syntax
+          python-version: "3.10.6" # Version range or exact version of a Python version to use, using SemVer's version range syntax
           architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified.
-      # Build package distributions from source.
-      - name: Build deafrica-tools binary wheel and source tarball
-        # The run keyword tells the job to execute a command on the runner.
-        # The commands below are:
-        # 1) cd into the Tools directory of the respository.
-        # 2) make sure you have the latest version of pip package.
-        # 3) install the build and twine packages to build and upload your package to PyPI or TestPyPI. 
-        # 4) and 5) Install the deafrica_tools from Tools/ directory and import the deafrica_tools to verify the version of the package.
-        # 6) build your package to generate distribution packages and save them in the 'dist/' folder. These are archives/ready-to-upload artifacts that are uploaded to the Python Package Index and can be installed by pip. The distribution packages are a source archive and a wheel for your package.
-        # A source archive consists of your source code and any supporting files wrapped into one tar file. 
-        # A wheel is essentially a zip archive containing your code. 
-        # 7) Use twine to check that your package description (long description) will render correctly on PyPI.
+      - name: Install GDAL development headers
         run: |
-            cd Tools/ 
-            python3 -m pip install --upgrade pip
-            python3 -m pip install --upgrade build twine
-            python3 -m pip install --no-deps .
-            python3 -c "import deafrica_tools; print(deafrica_tools.__version__)"
-            python3 -m build --sdist --wheel --outdir dist/
-            twine check dist/*
-      # Publish to PYPI
+          sudo apt-add-repository ppa:ubuntugis/ubuntugis-unstable
+          sudo apt-get update
+          sudo apt-get install libgdal-dev
+      - name: Install Poetry 1.5.0
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 - --version 1.5.0
+          poetry --version
+      - name: Read the pyproject.toml, resolve and install the dependencies
+        run: poetry install --verbose
+      - name: Build the source (sdist) and wheel archives
+        run: poetry build --verbose
+      - name: Set credentials for the PyPI repository
+        run: poetry config pypi-token.pypi ${{ secrets.PYPI_API_TOKEN }}
       - name: Publish distribution 📦 to PyPI
-        # You may pin to the exact commit or the version of the action.
-        uses: pypa/gh-action-pypi-publish@v1.4.2
-        with:
-          # PyPI user
-          user: __token__
-          # Password for your PyPI user or an access token
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          # The target directory for distribution
-          packages_dir: Tools/dist
-          # Check metadata before uploading
-          verify_metadata: true
-          # Do not fail if a Python package distribution exists in the target package index
-          skip_existing: false
-          # Show verbose output.
-          verbose: true
-          # Show hash values of files to be uploaded
-          print_hash: true          
+        run: poetry publish
+    
