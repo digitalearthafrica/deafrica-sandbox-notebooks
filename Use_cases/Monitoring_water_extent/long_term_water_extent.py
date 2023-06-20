@@ -19,6 +19,12 @@ Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/
 """
 
 # Import required packages
+
+# Force GeoPandas to use Shapely instead of PyGEOS
+# In a future release, GeoPandas will switch to using Shapely by default.
+import os
+os.environ['USE_PYGEOS'] = '0'
+
 import pandas as pd
 import xarray as xr
 import geopandas as gpd
@@ -29,6 +35,10 @@ from matplotlib.patches import Patch
 from datacube.utils import geometry
 from datacube.utils import masking
 from deafrica_tools.spatial import xr_rasterize
+
+# Turn off  RuntimeWarning: divide by zero or RuntimeWarning: invalid value warnings.
+import numpy as np
+np.seterr(divide='ignore', invalid='ignore')
 
 
 def get_geometry(gdf):
