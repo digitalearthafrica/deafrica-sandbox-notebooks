@@ -349,7 +349,7 @@ def xr_phenology(
     da_all_nan_mask = da.isnull().all("time")
     da = da.where(~da_all_nan_mask, other=0)
     
-    # Create a template to use when calculating statistics.
+    # Create a template to use when handling errors calculating statistics.
     xr_template = xr.full_like(da.isel(time=0).drop("time"), fill_value=np.nan, dtype=np.float32)
     # Create time coordinates for the template. 
     time_coords = xr.full_like(da.isel(time=0).drop("time"), fill_value=np.nan, dtype="datetime64[ns]")
