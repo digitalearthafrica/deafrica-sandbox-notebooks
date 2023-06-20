@@ -367,7 +367,10 @@ def xr_phenology(
     except:
         vsos = xr_template.assign_coords(time=time_coords)
     sos = _sos(vsos)
-    veos = _veos(da, pos, method_eos=method_eos)
+    try:
+        veos = _veos(da, pos, method_eos=method_eos)
+    except:
+        veos = xr_template.assign_coords(time=time_coords)
     eos = _eos(veos)
     los = _los(da, eos, sos)
     rog = _rog(vpos, vsos, pos, sos)
