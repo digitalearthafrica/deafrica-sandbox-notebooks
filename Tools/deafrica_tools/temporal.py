@@ -348,7 +348,13 @@ def xr_phenology(
     # Deal with any all-NaN pixels by filling with 0's.
     da_all_nan_mask = da.isnull().all("time")
     da = da.where(~da_all_nan_mask, other=0)
-
+    
+    # Create a template to use when calculating statistics.
+    xr_template = xr.full_like(da.isel(time=0).drop("time"), fill_value=np.nan, dtype=np.float32)
+    # Create time coordinates for the template. 
+    time_coords = xr.full_like(da.isel(time=0).drop("time"), fill_value=np.nan, dtype="datetime64[ns]")
+    time_coords.attrs = {'units': 'seconds since 1970-01-01 00:00:00'}
+    
     # calculate the statistics
     if verbose:
         print("      Phenology...")
@@ -356,7 +362,10 @@ def xr_phenology(
     pos = _pos(da)
     trough = _trough(da)
     aos = _aos(vpos, trough)
-    vsos = _vsos(da, pos, method_sos=method_sos)
+    try:
+        vsos = _vsos(da, pos, method_sos=method_sos)
+    except:
+        vsos = xr_template.assign_coords(time=time_coords)
     sos = _sos(vsos)
     veos = _veos(da, pos, method_eos=method_eos)
     eos = _eos(veos)
