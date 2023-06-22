@@ -6,18 +6,25 @@ Python functions and algorithms developed to assist in analysing Digital Earth A
 
 ## Installation
 
-This module is automatically installed on the Digital Earth Africa Sandbox. If for some reason the module isn't avilable, you can also `pip install` the module.
-To do this on the Digital Earth Africa Sandbox, run `pip` from the terminal:
+This module is automatically installed on the Digital Earth Africa Sandbox. If for some reason the module isn't available on the Digital Earth Africa Sandbox, you can also `pip install` the module from the terminal.
+
+You can install the `deafrica-tools` package from PyPI using:
 
 ```
-pip install -e Tools/
+python -m pip install --extra-index-url="https://packages.dea.ga.gov.au" deafrica-tools 
+```
+or install the package from the `Tools` directory:
+
+```
+python -m pip install --extra-index-url="https://packages.dea.ga.gov.au" -e Tools/
 ```
        
 To install this module from the source on any other system with `pip`:
 
 ```
-pip install --extra-index-url="https://packages.dea.ga.gov.au" git+https://github.com/digitalearthafrica/deafrica-sandbox-notebooks.git#subdirectory=Tools
+python -m pip install --extra-index-url="https://packages.dea.ga.gov.au" git+https://github.com/digitalearthafrica/deafrica-sandbox-notebooks.git#subdirectory=Tools
 ```
+
 
 
 ## Citing Digital Earth Africa Tools
