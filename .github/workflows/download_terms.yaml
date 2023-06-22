@@ -1,0 +1,46 @@
+name: Download Terms from POEditor
+
+# Define which events can cause the workflow to run. 
+on:
+    # Triggers the workflow to run when:
+    # 1) A pull request is made targeting the main branch that includes changes to any file in the `Tools/` directory,
+    pull_request:
+        branches:
+            - main
+        paths:
+            - 'Tools/**'
+            
+# Groups together all the jobs that run in the workflow. 
+jobs:
+    # Job unique identifier.
+    download:
+        # Name for the job.
+        name: Download terms from POEditor
+        # Specifies the runner environment the job will run in. 
+        # Configure the job to run on the latest version of an Ubuntu Linux runner.
+        runs-on: ubuntu-latest
+        # Set default working directory for all run steps in the job
+        defaults:
+            run:
+                working-directory: ./Tools
+        # A job contains a sequence of tasks called steps. 
+        # Each item nested under this section is a separate action or shell script.
+        steps:
+            # Checks out your repository onto the runner (downloads your repository into the CI runner),
+            # allowing you to run scripts or other actions against your code (such as build and test tools). 
+            # You should use the checkout action any time your workflow will run against the repository's code.
+            - name: Checkout the digitalearthafrica/deafrica-sandbox-notebooks repository
+              uses: actions/checkout@v3
+            # Get branch names
+            - name: Get branch names
+              id: branch-name
+              uses: tj-actions/branch-names@v7
+            # Get the current PR branch name
+            - name: Current branch name using action
+              run: |
+              echo "${{ steps.branch-name.outputs.current_branch }}"
+            - name: Current branch name from github
+              run: |
+              echo "${{ github.head_ref }}"
+
+ 
