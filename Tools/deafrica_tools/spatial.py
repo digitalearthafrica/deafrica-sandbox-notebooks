@@ -24,509 +24,481 @@ from datacube.utils.geometry import assign_crs
 from datacube.utils.geometry import CRS, Geometry
 from shapely.geometry import LineString, MultiLineString, shape
 
-def xr_vectorize(da, 
-                 attribute_col='attribute', 
-                 transform=None, 
-                 crs=None, 
-                 dtype='float32',
-                 export_shp=False,
-                 verbose=False,
-                 **rasterio_kwargs):    
+def add_geobox(ds, crs=None):
     """
-    Vectorises a xarray.DataArray into a geopandas.GeoDataFrame.
-    
+    Ensure that an xarray DataArray has a GeoBox and .odc.* accessor
+    using `odc.geo`.
+
+    If `ds` is missing a Coordinate Reference System (CRS), this can be
+    supplied using the `crs` param.
+
     Parameters
     ----------
-    da : xarray dataarray or a numpy ndarray  
-    attribute_col : str, optional
-        Name of the attribute column in the resulting geodataframe. 
-        Values of the raster object converted to polygons will be 
-        assigned to this column. Defaults to 'attribute'.
-    transform : affine.Affine object, optional
-        An affine.Affine object (e.g. `from affine import Affine; 
-        Affine(30.0, 0.0, 548040.0, 0.0, -30.0, "6886890.0) giving the 
-        affine transformation used to convert raster coordinates 
-        (e.g. [0, 0]) to geographic coordinates. If none is provided, 
-        the function will attempt to obtain an affine transformation 
-        from the xarray object (e.g. either at `da.transform` or
-        `da.geobox.transform`).
-    crs : str or CRS object, optional
-        An EPSG string giving the coordinate system of the array 
-        (e.g. 'EPSG:3577'). If none is provided, the function will 
-        attempt to extract a CRS from the xarray object's `crs` 
-        attribute.
-    dtype : str, optional
-         Data type must be one of int16, int32, uint8, uint16, 
-         or float32
-    export_shp : Boolean or string path, optional
-        To export the output vectorised features to a shapefile, supply
-        an output path (e.g. 'output_dir/output.shp'. The default is 
-        False, which will not write out a shapefile. 
-    verbose : bool, optional
-        Print debugging messages. Default False.
-    **rasterio_kwargs : 
-        A set of keyword arguments to rasterio.features.shapes
-        Can include `mask` and `connectivity`.
-    
+    ds : xarray.Dataset or xarray.DataArray
+        Input xarray object that needs to be checked for spatial
+        information.
+    crs : str, optional
+        Coordinate Reference System (CRS) information for the input `ds`
+        array. If `ds` already has a CRS, then `crs` is not required.
+        Default is None.
+
     Returns
     -------
-    gdf : Geopandas GeoDataFrame
-    
+    xarray.Dataset or xarray.DataArray
+        The input xarray object with added `.odc.x` attributes to access
+        spatial information.
+
     """
 
-    
-    # Check for a crs object
-    try:
-        crs = da.crs
-    except:
-        if crs is None:
-            raise Exception("Please add a `crs` attribute to the "
-                            "xarray.DataArray, or provide a CRS using the "
-                            "function's `crs` parameter (e.g. 'EPSG:3577')")
-            
-    # Check if transform is provided as a xarray.DataArray method.
-    # If not, require supplied Affine
-    if transform is None:
-        try:
-            # First, try to take transform info from geobox
-            transform = da.geobox.transform
-        # If no geobox
-        except:
-            try:
-                # Try getting transform from 'transform' attribute
-                transform = da.transform
-            except:
-                # If neither of those options work, raise an exception telling the 
-                # user to provide a transform
-                raise TypeError("Please provide an Affine transform object using the "
-                                "`transform` parameter (e.g. `from affine import "
-                                "Affine; Affine(30.0, 0.0, 548040.0, 0.0, -30.0, "
-                                "6886890.0)`")
-    
-    # Check to see if the input is a numpy array
-    if type(da) is np.ndarray:
-        vectors = rasterio.features.shapes(source=da.astype(dtype),
-                                           transform=transform,
-                                           **rasterio_kwargs)
-    
-    else:
-        # Run the vectorizing function
-        vectors = rasterio.features.shapes(source=da.data.astype(dtype),
-                                           transform=transform,
-                                           **rasterio_kwargs)
-    
+    # Import the odc-geo package to add `.odc.x` attributes
+    # to our input xarray object
+    import odc.geo.xr
+
+    # If a CRS is not found, use custom provided CRS
+    if ds.odc.crs is None and crs is not None:
+        ds = ds.odc.assign_crs(crs)
+    elif ds.odc.crs is None and crs is None:
+        raise ValueError(
+            "Unable to determine `ds`'s coordinate "
+            "reference system (CRS). Please provide a "
+            "CRS using the `crs` parameter "
+            "(e.g. `crs='EPSG:3577'`)."
+        )
+
+    return ds
+
+def xr_vectorize(
+    da,
+    attribute_col=None,
+    crs=None,
+    dtype="float32",
+    output_path=None,
+    verbose=True,
+    **rasterio_kwargs,
+):
+    """
+    Vectorises a raster ``xarray.DataArray`` into a vector
+    ``geopandas.GeoDataFrame``.
+
+    Parameters
+    ----------
+    da : xarray.DataArray
+        The input ``xarray.DataArray`` data to vectorise.
+    attribute_col : str, optional
+        Name of the attribute column in the resulting
+        ``geopandas.GeoDataFrame``. Values from ``da`` converted
+        to polygons will be assigned to this column. If None,
+        the column name will default to 'attribute'.
+    crs : str or CRS object, optional
+        If ``da``'s coordinate reference system (CRS) cannot be
+        determined, provide a CRS using this parameter.
+        (e.g. 'EPSG:3577').
+    dtype : str, optional
+         Data type  of  must be one of int16, int32, uint8, uint16,
+         or float32
+    output_path : string, optional
+        Provide an optional string file path to export the vectorised
+        data to file. Supports any vector file formats supported by
+        ``geopandas.GeoDataFrame.to_file()``.
+    verbose : bool, optional
+        Print debugging messages. Default True.
+    **rasterio_kwargs :
+        A set of keyword arguments to ``rasterio.features.shapes``.
+        Can include `mask` and `connectivity`.
+
+    Returns
+    -------
+    gdf : geopandas.GeoDataFrame
+
+    """
+
+    # Add GeoBox and odc.* accessor to array using `odc-geo`
+    da = add_geobox(da, crs)
+
+    # Run the vectorizing function
+    vectors = rasterio.features.shapes(
+        source=da.data.astype(dtype), transform=da.odc.transform, **rasterio_kwargs
+    )
+
     # Convert the generator into a list
     vectors = list(vectors)
-    
+
     # Extract the polygon coordinates and values from the list
     polygons = [polygon for polygon, value in vectors]
     values = [value for polygon, value in vectors]
-    
+
     # Convert polygon coordinates into polygon shapes
     polygons = [shape(polygon) for polygon in polygons]
-    
+
     # Create a geopandas dataframe populated with the polygon shapes
-    gdf = gpd.GeoDataFrame(data={attribute_col: values},
-                           geometry=polygons,
-                           crs=str(crs))
-    
-    # If a file path is supplied, export a shapefile
-    if export_shp:
-        gdf.to_file(export_shp) 
-        
+    attribute_name = attribute_col if attribute_col is not None else "attribute"
+    gdf = gpd.GeoDataFrame(
+        data={attribute_name: values}, geometry=polygons, crs=da.odc.crs
+    )
+
+    # If a file path is supplied, export to file
+    if output_path is not None:
+        if verbose:
+            print(f"Exporting vector data to {output_path}")
+        gdf.to_file(output_path)
+
     return gdf
 
-
-def xr_rasterize(gdf,
-                 da,
-                 attribute_col=False,
-                 crs=None,
-                 transform=None,
-                 name=None,
-                 x_dim='x',
-                 y_dim='y',
-                 export_tiff=None,
-                 verbose=False,
-                 **rasterio_kwargs):    
+def xr_rasterize(
+    gdf,
+    da,
+    attribute_col=None,
+    crs=None,
+    name=None,
+    output_path=None,
+    verbose=True,
+    **rasterio_kwargs,
+):
     """
-    Rasterizes a geopandas.GeoDataFrame into an xarray.DataArray.
-    
+    Rasterizes a vector ``geopandas.GeoDataFrame`` into a
+    raster ``xarray.DataArray``.
+
     Parameters
     ----------
     gdf : geopandas.GeoDataFrame
-        A geopandas.GeoDataFrame object containing the vector/shapefile
+        A ``geopandas.GeoDataFrame`` object containing the vector
         data you want to rasterise.
     da : xarray.DataArray or xarray.Dataset
-        The shape, coordinates, dimensions, and transform of this object 
-        are used to build the rasterized shapefile. It effectively 
-        provides a template. The attributes of this object are also 
-        appended to the output xarray.DataArray.
+        The shape, coordinates, dimensions, and transform of this object
+        are used to define the array that ``gdf`` is rasterized into.
+        It effectively provides a spatial template.
     attribute_col : string, optional
-        Name of the attribute column in the geodataframe that the pixels 
-        in the raster will contain.  If set to False, output will be a 
-        boolean array of 1's and 0's.
-    crs : str, optional
-        CRS metadata to add to the output xarray. e.g. 'epsg:3577'.
-        The function will attempt get this info from the input 
-        GeoDataFrame first.
-    transform : affine.Affine object, optional
-        An affine.Affine object (e.g. `from affine import Affine; 
-        Affine(30.0, 0.0, 548040.0, 0.0, -30.0, "6886890.0) giving the 
-        affine transformation used to convert raster coordinates 
-        (e.g. [0, 0]) to geographic coordinates. If none is provided, 
-        the function will attempt to obtain an affine transformation 
-        from the xarray object (e.g. either at `da.transform` or
-        `da.geobox.transform`).
-    x_dim : str, optional
-        An optional string allowing you to override the xarray dimension 
-        used for x coordinates. Defaults to 'x'. Useful, for example, 
-        if x and y dims instead called 'lat' and 'lon'.   
-    y_dim : str, optional
-        An optional string allowing you to override the xarray dimension 
-        used for y coordinates. Defaults to 'y'. Useful, for example, 
-        if x and y dims instead called 'lat' and 'lon'.
-    export_tiff: str, optional
-        If a filepath is provided (e.g 'output/output.tif'), will export a
-        geotiff file. A named array is required for this operation, if one
-        is not supplied by the user a default name, 'data', is used
+        Name of the attribute column in ``gdf`` containing values for
+        each vector feature that will be rasterized. If None, the
+        output will be a boolean array of 1's and 0's.
+    crs : str or CRS object, optional
+        If ``da``'s coordinate reference system (CRS) cannot be
+        determined, provide a CRS using this parameter.
+        (e.g. 'EPSG:3577').
+    name : str, optional
+        An optional name used for the output ``xarray.DataArray`.
+    output_path : string, optional
+        Provide an optional string file path to export the rasterized
+        data as a GeoTIFF file.
     verbose : bool, optional
-        Print debugging messages. Default False.
-    **rasterio_kwargs : 
-        A set of keyword arguments to rasterio.features.rasterize
+        Print debugging messages. Default True.
+    **rasterio_kwargs :
+        A set of keyword arguments to ``rasterio.features.rasterize``.
         Can include: 'all_touched', 'merge_alg', 'dtype'.
-    
+
     Returns
     -------
-    xarr : xarray.DataArray
-    
+    da_rasterized : xarray.DataArray
+        The rasterized vector data.
     """
-    
-    # Check for a crs object
-    try:
-        crs = da.geobox.crs
-    except:
-        try:
-            crs = da.crs
-        except:
-            if crs is None:
-                raise ValueError("Please add a `crs` attribute to the "
-                                 "xarray.DataArray, or provide a CRS using the "
-                                 "function's `crs` parameter (e.g. crs='EPSG:3577')")
-    
-    # Check if transform is provided as a xarray.DataArray method.
-    # If not, require supplied Affine
-    if transform is None:
-        try:
-            # First, try to take transform info from geobox
-            transform = da.geobox.transform
-        # If no geobox
-        except:
-            try:
-                # Try getting transform from 'transform' attribute
-                transform = da.transform
-            except:
-                # If neither of those options work, raise an exception telling the 
-                # user to provide a transform
-                raise TypeError("Please provide an Affine transform object using the "
-                                "`transform` parameter (e.g. `from affine import "
-                                "Affine; Affine(30.0, 0.0, 548040.0, 0.0, -30.0, "
-                                "6886890.0)`")
-    
-    # Grab the 2D dims (not time)    
-    try:
-        dims = da.geobox.dims
-    except:
-        dims = y_dim, x_dim  
-    
-    # Coords
-    xy_coords = [da[dims[0]], da[dims[1]]]
-    
-    # Shape
-    try:
-        y, x = da.geobox.shape
-    except:
-        y, x = len(xy_coords[0]), len(xy_coords[1])
-    
-    # Reproject shapefile to match CRS of raster
-    if verbose:
-        print(f'Rasterizing to match xarray.DataArray dimensions ({y}, {x})')
-    
-    try:
-        gdf_reproj = gdf.to_crs(crs=crs)
-    except:
-        # Sometimes the crs can be a datacube utils CRS object
-        # so convert to string before reprojecting
-        gdf_reproj = gdf.to_crs(crs={'init': str(crs)})
-    
-    # If an attribute column is specified, rasterise using vector 
+
+    # Add GeoBox and odc.* accessor to array using `odc-geo`
+    da = add_geobox(da, crs)
+
+    # Reproject vector data to raster's CRS
+    gdf_reproj = gdf.to_crs(crs=da.odc.crs)
+
+    # If an attribute column is specified, rasterise using vector
     # attribute values. Otherwise, rasterise into a boolean array
-    if attribute_col:        
+    if attribute_col is not None:
         # Use the geometry and attributes from `gdf` to create an iterable
         shapes = zip(gdf_reproj.geometry, gdf_reproj[attribute_col])
     else:
         # Use geometry directly (will produce a boolean numpy array)
         shapes = gdf_reproj.geometry
 
-    # Rasterise shapes into an array
-    arr = rasterio.features.rasterize(shapes=shapes,
-                                      out_shape=(y, x),
-                                      transform=transform,
-                                      **rasterio_kwargs)
-        
-    # Convert result to a xarray.DataArray
-    xarr = xr.DataArray(arr,
-                        coords=xy_coords,
-                        dims=dims,
-                        attrs=da.attrs,
-                        name=name if name else None)
-    
-    # Add back crs if xarr.attrs doesn't have it
-    if xarr.geobox is None:
-        xarr = assign_crs(xarr, str(crs))
-    
-    if export_tiff: 
+    # Rasterise shapes into a numpy array
+    im = rasterio.features.rasterize(
+        shapes=shapes,
+        out_shape=da.odc.geobox.shape,
+        transform=da.odc.geobox.transform,
+        **rasterio_kwargs,
+    )
+
+    # Convert numpy array to a full xarray.DataArray
+    # and set array name if supplied
+    da_rasterized = odc.geo.xr.wrap_xr(im=im, gbox=da.odc.geobox)
+    da_rasterized = da_rasterized.rename(name)
+
+    # If a file path is supplied, export to file
+    if output_path is not None:
         if verbose:
-            print(f"Exporting GeoTIFF to {export_tiff}")
-        write_cog(xarr,
-                  export_tiff,
-                  overwrite=True)
-                
-    return xarr
+            print(f"Exporting raster data to {output_path}")
+        write_cog(da_rasterized, output_path, overwrite=True)
+
+    return da_rasterized
 
 
-def subpixel_contours(da,
-                      z_values=[0.0],
-                      crs=None,
-                      affine=None,
-                      attribute_df=None,
-                      output_path=None,
-                      min_vertices=2,
-                      dim='time',
-                      errors='ignore',
-                      verbose=False):
-    
+def subpixel_contours(
+    da,
+    z_values=[0.0],
+    crs=None,
+    attribute_df=None,
+    output_path=None,
+    min_vertices=2,
+    dim="time",
+    time_format="%Y-%m-%d",
+    errors="ignore",
+    verbose=True,
+):
     """
-    Uses `skimage.measure.find_contours` to extract multiple z-value 
+    Uses `skimage.measure.find_contours` to extract multiple z-value
     contour lines from a two-dimensional array (e.g. multiple elevations
-    from a single DEM), or one z-value for each array along a specified 
-    dimension of a multi-dimensional array (e.g. to map waterlines 
-    across time by extracting a 0 NDWI contour from each individual 
-    timestep in an xarray timeseries).    
-    
-    Contours are returned as a geopandas.GeoDataFrame with one row per 
-    z-value or one row per array along a specified dimension. The 
-    `attribute_df` parameter can be used to pass custom attributes 
+    from a single DEM), or one z-value for each array along a specified
+    dimension of a multi-dimensional array (e.g. to map waterlines
+    across time by extracting a 0 NDWI contour from each individual
+    timestep in an xarray timeseries).
+
+    Contours are returned as a geopandas.GeoDataFrame with one row per
+    z-value or one row per array along a specified dimension. The
+    `attribute_df` parameter can be used to pass custom attributes
     to the output contour features.
-    
-    Last modified: November 2020
-    
+
+    Last modified: May 2023
+
     Parameters
-    ----------  
+    ----------
     da : xarray DataArray
-        A two-dimensional or multi-dimensional array from which 
-        contours are extracted. If a two-dimensional array is provided, 
-        the analysis will run in 'single array, multiple z-values' mode 
+        A two-dimensional or multi-dimensional array from which
+        contours are extracted. If a two-dimensional array is provided,
+        the analysis will run in 'single array, multiple z-values' mode
         which allows you to specify multiple `z_values` to be extracted.
-        If a multi-dimensional array is provided, the analysis will run 
-        in 'single z-value, multiple arrays' mode allowing you to 
-        extract contours for each array along the dimension specified 
-        by the `dim` parameter.  
+        If a multi-dimensional array is provided, the analysis will run
+        in 'single z-value, multiple arrays' mode allowing you to
+        extract contours for each array along the dimension specified
+        by the `dim` parameter.
     z_values : int, float or list of ints, floats
-        An individual z-value or list of multiple z-values to extract 
-        from the array. If operating in 'single z-value, multiple 
+        An individual z-value or list of multiple z-values to extract
+        from the array. If operating in 'single z-value, multiple
         arrays' mode specify only a single z-value.
     crs : string or CRS object, optional
-        An EPSG string giving the coordinate system of the array 
-        (e.g. 'EPSG:3577'). If none is provided, the function will 
-        attempt to extract a CRS from the xarray object's `crs` 
-        attribute.
-    affine : affine.Affine object, optional
-        An affine.Affine object (e.g. `from affine import Affine; 
-        Affine(30.0, 0.0, 548040.0, 0.0, -30.0, "6886890.0) giving the 
-        affine transformation used to convert raster coordinates 
-        (e.g. [0, 0]) to geographic coordinates. If none is provided, 
-        the function will attempt to obtain an affine transformation 
-        from the xarray object (e.g. either at `da.transform` or
-        `da.geobox.transform`).
+        If ``da``'s coordinate reference system (CRS) cannot be
+        determined, provide a CRS using this parameter.
+        (e.g. 'EPSG:3577').
     output_path : string, optional
         The path and filename for the output shapefile.
     attribute_df : pandas.Dataframe, optional
         A pandas.Dataframe containing attributes to pass to the output
-        contour features. The dataframe must contain either the same 
-        number of rows as supplied `z_values` (in 'multiple z-value, 
-        single array' mode), or the same number of rows as the number 
-        of arrays along the `dim` dimension ('single z-value, multiple 
+        contour features. The dataframe must contain either the same
+        number of rows as supplied `z_values` (in 'multiple z-value,
+        single array' mode), or the same number of rows as the number
+        of arrays along the `dim` dimension ('single z-value, multiple
         arrays mode').
     min_vertices : int, optional
-        The minimum number of vertices required for a contour to be 
-        extracted. The default (and minimum) value is 2, which is the 
+        The minimum number of vertices required for a contour to be
+        extracted. The default (and minimum) value is 2, which is the
         smallest number required to produce a contour line (i.e. a start
-        and end point). Higher values remove smaller contours, 
+        and end point). Higher values remove smaller contours,
         potentially removing noise from the output dataset.
     dim : string, optional
-        The name of the dimension along which to extract contours when 
+        The name of the dimension along which to extract contours when
         operating in 'single z-value, multiple arrays' mode. The default
         is 'time', which extracts contours for each array along the time
         dimension.
+    time_format : string, optional
+        The format used to convert `numpy.datetime64` values to strings
+        if applied to data with a "time" dimension. Defaults to
+        "%Y-%m-%d".
     errors : string, optional
         If 'raise', then any failed contours will raise an exception.
         If 'ignore' (the default), a list of failed contours will be
         printed. If no contours are returned, an exception will always
         be raised.
     verbose : bool, optional
-        Print debugging messages. Default False.
-        
+        Print debugging messages. Default is True.
+
     Returns
     -------
     output_gdf : geopandas geodataframe
-        A geopandas geodataframe object with one feature per z-value 
-        ('single array, multiple z-values' mode), or one row per array 
-        along the dimension specified by the `dim` parameter ('single 
-        z-value, multiple arrays' mode). If `attribute_df` was 
-        provided, these values will be included in the shapefile's 
+        A geopandas geodataframe object with one feature per z-value
+        ('single array, multiple z-values' mode), or one row per array
+        along the dimension specified by the `dim` parameter ('single
+        z-value, multiple arrays' mode). If `attribute_df` was
+        provided, these values will be included in the shapefile's
         attribute table.
     """
 
-    def contours_to_multiline(da_i, z_value, min_vertices=2):
-        '''
+    def _contours_to_multiline(da_i, z_value, min_vertices=2):
+        """
         Helper function to apply marching squares contour extraction
         to an array and return a data as a shapely MultiLineString.
-        The `min_vertices` parameter allows you to drop small contours 
+        The `min_vertices` parameter allows you to drop small contours
         with less than X vertices.
-        '''
-        
+        """
+
         # Extracts contours from array, and converts each discrete
-        # contour into a Shapely LineString feature. If the function 
+        # contour into a Shapely LineString feature. If the function
         # returns a KeyError, this may be due to an unresolved issue in
         # scikit-image: https://github.com/scikit-image/scikit-image/issues/4830
-        line_features = [LineString(i[:,[1, 0]]) 
-                         for i in find_contours(da_i.data, z_value) 
-                         if i.shape[0] > min_vertices]        
+        # A temporary workaround is to peturb the z-value by a tiny
+        # amount (1e-12) before using it to extract the contour.
+        try:
+            line_features = [
+                LineString(i[:, [1, 0]])
+                for i in find_contours(da_i.data, z_value)
+                if i.shape[0] >= min_vertices
+            ]
+        except KeyError:
+            line_features = [
+                LineString(i[:, [1, 0]])
+                for i in find_contours(da_i.data, z_value + 1e-12)
+                if i.shape[0] >= min_vertices
+            ]
 
         # Output resulting lines into a single combined MultiLineString
         return MultiLineString(line_features)
 
-    # Check if CRS is provided as a xarray.DataArray attribute.
-    # If not, require supplied CRS
-    try:
-        crs = da.crs
-    except:
-        if crs is None:
-            raise ValueError("Please add a `crs` attribute to the "
-                             "xarray.DataArray, or provide a CRS using the "
-                             "function's `crs` parameter (e.g. 'EPSG:3577')")
+    def _time_format(i, time_format):
+        """
+        Converts numpy.datetime64 into formatted strings;
+        otherwise returns data as-is.
+        """
+        if isinstance(i, np.datetime64):
+            ts = pd.to_datetime(str(i))
+            i = ts.strftime(time_format)
+        return i
 
-    # Check if Affine transform is provided as a xarray.DataArray method.
-    # If not, require supplied Affine
-    try:
-        affine = da.geobox.transform
-    except KeyError:
-        affine = da.transform
-    except:
-        if affine is None:
-            raise TypeError("Please provide an Affine object using the "
-                            "`affine` parameter (e.g. `from affine import "
-                            "Affine; Affine(30.0, 0.0, 548040.0, 0.0, -30.0, "
-                            "6886890.0)`")
+    # Verify input data is a xr.DataArray
+    if not isinstance(da, xr.DataArray):
+        raise ValueError(
+            "The input `da` is not an xarray.DataArray. "
+            "If you supplied an xarray.Dataset, pass in one "
+            "of its data variables using the syntax "
+            "`da=ds.<variable name>`."
+        )
+
+    # Add GeoBox and odc.* accessor to array using `odc-geo`
+    da = add_geobox(da, crs)
 
     # If z_values is supplied is not a list, convert to list:
-    z_values = z_values if (isinstance(z_values, list) or 
-                            isinstance(z_values, np.ndarray)) else [z_values]
+    z_values = (
+        z_values
+        if (isinstance(z_values, list) or isinstance(z_values, np.ndarray))
+        else [z_values]
+    )
+
+    # If dask collection, load into memory
+    if dask.is_dask_collection(da):
+        if verbose:
+            print(f"Loading data into memory using Dask")
+        da = da.compute()
 
     # Test number of dimensions in supplied data array
     if len(da.shape) == 2:
         if verbose:
-            print(f'Operating in multiple z-value, single array mode')
-        dim = 'z_value'
-        contour_arrays = {str(i)[0:10]: 
-                          contours_to_multiline(da, i, min_vertices) 
-                          for i in z_values}    
+            print(f"Operating in multiple z-value, single array mode")
+        dim = "z_value"
+        contour_arrays = {
+            _time_format(i, time_format): _contours_to_multiline(da, i, min_vertices)
+            for i in z_values
+        }
 
     else:
-
-        # Test if only a single z-value is given when operating in 
+        # Test if only a single z-value is given when operating in
         # single z-value, multiple arrays mode
         if verbose:
-            print(f'Operating in single z-value, multiple arrays mode')
+            print(f"Operating in single z-value, multiple arrays mode")
         if len(z_values) > 1:
-            raise ValueError('Please provide a single z-value when operating '
-                             'in single z-value, multiple arrays mode')
+            raise ValueError(
+                "Please provide a single z-value when operating "
+                "in single z-value, multiple arrays mode"
+            )
 
-        contour_arrays = {str(i)[0:10]: 
-                          contours_to_multiline(da_i, z_values[0], min_vertices) 
-                          for i, da_i in da.groupby(dim)}
+        contour_arrays = {
+            _time_format(i, time_format): _contours_to_multiline(
+                da_i, z_values[0], min_vertices
+            )
+            for i, da_i in da.groupby(dim)
+        }
 
     # If attributes are provided, add the contour keys to that dataframe
     if attribute_df is not None:
-
         try:
             attribute_df.insert(0, dim, contour_arrays.keys())
-        except ValueError:
 
-            raise ValueError("One of the following issues occured:\n\n"
-                             "1) `attribute_df` contains a different number of "
-                             "rows than the number of supplied `z_values` ("
-                             "'multiple z-value, single array mode')\n"
-                             "2) `attribute_df` contains a different number of "
-                             "rows than the number of arrays along the `dim` "
-                             "dimension ('single z-value, multiple arrays mode')")
+        # If this fails, it is due to the applied attribute table not
+        # matching the structure of the loaded data
+        except ValueError:
+            if len(da.shape) == 2:
+                raise ValueError(
+                    f"The provided `attribute_df` contains a different "
+                    f"number of rows ({len(attribute_df.index)}) "
+                    f"than the number of supplied `z_values` "
+                    f"({len(z_values)})."
+                )
+            else:
+                raise ValueError(
+                    f"The provided `attribute_df` contains a different "
+                    f"number of rows ({len(attribute_df.index)}) "
+                    f"than the number of arrays along the '{dim}' "
+                    f"dimension ({len(da[dim])})."
+                )
 
     # Otherwise, use the contour keys as the only main attributes
     else:
         attribute_df = list(contour_arrays.keys())
 
     # Convert output contours to a geopandas.GeoDataFrame
-    contours_gdf = gpd.GeoDataFrame(data=attribute_df, 
-                                    geometry=list(contour_arrays.values()),
-                                    crs=crs)   
+    contours_gdf = gpd.GeoDataFrame(
+        data=attribute_df, geometry=list(contour_arrays.values()), crs=da.odc.crs
+    )
 
     # Define affine and use to convert array coords to geographic coords.
-    # We need to add 0.5 x pixel size to the x and y to obtain the centre 
+    # We need to add 0.5 x pixel size to the x and y to obtain the centre
     # point of our pixels, rather than the top-left corner
-    shapely_affine = [affine.a, affine.b, affine.d, affine.e, 
-                      affine.xoff + affine.a / 2.0, 
-                      affine.yoff + affine.e / 2.0]
-    contours_gdf['geometry'] = contours_gdf.affine_transform(shapely_affine)
+    affine = da.odc.geobox.transform
+    shapely_affine = [
+        affine.a,
+        affine.b,
+        affine.d,
+        affine.e,
+        affine.xoff + affine.a / 2.0,
+        affine.yoff + affine.e / 2.0,
+    ]
+    contours_gdf["geometry"] = contours_gdf.affine_transform(shapely_affine)
 
     # Rename the data column to match the dimension
     contours_gdf = contours_gdf.rename({0: dim}, axis=1)
 
     # Drop empty timesteps
     empty_contours = contours_gdf.geometry.is_empty
-    failed = ', '.join(map(str, contours_gdf[empty_contours][dim].to_list()))
+    failed = ", ".join(map(str, contours_gdf[empty_contours][dim].to_list()))
     contours_gdf = contours_gdf[~empty_contours]
 
     # Raise exception if no data is returned, or if any contours fail
     # when `errors='raise'. Otherwise, print failed contours
-    if empty_contours.all() and errors == 'raise':
-        raise RuntimeError("Failed to generate any valid contours; verify that "
-                           "values passed to `z_values` are valid and present "
-                           "in `da`")
-    elif empty_contours.all() and errors == 'ignore':
+    if empty_contours.all() and errors == "raise":
+        raise ValueError(
+            "Failed to generate any valid contours; verify that "
+            "values passed to `z_values` are valid and present "
+            "in `da`"
+        )
+    elif empty_contours.all() and errors == "ignore":
         if verbose:
-            print ("Failed to generate any valid contours; verify that "
-                    "values passed to `z_values` are valid and present "
-                    "in `da`")
-    elif empty_contours.any() and errors == 'raise':
-        raise Exception(f'Failed to generate contours: {failed}')
-    elif empty_contours.any() and errors == 'ignore':
+            print(
+                "Failed to generate any valid contours; verify that "
+                "values passed to `z_values` are valid and present "
+                "in `da`"
+            )
+    elif empty_contours.any() and errors == "raise":
+        raise Exception(f"Failed to generate contours: {failed}")
+    elif empty_contours.any() and errors == "ignore":
         if verbose:
-            print(f'Failed to generate contours: {failed}')
+            print(f"Failed to generate contours: {failed}")
 
-    # If asked to write out file, test if geojson or shapefile
-    if output_path and output_path.endswith('.geojson'):
+    # If asked to write out file, test if GeoJSON or ESRI Shapefile. If
+    # GeoJSON, convert to EPSG:4326 before exporting.
+    if output_path and output_path.endswith(".geojson"):
         if verbose:
-            print(f'Writing contours to {output_path}')
-        contours_gdf.to_crs('EPSG:4326').to_file(filename=output_path, 
-                                                 driver='GeoJSON')
+            print(f"Writing contours to {output_path}")
+        contours_gdf.to_crs("EPSG:4326").to_file(filename=output_path)
 
-    if output_path and output_path.endswith('.shp'):
+    if output_path and output_path.endswith(".shp"):
         if verbose:
-            print(f'Writing contours to {output_path}')
+            print(f"Writing contours to {output_path}")
         contours_gdf.to_file(filename=output_path)
-        
-    return contours_gdf
 
+    return contours_gdf
 
 def interpolate_2d(ds, 
                    x_coords, 
@@ -923,3 +895,53 @@ def reverse_geocode(coords, site_classes=None, state_classes=None):
         # If no geocoding result, return N/E/S/W coordinates
         print('No valid geocoded location; returning coordinates instead')
         return f'{lat}, {lon}'
+    
+def sun_angles(dc, query):
+    """
+    For a given spatiotemporal query, calculate mean sun
+    azimuth and elevation for each satellite observation, and
+    return these as a new `xarray.Dataset` with 'sun_elevation'
+    and 'sun_azimuth' variables.
+
+    Parameters:
+    -----------
+    dc : datacube.Datacube object
+        Datacube instance used to load data.
+    query : dict
+        A dictionary containing query parameters used to identify
+        satellite observations and load metadata.
+
+    Returns:
+    --------
+    sun_angles_ds : xarray.Dataset
+        An `xarray.set` containing a 'sun_elevation' and
+        'sun_azimuth' variables.
+    """
+
+    from datacube.api.query import query_group_by
+    from datacube.model.utils import xr_apply
+
+    # Identify satellite datasets and group outputs using the
+    # same approach used to group satellite imagery (i.e. solar day)
+    gb = query_group_by(**query)
+    datasets = dc.find_datasets(**query)
+    dataset_array = dc.group_datasets(datasets, gb)
+
+    # Load and take the mean of metadata from each product
+    sun_azimuth = xr_apply(
+        dataset_array,
+        lambda t, dd: np.mean([d.metadata.eo_sun_azimuth for d in dd]),
+        dtype=float,
+    )
+    sun_elevation = xr_apply(
+        dataset_array,
+        lambda t, dd: np.mean([d.metadata.eo_sun_elevation for d in dd]),
+        dtype=float,
+    )
+
+    # Combine into new xarray.Dataset
+    sun_angles_ds = xr.merge(
+        [sun_elevation.rename("sun_elevation"), sun_azimuth.rename("sun_azimuth")]
+    )
+
+    return sun_angles_ds

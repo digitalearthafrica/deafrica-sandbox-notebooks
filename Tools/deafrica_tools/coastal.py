@@ -16,7 +16,7 @@ from shapely.geometry import box
 from datacube.utils.geometry import CRS
 from owslib.wfs import WebFeatureService
 
-from dea_tools.datahandling import parallel_apply
+from deafrica_tools.datahandling import parallel_apply
 
 # Fix converters for tidal plot
 from pandas.plotting import register_matplotlib_converters
@@ -31,7 +31,7 @@ def model_tides(
     y,
     time,
     model="FES2014",
-    directory="/var/share",
+    directory="/var/share/tide_models",
     epsg=4326,
     method="bilinear",
     extrapolate=True,
