@@ -4,8 +4,13 @@ interactively extract shoreline data using transects.
 """
 
 # Import required packages
-import fiona
+
+# Force GeoPandas to use Shapely instead of PyGEOS
+# In a future release, GeoPandas will switch to using Shapely by default.
 import os
+os.environ['USE_PYGEOS'] = '0'
+
+import fiona
 import sys
 import datacube
 import warnings

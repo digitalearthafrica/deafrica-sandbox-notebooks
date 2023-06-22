@@ -3,6 +3,12 @@ Spatial analyses functions for Digital Earth Africa data.
 '''
 
 # Import required packages
+
+# Force GeoPandas to use Shapely instead of PyGEOS
+# In a future release, GeoPandas will switch to using Shapely by default.
+import os
+os.environ['USE_PYGEOS'] = '0'
+
 import fiona
 import collections
 import numpy as np
@@ -669,6 +675,8 @@ def contours_to_arrays(gdf, col):
     of each vertex in the input GeoDataFrame.
         
     """        
+    # Explode multi-part geometries into multiple single geometries.
+    gdf = gdf.explode(ignore_index=True)
 
     coords_zvals = []
 
