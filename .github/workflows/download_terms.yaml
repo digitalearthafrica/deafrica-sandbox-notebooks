@@ -6,7 +6,7 @@ on:
   # 1) A push is made to the main branch that includes changes to any file in the `Tools/` directory,
   # or 
   # 2) by clicking the 'Run workflow' button on the Actions tab.
-  push:
+  pull_request:
     branches:
       - main
     paths:
