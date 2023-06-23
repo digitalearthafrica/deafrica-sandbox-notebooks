@@ -68,3 +68,4 @@ jobs:
                 git commit -m "Auto update deafrica-tools french translation files"
                 # Update the branch
                 git push
+            fi
