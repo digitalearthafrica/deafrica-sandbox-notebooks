@@ -38,9 +38,9 @@ jobs:
             # Get the current PR branch name
             - name: Current branch name using action
               run: |
-              echo "${{ steps.branch-name.outputs.current_branch }}"
+                echo "${{ steps.branch-name.outputs.current_branch }}"
             - name: Current branch name from github
               run: |
-              echo "${{ github.head_ref }}"
+                echo "${{ github.head_ref }}"
 
  
