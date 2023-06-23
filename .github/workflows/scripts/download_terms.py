@@ -25,11 +25,11 @@ if __name__ == '__main__':
     project_id = os.environ['POEDITOR_PROJECT_ID']
     api_token = os.environ['POEDITOR_API_TOKEN']
 
-    file_path = 'deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.mo'
+    file_path = 'Tools/deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.mo'
     print(f"Downloading translation to {file_path}")
     download_translation(file_path, project_id, api_token)
 
-    file_path = 'deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.po'
+    file_path = 'Tools/deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.po'
     print(f"Downloading translation to {file_path}")
     download_translation(file_path, project_id, api_token)
 
