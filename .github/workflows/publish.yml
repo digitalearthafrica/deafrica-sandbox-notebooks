@@ -12,6 +12,12 @@ on:
       - main
     paths:
       - 'Tools/**'
+    # Ignore the translation files
+    paths-ignore:
+      - 'Tools/deafrica_tools/locales/**'
+      - '**.po'
+      - '**.mo'
+      - '**.pot'
   workflow_dispatch:
 
 # Groups together all the jobs that run in the workflow. 
