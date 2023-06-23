@@ -56,10 +56,15 @@ jobs:
 
             # Run the download_terms.py script
             python .github/workflows/scripts/download_terms.py 
-
-            # Commit the latest files and add them to the branch
+ 
+            # Stage the downloaded translation files 
             git add Tools/deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.mo Tools/deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.po
 
-            git commit -m "Auto update deafrica-tools french translation files"
-
-            git push
+            # Check if there are any changes that are staged but not committed.
+            if [[ "$(git diff --cached --exit-code)" =  "" ]]; then
+                echo "Nothing to commit, working tree clean";
+            else
+                # Commit the changes
+                git commit -m "Auto update deafrica-tools french translation files"
+                # Update the branch
+                git push
