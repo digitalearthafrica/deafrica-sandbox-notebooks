@@ -17,8 +17,7 @@ from datacube.utils.geometry import CRS
 from owslib.wfs import WebFeatureService
 
 from deafrica_tools.datahandling import parallel_apply
-from skimage.filters import threshold_minimum, threshold_otsu
-from skimage.morphology import binary_erosion,disk
+
 
 # Fix converters for tidal plot
 from pandas.plotting import register_matplotlib_converters
@@ -1114,45 +1113,4 @@ def get_coastlines(bbox: tuple,
         coastlines_gdf = coastlines_gdf.loc[:, ~coastlines_gdf.columns.str.contains("wms_")]
 
     return coastlines_gdf
-
-def create_coastal_mask(ds_summaries,buffer_pixels,var='MNDWI'): ## TODO: simplify and debug this function
-    '''
-    Create a simplified coastal zone mask based on frequency of being classified as land over time
-    
-    Parameters:
-    ds_summaries: xarray.Dataset
-        Temporal composites of time-series data
-    buffer_pixels: integer
-        Number of pixels to buffer coastal zone
-    var: string
-        The variable/band used to create the mask, 
-        i.e. 'MNDWI' or 'NDWI' for Landsat/Sentinel-2, 'vv' or 'vh' for Sentinel-1.
-    
-    Returns:
-    coastal_mask: xarray.DataArray 
-        A single time buffered coastal zone mask, 0: non-coastal ocean, 1: coastal and 2: inland pixels
-    '''
-    # Set any pixels with only one observation to NaN, as these are extremely vulnerable to noise
-    ds_summaries = ds_summaries.where(ds_summaries["count"] > 1)
-    # apply thresholding and re-apply nodata values
-    nodata = ds_summaries[var].isnull()
-    if (var=='MNDWI') or (var=='NDWI'):
-        thresh=0
-        thresholded_ds = ds_summaries[var] < thresh
-    else:
-        thresh=threshold_minimum(ds_summaries[var].values[~np.isnan(ds_summaries[var].values)])
-        thresholded_ds = ds_summaries[var] > thresh
-    thresholded_ds = thresholded_ds.where(~nodata)
-    # Rename time attribute as year
-    thresholded_ds = thresholded_ds.rename(time='year')
-    # Apply temporal masking and set any pixels outside mask to 0 to represent water
-    temporal_mask = temporal_masking(thresholded_ds == 1)
-    thresholded_ds = thresholded_ds.where(temporal_mask)
-    # use 20% valid observation layer to identify pixels that contain land for even a small period of time
-    all_time_20 = (thresholded_ds.mean(dim='year') > 0.2).compute()
-    # Temporary workaround to identify ocean pixels: 
-    ocean_da = xr.apply_ufunc(binary_erosion, all_time_20==0, disk(60))
-    # Produce buffered coastal areas: 0: non-coastal ocean, 1: coastal and 2: inland pixels
-    coastal_mask = coastal_masking(ds=all_time_20, ocean_da=ocean_da, buffer=buffer_pixels)
-    return coastal_mask
 
