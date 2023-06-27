@@ -1190,8 +1190,8 @@ def choose_product(ds_ls,ds_s2,ds_s1,ds_ls_s2,time_step,**kwargs):
     '''
     
     # check if optional parameters are defined otherwise set default values
-    thresh_n_valid=3 if "thresh_n_valid" not in kwargs else kwargs["thresh_n_valid"]
-    thresh_freq=0.1 if "thresh_freq" not in kwargs else kwargs["thresh_freq"]
+    thresh_n_valid=10 if "thresh_n_valid" not in kwargs else kwargs["thresh_n_valid"]
+    thresh_freq=0.2 if "thresh_freq" not in kwargs else kwargs["thresh_freq"]
     buffer_pixels=100 if "buffer_pixels" not in kwargs else kwargs["buffer_pixels"]
     
     # create mask if requested
@@ -1214,33 +1214,38 @@ def choose_product(ds_ls,ds_s2,ds_s1,ds_ls_s2,time_step,**kwargs):
         
     # apply decision rules
     print('\nApplying rules to choose product...')
-    # if Sentinel-2 meets basic requirements
-    if ((n_valid_obs_s2>=thresh_n_valid).all()) and ((freq_valid_s2>=thresh_freq).all()): 
-        # if Landsat also meets both condition
-        if ((n_valid_obs_ls>=thresh_n_valid).all()) and ((freq_valid_ls>=thresh_freq).all()):
-            # if both Landsat and Sentinel-2 meet requirements, and combined product is available
-            if not ds_ls_s2 is None:
+    
+    # if Sentinel-2 meets requirements 
+    if ((n_valid_obs_s2>=thresh_n_valid).all()) and ((freq_valid_s2>=thresh_freq).all()):
+        # if combined product is available, choose combined product if it has both higher number and frequency
+        if not ds_ls_s2 is None:
+            if ((n_valid_obs_ls_s2>n_valid_obs_s2).all()) and ((freq_valid_ls_s2>freq_valid_s2).all()):
                 ds_selected, product_name=ds_ls_s2,'ls_s2'
-            # if Landsat have both higher no. and fraction of clear observations
-            elif ((n_valid_obs_ls>n_valid_obs_s2).all()) and ((freq_valid_ls>freq_valid_s2).all()):
-                ds_selected, product_name=ds_ls,'ls'
-            # otherwise prefer Sentinel-2
             else:
                 ds_selected, product_name=ds_s2,'s2'
+        # if combined product is unavailable, choose Landsat if it has both higher number and frequency
+        elif ((n_valid_obs_ls>=n_valid_obs_s2).all()) and ((freq_valid_ls>=freq_valid_s2).all()):
+            ds_selected, product_name=ds_ls,'ls'
+        # otherwise choose Sentinel-2
         else:
             ds_selected, product_name=ds_s2,'s2'
-    # if Sentinel-2 doesn't meet both basic conditions,but Landsat does
-    elif ((n_valid_obs_ls>=thresh_n_valid).all()) and ((freq_valid_ls>=thresh_freq).all()): 
-        ds_selected, product_name=ds_ls,'ls'
-    # if neither Sentinel-2 or Landsat meet both conditions
+    # if Sentinel-2 doesn't meet both requirements,but Landsat does, either choose Landsat or combined product if available
+    elif ((n_valid_obs_ls>=thresh_n_valid).all()) and ((freq_valid_ls>=thresh_freq).all()):
+        if not ds_ls_s2 is None:
+            ds_selected, product_name=ds_ls_s2,'ls_s2'
+        else:
+            ds_selected, product_name=ds_ls,'ls'
+    # if neither Sentinel-2 or Landsat meet both requirements, choose combined product if it meets requirements
     elif not ds_ls_s2 is None:
         # but the combined product meet requirements
         if ((n_valid_obs_ls_s2>=thresh_n_valid).all()) and ((freq_valid_ls_s2>=thresh_freq).all()):
             ds_selected, product_name=ds_ls_s2,'ls_s2'
         else: 
             ds_selected, product_name=ds_s1,'s1'
+    # otherwise choose Sentinel-1
     else:
         ds_selected, product_name=ds_s1,'s1' 
+        
     print('Best available product: ',product_name)
     return ds_selected, product_name
 
