@@ -25,6 +25,7 @@ from skimage.morphology import binary_erosion,binary_dilation,disk
 from skimage.filters import threshold_minimum, threshold_otsu
 from datetime import datetime
 from dateutil import parser
+from deafrica_tools.bandindices import calculate_indices
 
 def _dc_query_only(**kw):
     """
@@ -1089,7 +1090,7 @@ def get_mean_number_freq_valid_obs(da,mask,time_step):
     '''
     n_valid_obs=(~da.isnull()).resample(time=time_step).sum('time').compute()
     freq_valid=(~da.isnull()).resample(time=time_step).mean('time').compute()
-    if mask==None:
+    if mask is None:
         n_valid_obs=n_valid_obs.mean(dim=['x','y'])
         freq_valid=freq_valid.mean(dim=['x','y'])
     else:
@@ -1200,7 +1201,7 @@ def choose_product(ds_ls,ds_s2,ds_s1,ds_ls_s2,time_step,**kwargs):
         ds_s2 = calculate_indices(ds_s2, index='MNDWI', satellite_mission='s2')
         mask=create_coastal_mask(ds_s2['MNDWI'],buffer_pixels)
     else:
-        print('\nNo coastal masking applied')
+        print('\nNo coastal masking applied, using all pixels within the selected region...')
         mask=None
 
     # calculate mean number and fraction of clear observations within each timestep and the mask
@@ -1208,7 +1209,7 @@ def choose_product(ds_ls,ds_s2,ds_s1,ds_ls_s2,time_step,**kwargs):
     n_valid_obs_s2,freq_valid_s2=get_mean_number_freq_valid_obs(ds_s2['green'],mask,time_step)
     n_valid_obs_ls,freq_valid_ls=get_mean_number_freq_valid_obs(ds_ls['green'],mask,time_step)
     n_valid_obs_s1,freq_valid_s1=get_mean_number_freq_valid_obs(ds_s1['vh'],mask,time_step)
-    if not ds_ls_s2==None:
+    if not ds_ls_s2 is None:
         n_valid_obs_ls_s2,freq_valid_ls_s2=get_mean_number_freq_valid_obs(ds_ls_s2['green'],mask,time_step)
         
     # apply decision rules
@@ -1216,31 +1217,33 @@ def choose_product(ds_ls,ds_s2,ds_s1,ds_ls_s2,time_step,**kwargs):
     # if Sentinel-2 meets basic requirements
     if ((n_valid_obs_s2>=thresh_n_valid).all()) and ((freq_valid_s2>=thresh_freq).all()): 
         # if Landsat also meets both condition
-        if ((n_valid_obs_ls>=thresh_n_valid).all()) and ((n_valid_obs_ls>=thresh_freq).all()):
+        if ((n_valid_obs_ls>=thresh_n_valid).all()) and ((freq_valid_ls>=thresh_freq).all()):
             # if both Landsat and Sentinel-2 meet requirements, and combined product is available
-            if not ds_ls_s2==None:
-                return ds_ls_s2,'ls_s2'
+            if not ds_ls_s2 is None:
+                ds_selected, product_name=ds_ls_s2,'ls_s2'
             # if Landsat have both higher no. and fraction of clear observations
-            elif ((n_valid_obs_ls>n_valid_obs_s2).all()) and ((n_valid_obs_ls>freq_valid_s2).all()):
-                return ds_ls,'ls'
+            elif ((n_valid_obs_ls>n_valid_obs_s2).all()) and ((freq_valid_ls>freq_valid_s2).all()):
+                ds_selected, product_name=ds_ls,'ls'
             # otherwise prefer Sentinel-2
             else:
-                return ds_s2,'s2'
+                ds_selected, product_name=ds_s2,'s2'
         else:
-            return ds_s2,'s2'
+            ds_selected, product_name=ds_s2,'s2'
     # if Sentinel-2 doesn't meet both basic conditions,but Landsat does
-    elif ((n_valid_obs_ls>=thresh_n_valid).all()) and ((n_valid_obs_ls>=thresh_freq).all()): 
-        return ds_ls,'ls'
+    elif ((n_valid_obs_ls>=thresh_n_valid).all()) and ((freq_valid_ls>=thresh_freq).all()): 
+        ds_selected, product_name=ds_ls,'ls'
     # if neither Sentinel-2 or Landsat meet both conditions
-    elif not ds_ls_s2==None:
+    elif not ds_ls_s2 is None:
         # but the combined product meet requirements
         if ((n_valid_obs_ls_s2>=thresh_n_valid).all()) and ((freq_valid_ls_s2>=thresh_freq).all()):
-            return ds_ls_s2,'ls_s2'
+            ds_selected, product_name=ds_ls_s2,'ls_s2'
         else: 
-            return ds_s1,'s1'
+            ds_selected, product_name=ds_s1,'s1'
     else:
-        return ds_s1,'s1' 
-    
+        ds_selected, product_name=ds_s1,'s1' 
+    print('Best available product: ',product_name)
+    return ds_selected, product_name
+
 def load_combined_ls_s2(dc,query):
     '''function to query and load combined Landsat and Sentinel-2 data
     
@@ -1269,7 +1272,7 @@ def load_combined_ls_s2(dc,query):
     ds_s2['is_ls'] = is_ls
 
     # merge two datasets together
-    ds_combined=xr.concat([ds_ls,ds_s2],dim='time')
+    ds_combined=xr.concat([ds_ls,ds_s2],dim='time').sortby('time')
     return ds_combined
 
 def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kwargs):
@@ -1308,16 +1311,19 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
         
     # set resolution for query based on optional user input
     if "set_resolution" not in kwargs:
+        print('No resolution pre-set, using default resolutions for individual products...')
         resolution_ls=(-30,30)
         resolution_s2=(-10,10)
         resolution_s1=(-20,20)
     else:
+        print('Using pre-set spatial resolution for all products...')
         resolution_ls=resolution_s2=resolution_s1=(kwargs["set_resolution"]*(-1),kwargs["set_resolution"])
         
     # create base query for all products
     query = {'x': lon_range,'y': lat_range,'time': time_range,
              'measurements': ['red', 'green', 'blue', 'swir_1'],
-             'resolution': resolution_ls, 'group_by':'solar_day','dask_chunks': {'time': 1}}
+             'resolution': resolution_ls, 'group_by':'solar_day',
+             'dask_chunks': {'time': 1}}
     
     # Identify the most common projection system in the input query 
     output_crs = mostcommon_crs(dc=dc, product='ls8_sr', query=query)
@@ -1327,7 +1333,8 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
 
     # check if product is pre-set by user
     set_product=None if not "set_product" in kwargs else kwargs["set_product"]
-    if not set_product==None:
+    if not set_product is None:
+        print('Pre-selected product:',set_product)
         product_name=set_product
         
     # check if allowing combining Landsat and Sentinel-2 as an option
@@ -1338,44 +1345,44 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
     
     # query and load specified products as user provided as possible
     if set_product=='ls':
-        print('\nQuerying and loading Landsat data...')
+        print('\nPreselected product: Landsat')
         ds_selected=load_ard(dc=dc, products=['ls8_sr', 'ls9_sr'],
                              align=(10, 10),mask_filters=[("opening", 1), ("dilation", 2)],
                              resampling='bilinear',**query)
     elif set_product=='s2':
-        print('\nQuerying and loading Sentinel-2 data...')
-        if ls_only==True:
+        print('\nPreselected product: Sentinel-2')
+        if ls_only:
             raise ValueError("Querying date earlier than 2018, please change your pre-selected product as Landsat or query time range.")
         query.update({'resolution': resolution_s2})
         ds_selected= load_ard(dc=dc,products=['s2_l2a'],resampling='bilinear',
                               align=(10, 10),mask_filters=[("opening", 1), ("dilation", 2)],**query)
     elif set_product=='s1':
-        if ls_only==True:
+        print('\nPreselected product: Sentinel-1')
+        if ls_only:
             raise ValueError("Querying date earlier than 2018, please change your pre-selected product as Landsat or query time range.")
-        
-        print('\nQuerying and loading Sentinel-1 data...')
         query.update({'resolution': resolution_s1,'measurements': ['vh','mask']})
         if s1_orbit_filtering==True:
             print('Querying and loading Sentinel-1 ascending data...')
             ds_s1_ascending=load_ard(dc=dc,products=['s1_rtc'],resampling='bilinear',
-                                     align=(10, 10),dtype='native',sat_orbit_state='ascending',**query)
+                                     dtype='native',sat_orbit_state='ascending',**query)
             print('Querying and loading Sentinel-1 descending data...')
             ds_s1_descending=load_ard(dc=dc,products=['s1_rtc'],resampling='bilinear',
-                                      align=(10, 10),dtype='native',sat_orbit_state='descending',**query)
+                                      dtype='native',sat_orbit_state='descending',**query)
             # filter Sentinel-1 observations by orbit
             ds_selected=filter_obs_by_orbit(ds_s1_ascending,ds_s1_descending)
         else:
             ds_selected=load_ard(dc=dc,products=['s1_rtc'],resampling='bilinear',
-                                     align=(10, 10),dtype='native',**query)
+                                     dtype='native',**query)
     elif set_product=='ls_s2':
+        print('\nPreselected product: Landsat and Sentinel-2')
         if ("combine_ls_s2" in kwargs)and(combine_ls_s2==False):
             raise ValueError("Conflicting: requesting querying combination of Landsat and Sentinel-2 products while parameter combine_ls_s2 is disabled. Please change parameter and try to run the function again.")
         else:
             query.update({'resolution': resolution_s2})
             ds_selected=load_combined_ls_s2(dc,query)
-    else:
+    else: # no preselection of product or wrong input of product name
         print('\nNone of the available products are pre-selected, querying and compare all products...')
-        if ls_only==True:
+        if ls_only:
             print('\nQuerying date earlier than 2018, only Landsat data will be queried and loaded.')
             # Load available Landsat data
             ds_ls = load_ard(dc=dc, products=['ls8_sr', 'ls9_sr'],

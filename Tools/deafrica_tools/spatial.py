@@ -3,6 +3,7 @@ Spatial analyses functions for Digital Earth Africa data.
 '''
 
 # Import required packages
+import dask
 import fiona
 import collections
 import numpy as np
