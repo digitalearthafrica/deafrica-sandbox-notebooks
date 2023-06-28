@@ -23,6 +23,8 @@ import odc.algo
 
 from skimage.morphology import binary_erosion,binary_dilation,disk
 from skimage.filters import threshold_minimum, threshold_otsu
+from scipy.ndimage.filters import uniform_filter
+from scipy.ndimage.measurements import variance
 from datetime import datetime
 from dateutil import parser
 from deafrica_tools.bandindices import calculate_indices
@@ -1069,6 +1071,134 @@ def pan_sharpen_brovey(band_1, band_2, band_3, pan_band):
 
     return band_1_sharpen, band_2_sharpen, band_3_sharpen
 
+def load_s1_by_orbits(dc,query):
+    '''
+    Function to query and load ascending and descending Sentinel-1 data 
+    and add a variable to denote acquisition orbits
+    
+    Parameters:
+    dc: connected datacube
+    query: a query dictionary to define spatial extent, measurements, time range and spatial resolution
+    
+    Returns:
+    Queried dataset with variable 'is_ascending' added to denote orbit path
+    
+    '''
+    # load ascending data
+    print('Querying and loading Sentinel-1 ascending data...')
+    ds_s1_ascending=load_ard(dc=dc,products=['s1_rtc'],resampling='bilinear',
+                             dtype='native',sat_orbit_state='ascending',**query)
+    # add an variable denoting data source
+    ds_s1_ascending['is_ascending']=xr.DataArray(np.ones(len(ds_s1_ascending.time)),
+                                                 dims=('time'),coords={'time': ds_s1_ascending.time})
+    
+    # load descending data
+    print('Querying and loading Sentinel-1 descending data...')
+    ds_s1_descending=load_ard(dc=dc,products=['s1_rtc'],resampling='bilinear',
+                              dtype='native',sat_orbit_state='descending',**query)
+    # add an variable denoting data source
+    ds_s1_descending['is_ascending']=xr.DataArray(np.zeros(len(ds_s1_descending.time)),
+                                                  dims=('time'),coords={'time': ds_s1_descending.time})
+    
+    # merge datasets together
+    ds_s1=xr.concat([ds_s1_ascending,ds_s1_descending],dim='time').sortby('time')
+    
+    return ds_s1
+
+def filter_obs_by_orbit(ds_s1):
+    '''
+    Function to impliment per-pixel filtering of Sentinel-1 observations 
+    to keep only observations from the orbit (ascending/descending) with higher frequency over time. 
+    
+    Each of the Sentinel-1 observations was acquired from either a descending or ascending orbit, 
+    which has impacts on the local incidence angle and backscattering value. 
+    Here we do the filtering to minimise the effects of inconsistent looking angle and obit direction for each individual pixel.
+
+    Parameters:
+    ds_s1: xarray.Dataset
+        Time-series observations of Sentinel-1 data, 
+        with two required variables: 'is_ascending' denoting orbit path and 'mask' to identify acquisition exent
+    
+    Returns:
+    ds_s1_filtered: xarray.Dataset
+        Filtered dataset
+    '''
+
+    print('\nFiltering Sentinel-1 product by orbit...')
+    cnt_ascending=((ds_s1["is_ascending"]==1)&(ds_s1['mask']!=0)).sum(dim='time')
+    cnt_descending=((ds_s1["is_ascending"]==0)&(ds_s1['mask']!=0)).sum(dim='time')
+    
+    ds_s1_filtered=ds_s1.where(((cnt_ascending>=cnt_descending)&(ds_s1["is_ascending"]==1))|
+                               ((cnt_ascending<cnt_descending)&(ds_s1["is_ascending"]==0)))
+    # remove intermediate variable
+    ds_s1_filtered=ds_s1_filtered.drop_vars(["is_ascending"])
+    # drop all-nan time steps
+    ds_s1_filtered=ds_s1_filtered.dropna(dim='time',how='all')
+    
+    return ds_s1_filtered
+
+def lee_filter(da, size):
+    """
+    Function to apply lee filter of specified window size.
+    Adapted from https://stackoverflow.com/questions/39785970/speckle-lee-filter-in-python
+    
+    Parameters:
+    da: Xarray.dataArray, input single-time image data
+    size: integer, filtering size in pixels
+    
+    Returns:
+    numpy array of filtered image
+
+    """
+    img = da.values
+    img_mean = uniform_filter(img, (size, size))
+    img_sqr_mean = uniform_filter(img**2, (size, size))
+    img_variance = img_sqr_mean - img_mean**2
+
+    overall_variance = variance(img)
+
+    img_weights = img_variance / (img_variance + overall_variance)
+    img_output = img_mean + img_weights * (img - img_mean)
+    
+    return img_output
+
+def preprocess_s1(ds_s1,filter_size=None,s1_orbit_filtering=True):
+    '''
+    Function to implement preprocessing on Sentinel-1 data, 
+    including speckle filtering (optional), filtering observations by orbit (optional) and conversion to dB
+    
+    Parameters:
+    ds_s1: xarray.Dataset
+        Time-series of Sentinel-1 data, with variable 'vh' required
+    filter_size: integer or None
+        Speckle filtering size
+    s1_orbit_filtering: Boolean
+        Whether to filter Sentinel-1 observations by orbit
+        
+    Returns:
+        xarray.Dataset
+        Preprocessed Sentinel-1 data
+    '''
+    ds_s1_filtered=ds_s1
+    
+    # apply Lee filtering if required
+    if not filter_size is None:
+        # The lee filter above doesn't handle null values
+        # We therefore set null values to 0 before applying the filter
+        valid = np.isfinite(ds_s1)
+        ds_s1_filtered = ds_s1.where(valid, 0)
+        # Create a new entry in dataset corresponding to filtered VV and VH data
+        ds_s1_filtered["vh"] = ds_s1_filtered.vh.groupby("time").apply(lee_filter, size=filter_size)
+        # Null pixels should remain null
+        ds_s1_filtered['vh'] = ds_s1_filtered.vh.where(ds_s1.vh!=0,np.nan)
+    
+    # filter observations by orbit if required
+    if s1_orbit_filtering:
+        ds_s1_filtered=filter_obs_by_orbit(ds_s1_filtered)
+
+    # Scale to plot data in decibels
+    ds_s1_filtered['vh'] = 10 * np.log10(ds_s1_filtered.vh)
+    return ds_s1_filtered
 
 def get_mean_number_freq_valid_obs(da,mask,time_step):
     '''
@@ -1098,41 +1228,6 @@ def get_mean_number_freq_valid_obs(da,mask,time_step):
         freq_valid=freq_valid.where(mask).mean(dim=['x','y'])
     
     return n_valid_obs,freq_valid
-
-
-def filter_obs_by_orbit(ds_s1_ascending,ds_s1_descending):
-    '''
-    Function to filter out observations from the orbit (ascending/descending) with lower frequency over time.     
-    Each of the Sentinel-1 observations was acquired from either a descending or ascending orbit, 
-    which has impacts on the local incidence angle and backscattering value. 
-    Here we do the filtering to minimise the effects of inconsistent looking angle and obit direction for each individual pixel.
-
-    Parameters:
-    ds_s1_ascending: xarray.Dataset
-        Time-series observations acquired in ascending mode, must have 'mask' measurement
-    ds_s1_descending: xarray.Dataset
-        Time-series observations acquired in descending mode, must have 'mask' measurement
-    
-    Returns:
-    ds_s1: xarray.Dataset
-    Filtered dataset
-    '''
-
-    print('\nFiltering Sentinel-1 product by orbit...')
-    ds_s1_ascending["isAscending"] = xr.where(ds_s1_ascending['mask']!=0,1,np.nan)
-    ds_s1_ascending["isDescending"] = xr.where(ds_s1_ascending['mask']!=0,0,np.nan)
-
-    ds_s1_descending["isDescending"] = xr.where(ds_s1_descending['mask']!=0,1,np.nan)
-    ds_s1_descending["isAscending"] = xr.where(ds_s1_descending['mask']!=0,0,np.nan)
-
-    ds_s1=xr.concat([ds_s1_ascending,ds_s1_descending],dim='time')
-    ascending_mask=(ds_s1.isAscending.sum(dim='time')>ds_s1.isDescending.sum(dim='time'))
-    descending_mask=(ds_s1.isAscending.sum(dim='time')<=ds_s1.isDescending.sum(dim='time'))
-    ds_s1=ds_s1.where((ascending_mask&(ds_s1.isAscending==1))|(descending_mask&(ds_s1.isDescending==1)),np.nan)
-    
-    # drop all-nan time steps
-    ds_s1=ds_s1.dropna(dim='time',how='all')
-    return ds_s1
 
 def create_coastal_mask(da,buffer_pixels):
     '''
@@ -1208,7 +1303,7 @@ def choose_product(ds_ls,ds_s2,ds_s1,ds_ls_s2,time_step,**kwargs):
     print('\nCalculating number and frequency of valid observations...')
     n_valid_obs_s2,freq_valid_s2=get_mean_number_freq_valid_obs(ds_s2['green'],mask,time_step)
     n_valid_obs_ls,freq_valid_ls=get_mean_number_freq_valid_obs(ds_ls['green'],mask,time_step)
-    n_valid_obs_s1,freq_valid_s1=get_mean_number_freq_valid_obs(ds_s1['vh'],mask,time_step)
+#     n_valid_obs_s1,freq_valid_s1=get_mean_number_freq_valid_obs(ds_s1['vh'],mask,time_step) # dont need this as sentinel-1 will only be chosen when optical datasets are not sufficient
     if not ds_ls_s2 is None:
         n_valid_obs_ls_s2,freq_valid_ls_s2=get_mean_number_freq_valid_obs(ds_ls_s2['green'],mask,time_step)
         
@@ -1254,7 +1349,7 @@ def load_combined_ls_s2(dc,query):
     
     Parameters:
     dc: connected datacube
-    query: a query dictionary to define spatial extent, time range and spatial resolution for both datasets
+    query: a query dictionary to define spatial extent, time range, measurements and spatial resolution for both datasets
     
     Returns:
     ds_combined: Combined data as xarray.Dataset
@@ -1300,7 +1395,6 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
     thresh_n_valid: Threhold of minimum average number of valid observations within each time step, integer
     thresh_freq: Threshold of minimum frequency of valid observations within each time step, float between 0~1
     buffer_pixels: Number of pixels to buffer coastal zone, integer
-    s1_orbit_filtering: A boolean value indicating whether to filter Sentinel-1 observations by orbit
         
     Returns:
     ds_selected: selected product as xarray.Dataset
@@ -1345,9 +1439,6 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
     # check if allowing combining Landsat and Sentinel-2 as an option
     combine_ls_s2=False if not "combine_ls_s2" in kwargs else kwargs["combine_ls_s2"]
     
-    # check if need to filter Sentinel-1 observations by orbit
-    s1_orbit_filtering=False if not "s1_orbit_filtering" in kwargs else kwargs["s1_orbit_filtering"]
-    
     # query and load specified products as user provided as possible
     if set_product=='ls':
         print('\nPreselected product: Landsat')
@@ -1366,18 +1457,7 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
         if ls_only:
             raise ValueError("Querying date earlier than 2018, please change your pre-selected product as Landsat or query time range.")
         query.update({'resolution': resolution_s1,'measurements': ['vh','mask']})
-        if s1_orbit_filtering==True:
-            print('Querying and loading Sentinel-1 ascending data...')
-            ds_s1_ascending=load_ard(dc=dc,products=['s1_rtc'],resampling='bilinear',
-                                     dtype='native',sat_orbit_state='ascending',**query)
-            print('Querying and loading Sentinel-1 descending data...')
-            ds_s1_descending=load_ard(dc=dc,products=['s1_rtc'],resampling='bilinear',
-                                      dtype='native',sat_orbit_state='descending',**query)
-            # filter Sentinel-1 observations by orbit
-            ds_selected=filter_obs_by_orbit(ds_s1_ascending,ds_s1_descending)
-        else:
-            ds_selected=load_ard(dc=dc,products=['s1_rtc'],resampling='bilinear',
-                                     dtype='native',**query)
+        ds_selected=load_s1_by_orbits(dc=dc,query)
     elif set_product=='ls_s2':
         print('\nPreselected product: Landsat and Sentinel-2')
         if ("combine_ls_s2" in kwargs)and(combine_ls_s2==False):
@@ -1415,21 +1495,7 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
     
             # query and filter Sentinel-1 data by orbit
             query.update({'resolution': resolution_s1,'measurements': ['vh','mask']})
-            if s1_orbit_filtering==True:
-                print('\nQuerying and loading Sentinel-1 ascending data...')
-                ds_s1_ascending=load_ard(dc=dc,products=['s1_rtc'],resampling='bilinear',
-                              align=(10, 10),dtype='native',
-                              sat_orbit_state='ascending',**query)
-                print('\nQuerying and loading Sentinel-1 descending data...')
-                ds_s1_descending=load_ard(dc=dc,products=['s1_rtc'],resampling='bilinear',
-                              align=(10, 10),dtype='native',
-                              sat_orbit_state='descending',**query)
-                # then filter Sentinel-1 observations to keep only those from with higher frequency orbit
-                ds_s1=filter_obs_by_orbit(ds_s1_ascending,ds_s1_descending)
-            else:
-                print('\nQuerying and loading Sentinel-1 data...')
-                ds_s1=load_ard(dc=dc,products=['s1_rtc'],resampling='bilinear',
-                                         align=(10, 10),dtype='native',**query)
+            ds_selected=load_s1_by_orbits(dc=dc,query)
             # apply rules to choose best product
             ds_selected,product_name=choose_product(ds_ls,ds_s2,ds_s1,ds_ls_s2,time_step,**kwargs)
     
