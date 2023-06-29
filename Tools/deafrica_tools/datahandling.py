@@ -1085,7 +1085,7 @@ def load_s1_by_orbits(dc,query):
     
     '''
     # load ascending data
-    print('Querying and loading Sentinel-1 ascending data...')
+    print('\nQuerying and loading Sentinel-1 ascending data...')
     ds_s1_ascending=load_ard(dc=dc,products=['s1_rtc'],resampling='bilinear',
                              dtype='native',sat_orbit_state='ascending',**query)
     # add an variable denoting data source
@@ -1093,7 +1093,7 @@ def load_s1_by_orbits(dc,query):
                                                  dims=('time'),coords={'time': ds_s1_ascending.time})
     
     # load descending data
-    print('Querying and loading Sentinel-1 descending data...')
+    print('\nQuerying and loading Sentinel-1 descending data...')
     ds_s1_descending=load_ard(dc=dc,products=['s1_rtc'],resampling='bilinear',
                               dtype='native',sat_orbit_state='descending',**query)
     # add an variable denoting data source
@@ -1251,7 +1251,7 @@ def create_coastal_mask(da,buffer_pixels):
     # use 20% ~ 80% wet frequency to identify potential coastal zone
     coastal_mask=(thresholded_ds.mean(dim='time') >= 0.2)&(thresholded_ds.mean(dim='time') <= 0.8)
     # buffering
-    print('\nBuffering...')
+    print('\nApplying buffering of {} Sentinel-2 pixels (parameter buffer_pixels)...'.format(buffer_pixels))
     coastal_mask=xr.apply_ufunc(binary_dilation,coastal_mask.compute(),disk(buffer_pixels))
     return coastal_mask
 
@@ -1288,6 +1288,8 @@ def choose_product(ds_ls,ds_s2,ds_s1,ds_ls_s2,time_step,**kwargs):
     thresh_n_valid=10 if "thresh_n_valid" not in kwargs else kwargs["thresh_n_valid"]
     thresh_freq=0.2 if "thresh_freq" not in kwargs else kwargs["thresh_freq"]
     buffer_pixels=100 if "buffer_pixels" not in kwargs else kwargs["buffer_pixels"]
+    print('\nThreshold number of valid observations (parameter thresh_n_valid): {}'.format(thresh_n_valid))
+    print('\nThreshold frequency of valid observations (parameter thresh_freq): {}'.format(thresh_freq))
     
     # create mask if requested
     coastal_masking=False if "coastal_masking" not in kwargs else kwargs["coastal_masking"]
@@ -1296,52 +1298,71 @@ def choose_product(ds_ls,ds_s2,ds_s1,ds_ls_s2,time_step,**kwargs):
         ds_s2 = calculate_indices(ds_s2, index='MNDWI', satellite_mission='s2')
         mask=create_coastal_mask(ds_s2['MNDWI'],buffer_pixels)
     else:
-        print('\nNo coastal masking applied, using all pixels within the selected region...')
+        print('\nNo coastal masking required, using all pixels within the selected region...')
         mask=None
 
     # calculate mean number and fraction of clear observations within each timestep and the mask
     print('\nCalculating number and frequency of valid observations...')
+    
     n_valid_obs_s2,freq_valid_s2=get_mean_number_freq_valid_obs(ds_s2['green'],mask,time_step)
+    print('\nSentinel-2: Average number and frequency of valid observations: {:.0f} and {:.2f}'.format(n_valid_obs_s2.mean().values,freq_valid_s2.mean().values))
+    
     n_valid_obs_ls,freq_valid_ls=get_mean_number_freq_valid_obs(ds_ls['green'],mask,time_step)
+    print('\nLandsat: Average number and frequency of valid observations: {:.0f} and {:.2f}'.format(n_valid_obs_ls.mean().values,freq_valid_ls.mean().values))
+    
 #     n_valid_obs_s1,freq_valid_s1=get_mean_number_freq_valid_obs(ds_s1['vh'],mask,time_step) # dont need this as sentinel-1 will only be chosen when optical datasets are not sufficient
     if not ds_ls_s2 is None:
         n_valid_obs_ls_s2,freq_valid_ls_s2=get_mean_number_freq_valid_obs(ds_ls_s2['green'],mask,time_step)
+        print('\nCombined Landsat and Sentinel-2 product: Average number and frequency of valid observations: {:.0f} and {:.2f}'.format(n_valid_obs_ls_s2.mean().values,freq_valid_ls_s2.mean().values))
         
     # apply decision rules
     print('\nApplying rules to choose product...')
     
     # if Sentinel-2 meets requirements 
     if ((n_valid_obs_s2>=thresh_n_valid).all()) and ((freq_valid_s2>=thresh_freq).all()):
+        print('\nSentinel-2 product has met the minimum required average number and frequency of valid observations within all time periods')
         # if combined product is available, choose combined product if it has both higher number and frequency
         if not ds_ls_s2 is None:
             if ((n_valid_obs_ls_s2>n_valid_obs_s2).all()) and ((freq_valid_ls_s2>freq_valid_s2).all()):
                 ds_selected, product_name=ds_ls_s2,'ls_s2'
+                print('\nChoosing combined Landsat and Sentinel-2 product as it has both higher number and frequency of valid observations within all time periods')
             else:
                 ds_selected, product_name=ds_s2,'s2'
+                print('\nChoosing Sentinel-2 product as neither Landsat or the combined product meets both requirements or is significantly better than Sentinel-2')
         # if combined product is unavailable, choose Landsat if it has both higher number and frequency
         elif ((n_valid_obs_ls>=n_valid_obs_s2).all()) and ((freq_valid_ls>=freq_valid_s2).all()):
             ds_selected, product_name=ds_ls,'ls'
+            print('\nChoosing Landsat product as it has both higher average number and frequency of valid observations within all time periods')
         # otherwise choose Sentinel-2
         else:
             ds_selected, product_name=ds_s2,'s2'
+            print('\nChoosing Sentinel-2 product as Landsat product does not meet both requirements or is not significantly better than Sentinel-2')
     # if Sentinel-2 doesn't meet both requirements,but Landsat does, either choose Landsat or combined product if available
     elif ((n_valid_obs_ls>=thresh_n_valid).all()) and ((freq_valid_ls>=thresh_freq).all()):
+        print('\nSentinel-2 does not meet the minimum required average number and frequency of valid observations within all time periods, but Landsat does')
         if not ds_ls_s2 is None:
             ds_selected, product_name=ds_ls_s2,'ls_s2'
+            print('\nChoosing combined Landsat and Sentinel-2 product as it has both higher number and frequency of valid observations within all time periods')
         else:
             ds_selected, product_name=ds_ls,'ls'
+            print('\nChoosing Landsat product')
     # if neither Sentinel-2 or Landsat meet both requirements, choose combined product if it meets requirements
     elif not ds_ls_s2 is None:
+        print('\nNeither Sentinel-2 or Landsat meets the minimum required average number and frequency of valid observations within all time periods')
         # but the combined product meet requirements
         if ((n_valid_obs_ls_s2>=thresh_n_valid).all()) and ((freq_valid_ls_s2>=thresh_freq).all()):
             ds_selected, product_name=ds_ls_s2,'ls_s2'
+            print('\nChoosing combined Landsat and Sentinel-2 product as it meets the minimum required average number and frequency of valid observations within all time periods')
         else: 
             ds_selected, product_name=ds_s1,'s1'
+            print('\nChoosing Sentinel-1 as no other products available that meet the requirements')
     # otherwise choose Sentinel-1
     else:
-        ds_selected, product_name=ds_s1,'s1' 
+        print('\nNeither Sentinel-2 or Landsat meets the minimum required average number and frequency of valid observations within all time periods')
+        ds_selected, product_name=ds_s1,'s1'
+        print('\nChoosing Sentinel-1 product as no other products available that meet the requirements')
         
-    print('Best available product: ',product_name)
+    print('\nBest available product selected: ',product_name)
     return ds_selected, product_name
 
 def load_combined_ls_s2(dc,query):
@@ -1457,16 +1478,16 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
         if ls_only:
             raise ValueError("Querying date earlier than 2018, please change your pre-selected product as Landsat or query time range.")
         query.update({'resolution': resolution_s1,'measurements': ['vh','mask']})
-        ds_selected=load_s1_by_orbits(dc=dc,query)
+        ds_selected=load_s1_by_orbits(dc,query)
     elif set_product=='ls_s2':
-        print('\nPreselected product: Landsat and Sentinel-2')
+        print('\nPreselected product: combined Landsat and Sentinel-2 products')
         if ("combine_ls_s2" in kwargs)and(combine_ls_s2==False):
             raise ValueError("Conflicting: requesting querying combination of Landsat and Sentinel-2 products while parameter combine_ls_s2 is disabled. Please change parameter and try to run the function again.")
         else:
             query.update({'resolution': resolution_s2})
             ds_selected=load_combined_ls_s2(dc,query)
     else: # no preselection of product or wrong input of product name
-        print('\nNone of the available products are pre-selected, querying and compare all products...')
+        print('\nNo pre-selection of products, querying and compare all products...')
         if ls_only:
             print('\nQuerying date earlier than 2018, only Landsat data will be queried and loaded.')
             # Load available Landsat data
@@ -1480,6 +1501,7 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
                 query.update({'resolution': resolution_s2})
                 ds_ls_s2=load_combined_ls_s2(dc,query)
             else:
+                print('\nCombined Landsat and Sentinel-2 products excluded from comparison')
                 ds_ls_s2=None
                 
             # Load available Landsat data
@@ -1495,7 +1517,7 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
     
             # query and filter Sentinel-1 data by orbit
             query.update({'resolution': resolution_s1,'measurements': ['vh','mask']})
-            ds_selected=load_s1_by_orbits(dc=dc,query)
+            ds_s1=load_s1_by_orbits(dc,query)
             # apply rules to choose best product
             ds_selected,product_name=choose_product(ds_ls,ds_s2,ds_s1,ds_ls_s2,time_step,**kwargs)
     
