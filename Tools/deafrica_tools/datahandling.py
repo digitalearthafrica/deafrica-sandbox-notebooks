@@ -22,7 +22,6 @@ from copy import deepcopy
 import odc.algo
 
 from skimage.morphology import binary_erosion,binary_dilation,disk
-from skimage.filters import threshold_minimum, threshold_otsu
 from scipy.ndimage.filters import uniform_filter
 from scipy.ndimage.measurements import variance
 from datetime import datetime
@@ -1183,14 +1182,14 @@ def preprocess_s1(ds_s1,filter_size=None,s1_orbit_filtering=True):
     
     # apply Lee filtering if required
     if not filter_size is None:
+        print('Applying Lee filtering using filtering size of {} pixels...'.format(filter_size))
         # The lee filter above doesn't handle null values
         # We therefore set null values to 0 before applying the filter
-        valid = np.isfinite(ds_s1)
-        ds_s1_filtered = ds_s1.where(valid, 0)
+        ds_s1_filtered = ds_s1.where(np.isfinite(ds_s1), 0)
         # Create a new entry in dataset corresponding to filtered VV and VH data
         ds_s1_filtered["vh"] = ds_s1_filtered.vh.groupby("time").apply(lee_filter, size=filter_size)
-        # Null pixels should remain null
-        ds_s1_filtered['vh'] = ds_s1_filtered.vh.where(ds_s1.vh!=0,np.nan)
+        # Null pixels should remain null, but also including pixels changed to 0 due to the filtering
+        ds_s1_filtered['vh'] = ds_s1_filtered.vh.where(ds_s1_filtered.vh!=0,np.nan)
     
     # filter observations by orbit if required
     if s1_orbit_filtering:
