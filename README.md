@@ -3,12 +3,11 @@
 
 # Digital Earth Africa Notebooks
 
-<img align="left" src="https://img.shields.io/badge/License-Apache%202.0-blue.svg">.
-
+<img align="left" src="https://img.shields.io/badge/License-Apache%202.0-blue.svg"> </br>
 
 **License:** The code in this repository is licensed under the [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0). Digital Earth Africa data is licensed under the [Creative Commons by Attribution 4.0 license](https://creativecommons.org/licenses/by/4.0/).
 
-**Contact:** If you need assistance with any of the Jupyter Notebooks or Python code in this repository, please post a question on the [Open Data Cube Slack channel](http://slack.opendatacube.org/) or on the [GIS Stack Exchange](https://gis.stackexchange.com/questions/ask?tags=open-data-cube) using the `open-data-cube` tag (you can view `previously asked questions` [here](https://gis.stackexchange.com/questions/tagged/open-data-cube). If you would like to report an issue with this notebook, you can file one on the [Github issues page](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues)
+**Contact:** If you need assistance with any of the Jupyter Notebooks or Python code in this repository, please post a question on the [Open Data Cube Slack channel](http://slack.opendatacube.org/) or on the [GIS Stack Exchange](https://gis.stackexchange.com/questions/ask?tags=open-data-cube) using the `open-data-cube` tag (you can view `previously asked questions` [here](https://gis.stackexchange.com/questions/tagged/open-data-cube). If you would like to report an issue with any of the scripts or notebooks in this repository, you can file one on the [Github issues page](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues).
 
 **Citing DE Africa Notebooks:** If you use any of the notebooks, code or tools in this repository in your work, please reference them using the following citation:
 
@@ -20,28 +19,28 @@ The Digital Earth Africa Notebooks repository (`deafrica-sandbox-notebooks`) hos
 
 The repository is based around the following directory structure (from simple to increasingly complex applications):
 
-1. [Beginners_guide](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/main/Beginners_guide): *Introductory notebooks aimed at introducing Jupyter Notebooks and how to load, plot and interact with DE Africa data*
+1. [Beginners_guide](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/main/Beginners_guide): *Introductory notebooks aimed at introducing Jupyter Notebooks and how to load, plot and interact with DE Africa data.*
 
 2. [Datasets](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/main/Datasets): *Notebooks introducing DE Africa's satellite datasets and derived products, including how to load each dataset and any special features of the data. Some external datasets that are useful for analysing and interpreting DE Africa products are also covered.*
 
-3. [Frequently_used_code](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/main/Frequently_used_code): *A recipe book of simple code examples demonstrating how to perform common geospatial analysis tasks using DE Africa and open-source software*
+3. [Frequently_used_code](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/main/Frequently_used_code): *A recipe book of simple code examples demonstrating how to perform common geospatial analysis tasks using DE Africa and open-source software.*
 
-4. [Real_world_examples](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/main/Real_world_examples): *More complex workflows demonstrating how DE Africa can be used to address real-world problems*
+4. [Real_world_examples](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/main/Real_world_examples): *More complex workflows demonstrating how DE Africa can be used to address real-world problems.*
 
 5. [Use Cases](https://github.com/GeoscienceAustralia/dea-notebooks/tree/main/Use_cases): *Notebooks in this collection are developed for specific use-cases of the Digital Earth Africa platform and may not run as seamlessly as notebooks in the other folders of this repository. Notebooks may contain less descriptive markdown, contain more complicated or bespoke analysis, and may take a long time to run. However, they contain useful analysis procedures and provide further examples for advanced users.*
 
 The supporting scripts and data for the notebooks are kept in the following directories:
 
-- [Tools](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/main/Tools): *Python functions and algorithms developed to assist in analysing DE Africa data (e.g. loading data, plotting, spatial analysis, machine learning)* 
+- [Tools](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/main/Tools): *Python functions and algorithms developed to assist in analysing DE Africa data (e.g. loading data, plotting, spatial analysis, machine learning).* 
 
-- [Supplementary_data](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/main/Supplementary_data): *Supplementary files required for the analyses above (e.g. images, rasters, shapefiles, training data)*
+- [Supplementary_data](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/main/Supplementary_data): *Supplementary files required for the analyses above (e.g. images, rasters, shapefiles, training data).*
 
 ---
 
 ## Getting started with DE Africa Notebooks
 
-
-To get started with using `deafrica-sandbox-notebooks`, visit the DE Africa Notebooks [Wiki page](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/wiki). This page includes guides for getting started on the [DE Africa Sandbox](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/wiki#getting-started-on-the-de-africa-sandbox).
+To get started with using `deafrica-sandbox-notebooks`, visit 
+the DE Africa Notebooks [Wiki page](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/wiki). This page includes guides for getting started on the [DE Africa Sandbox](https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/wiki#getting-started-on-the-de-africa-sandbox).
 
 Once you're set up, the main option for interacting with `deafrica-sandbox-notebooks` and contributing back to the repository is through:
 
