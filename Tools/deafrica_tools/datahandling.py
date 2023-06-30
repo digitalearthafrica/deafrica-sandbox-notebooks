@@ -1376,8 +1376,7 @@ def load_combined_ls_s2(dc,query):
     '''
     print('Querying and loading combined Landsat and Sentinel-2 products...')
     # Load available Landsat data resampled to Sentinel-2 resolution
-    ds_ls = load_ard(dc=dc, products=['ls8_sr', 'ls9_sr'],
-                     align=(10, 10),mask_filters=[("opening", 1), ("dilation", 2)],
+    ds_ls = load_ard(dc=dc, products=['ls8_sr', 'ls9_sr'],align=(10, 10),
                      resampling='bilinear',**query)
 
     # add an variable denoting data source (for future analysis)
@@ -1386,7 +1385,7 @@ def load_combined_ls_s2(dc,query):
 
     # Load Sentinel-2 data
     ds_s2 = load_ard(dc=dc,products=['s2_l2a'],resampling='bilinear',
-              align=(10, 10),mask_filters=[("opening", 1), ("dilation", 2)],**query)
+              align=(10, 10),mask_filters=[("opening", 2), ("dilation", 5)],**query)
     # add an variable denoting data source (for future analysis)
     is_ls=xr.DataArray(np.zeros(len(ds_s2.time)),dims=('time'),coords={'time': ds_s2.time})
     ds_s2['is_ls'] = is_ls
@@ -1420,10 +1419,10 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
     ds_selected: selected product as xarray.Dataset
     product_name: name of selected product in string format, i.e. 'ls','s2','ls_s2','s1'
     '''
-    # parse input time range to accommodate queries before and after 2018
+    # parse input time range to accommodate queries before and after 2017
     min_time=min(parser.parse(time_range_i,default=datetime(1987,1,1,0,0)) 
                  for time_range_i in time_range)
-    if min_time<datetime(2018,1,1,0,0):
+    if min_time<datetime(2017,1,1,0,0):
         ls_only=True
     else:
         ls_only=False
@@ -1442,7 +1441,7 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
     query = {'x': lon_range,'y': lat_range,'time': time_range,
              'measurements': ['red', 'green', 'blue', 'swir_1'],
              'resolution': resolution_ls, 'group_by':'solar_day',
-             'dask_chunks': {'time': 1}}
+             'dask_chunks': {'time': 1},'min_gooddata':0.1}
     
     # Identify the most common projection system in the input query 
     output_crs = mostcommon_crs(dc=dc, product='ls8_sr', query=query)
@@ -1463,7 +1462,6 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
     if set_product=='ls':
         print('\nPreselected product: Landsat')
         ds_selected=load_ard(dc=dc, products=['ls8_sr', 'ls9_sr'],
-                             align=(10, 10),mask_filters=[("opening", 1), ("dilation", 2)],
                              resampling='bilinear',**query)
     elif set_product=='s2':
         print('\nPreselected product: Sentinel-2')
@@ -1471,7 +1469,7 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
             raise ValueError("Querying date earlier than 2018, please change your pre-selected product as Landsat or query time range.")
         query.update({'resolution': resolution_s2})
         ds_selected= load_ard(dc=dc,products=['s2_l2a'],resampling='bilinear',
-                              align=(10, 10),mask_filters=[("opening", 1), ("dilation", 2)],**query)
+                              mask_filters=[("opening", 2), ("dilation", 5)],**query)
     elif set_product=='s1':
         print('\nPreselected product: Sentinel-1')
         if ls_only:
@@ -1491,7 +1489,6 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
             print('\nQuerying date earlier than 2018, only Landsat data will be queried and loaded.')
             # Load available Landsat data
             ds_ls = load_ard(dc=dc, products=['ls8_sr', 'ls9_sr'],
-                             align=(10, 10),mask_filters=[("opening", 1), ("dilation", 2)],
                              resampling='bilinear',**query)
             ds_selected=ds_ls
             product_name='ls'
@@ -1505,14 +1502,14 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
                 
             # Load available Landsat data
             print('\nQuerying and loading Landsat data...')
-            ds_ls = load_ard(dc=dc, products=['ls8_sr', 'ls9_sr'],resampling='bilinear',
-                             align=(10, 10),mask_filters=[("opening", 1), ("dilation", 2)],**query)
+            ds_ls = load_ard(dc=dc, products=['ls8_sr', 'ls9_sr'],
+                             resampling='bilinear',**query)
             
             # Load Sentinel-2 data
             print('\nQuerying and Sentinel-2 data...')
             query.update({'resolution': resolution_s2})
             ds_s2 = load_ard(dc=dc,products=['s2_l2a'],resampling='bilinear',
-                      align=(10, 10),mask_filters=[("opening", 1), ("dilation", 2)],**query)
+                      mask_filters=[("opening", 2), ("dilation", 5)],**query)
     
             # query and filter Sentinel-1 data by orbit
             query.update({'resolution': resolution_s1,'measurements': ['vh','mask']})
