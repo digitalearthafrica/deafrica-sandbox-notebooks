@@ -618,46 +618,45 @@ def interpolate_2d(ds,
 
 
 def contours_to_arrays(gdf, col):
-    
     """
     This function converts a polyline shapefile into an array with three
     columns giving the X, Y and Z coordinates of each vertex. This data
-    can then be used as an input to interpolation procedures (e.g. using 
+    can then be used as an input to interpolation procedures (e.g. using
     a function like `interpolate_2d`.
-    
-    Last modified: October 2019
-    
+
+    Last modified: October 2021
+
     Parameters
-    ----------  
+    ----------
     gdf : Geopandas GeoDataFrame
-        A GeoPandas GeoDataFrame of lines to convert into point 
+        A GeoPandas GeoDataFrame of lines to convert into point
         coordinates.
     col : str
-        A string giving the name of the GeoDataFrame field to use as 
+        A string giving the name of the GeoDataFrame field to use as
         Z-values.
-        
+
     Returns
     -------
-    A numpy array with three columns giving the X, Y and Z coordinates 
+    A numpy array with three columns giving the X, Y and Z coordinates
     of each vertex in the input GeoDataFrame.
-        
-    """        
+
+    """
 
     coords_zvals = []
 
     for i in range(0, len(gdf)):
-
         val = gdf.iloc[i][col]
 
         try:
-            coords = np.concatenate([np.vstack(x.coords.xy).T 
-                                     for x in gdf.iloc[i].geometry])
+            coords = np.concatenate(
+                [np.vstack(x.coords.xy).T for x in gdf.iloc[i].geometry.geoms]
+            )
         except:
             coords = np.vstack(gdf.iloc[i].geometry.coords.xy).T
 
-        coords_zvals.append(np.column_stack((coords, 
-                                             np.full(np.shape(coords)[0], 
-                                                     fill_value=val))))
+        coords_zvals.append(
+            np.column_stack((coords, np.full(np.shape(coords)[0], fill_value=val)))
+        )
 
     return np.concatenate(coords_zvals)
 
