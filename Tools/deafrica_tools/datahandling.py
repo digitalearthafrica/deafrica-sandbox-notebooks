@@ -1441,13 +1441,13 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
     query = {'x': lon_range,'y': lat_range,'time': time_range,
              'measurements': ['red', 'green', 'blue', 'swir_1'],
              'resolution': resolution_ls, 'group_by':'solar_day',
-             'dask_chunks': {'time': 1},'min_gooddata':0.1}
+             'dask_chunks': {'time': 1}}
     
     # Identify the most common projection system in the input query 
     output_crs = mostcommon_crs(dc=dc, product='ls8_sr', query=query)
     
     # update base query
-    query.update({'output_crs':output_crs})
+    query.update({'output_crs':output_crs,'min_gooddata':0.1})
 
     # check if product is pre-set by user
     set_product=None if not "set_product" in kwargs else kwargs["set_product"]
