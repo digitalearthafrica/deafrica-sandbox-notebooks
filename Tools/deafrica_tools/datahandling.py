@@ -1361,7 +1361,7 @@ def choose_product(ds_ls,ds_s2,ds_s1,ds_ls_s2,time_step,**kwargs):
         ds_selected, product_name=ds_s1,'s1'
         print('\nChoosing Sentinel-1 product as no other products available that meet the requirements')
         
-    print('\nBest available product selected: ',product_name)
+    print('\nBest available product: ',product_name)
     return ds_selected, product_name
 
 def load_combined_ls_s2(dc,query):
@@ -1453,7 +1453,6 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
     # check if product is pre-set by user
     set_product=None if not "set_product" in kwargs else kwargs["set_product"]
     if not set_product is None:
-        print('Pre-selected product:',set_product)
         product_name=set_product
         
     # check if allowing combining Landsat and Sentinel-2 as an option
@@ -1461,24 +1460,24 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
     
     # query and load specified products as user provided as possible
     if set_product=='ls':
-        print('\nPreselected product: Landsat')
+        print('\nPre-selected product: Landsat')
         ds_selected=load_ard(dc=dc, products=['ls8_sr', 'ls9_sr'],
                              resampling='bilinear',**query)
     elif set_product=='s2':
-        print('\nPreselected product: Sentinel-2')
+        print('\nPre-selected product: Sentinel-2')
         if ls_only:
             raise ValueError("Querying date earlier than 2018, please change your pre-selected product as Landsat or query time range.")
         query.update({'resolution': resolution_s2})
         ds_selected= load_ard(dc=dc,products=['s2_l2a'],resampling='bilinear',
                               mask_filters=[("opening", 2), ("dilation", 5)],**query)
     elif set_product=='s1':
-        print('\nPreselected product: Sentinel-1')
+        print('\nPre-selected product: Sentinel-1')
         if ls_only:
             raise ValueError("Querying date earlier than 2018, please change your pre-selected product as Landsat or query time range.")
         query.update({'resolution': resolution_s1,'measurements': ['vh','mask']})
         ds_selected=load_s1_by_orbits(dc,query)
     elif set_product=='ls_s2':
-        print('\nPreselected product: combined Landsat and Sentinel-2 products')
+        print('\nPre-selected product: combined Landsat and Sentinel-2 products')
         if ("combine_ls_s2" in kwargs)and(combine_ls_s2==False):
             raise ValueError("Conflicting: requesting querying combination of Landsat and Sentinel-2 products while parameter combine_ls_s2 is disabled. Please change parameter and try to run the function again.")
         else:
