@@ -1392,6 +1392,7 @@ def load_combined_ls_s2(dc,query):
 
     # merge two datasets together
     ds_combined=xr.concat([ds_ls,ds_s2],dim='time').sortby('time')
+    
     return ds_combined
 
 def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kwargs):
@@ -1447,7 +1448,7 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
     output_crs = mostcommon_crs(dc=dc, product='ls8_sr', query=query)
     
     # update base query
-    query.update({'output_crs':output_crs,'min_gooddata':0.1})
+    query.update({'output_crs':output_crs,'min_gooddata':0.2})
 
     # check if product is pre-set by user
     set_product=None if not "set_product" in kwargs else kwargs["set_product"]
@@ -1516,5 +1517,8 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
             ds_s1=load_s1_by_orbits(dc,query)
             # apply rules to choose best product
             ds_selected,product_name=choose_product(ds_ls,ds_s2,ds_s1,ds_ls_s2,time_step,**kwargs)
+    
+    # drop all-nan time steps
+    ds_selected=ds_selected.dropna(dim='time',how='all')
     
     return ds_selected,product_name
