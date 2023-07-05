@@ -154,7 +154,7 @@ def _veos(da, pos, method_eos="last"):
         of the negative slopes on the senescing
         side of the curve.
     """
-    # select timesteps before peak of season (AKA greening)
+    # select timesteps after peak of season (AKA greening)
     senesce = da.where(da.time > pos.time)
     # find the first order slopes
     senesce_deriv = senesce.differentiate("time")
