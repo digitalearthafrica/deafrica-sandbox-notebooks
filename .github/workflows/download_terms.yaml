@@ -1,0 +1,71 @@
+name: Download Terms from POEditor
+
+# Define which events can cause the workflow to run. 
+on:
+  # Triggers the workflow to run when:
+  # 1) A push is made to the main branch that includes changes to any file in the `Tools/` directory,
+  # or 
+  # 2) by clicking the 'Run workflow' button on the Actions tab.
+  push:
+    branches:
+      - main
+    paths:
+      - 'Tools/**'
+  workflow_dispatch:
+            
+# Groups together all the jobs that run in the workflow. 
+jobs:
+  # Job unique identifier.
+  download:
+    # Name for the job.
+    name: Download terms from POEditor
+    # Specifies the runner environment the job will run in. 
+    # Configure the job to run on the latest version of an Ubuntu Linux runner.
+    runs-on: ubuntu-latest
+    # A job contains a sequence of tasks called steps. 
+    # Each item nested under this section is a separate action or shell script.
+    steps:
+        # Checks out your repository onto the runner (downloads your repository into the CI runner),
+        # allowing you to run scripts or other actions against your code (such as build and test tools). 
+        # You should use the checkout action any time your workflow will run against the repository's code.
+        - name: Checkout the deafrica-sandbox-notebooks repository
+          uses: actions/checkout@v3
+          with:
+            # Checkout the current pull request branch
+            ref: ${{ github.head_ref }}
+        # This action sets up a Python environment for use in the workflow by installing and activating Python 3.10.6
+        - name: Set up Python 3.10.6
+          uses: actions/setup-python@v4
+          with:
+            python-version: "3.10.6" # Version range or exact version of a Python version to use, using SemVer's version range syntax
+            architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified.
+        # Install Dependencies
+        - name: Install dependencies
+          run: |  
+            python -m pip install --upgrade pip
+            pip install poeditor babel  
+        # Download the deafrica-tools terms from POEDITOR
+        - name: Download Terms 
+          env:
+            POEDITOR_API_TOKEN: ${{ secrets.POEDITOR_API_TOKEN }}
+            POEDITOR_PROJECT_ID: "489085"
+          run: |
+            # Configure the git credentials
+            git config user.name github-actions
+            git config user.email github-actions@github.com
+
+            # Run the download_terms.py script
+            python .github/workflows/scripts/download_terms.py 
+ 
+            # Stage the downloaded translation files 
+            git add Tools/deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.mo Tools/deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.po
+
+            # Check if there are any changes that are staged but not committed.
+            if [[ "$(git diff --cached --exit-code)" =  "" ]]; then
+                echo "Nothing to commit, working tree clean";
+            else
+                # Commit the changes
+                git commit -m "Auto update deafrica-tools french translation files"
+                # Update the branch
+                git push
+            fi
