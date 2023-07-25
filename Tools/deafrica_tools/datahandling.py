@@ -533,7 +533,12 @@ def load_ard(
     # should only be applied to data bands
     ds_data = ds[data_bands]
     ds_masks = ds[mask_bands]
-
+    
+    # Remove sentinel-2 pixels valued 1 (scene edges, terrain shadow)
+    if product_type == "s2":
+        valid_data_mask = (ds_data > 1).to_array(dim="band").all(dim="band")
+        ds_data =  odc.algo.keep_good_only(ds_data, where=valid_data_mask)
+        
     # Mask data if either of the above masks were generated
     if mask is not None:
         ds_data = odc.algo.erase_bad(ds_data, where=mask)
