@@ -25,14 +25,14 @@ python = ">=3.9,<3.12"
 geopandas = ">=0.13.2"
 shapely = ">=2.0.1"
 geojson = ">=3.0.1"
-numpy = ">=1.23.5"
+#numpy = "1.23.5"
 dask = {version = ">=2023.3.1", extras = ["array", "complete", "dataframe"]}
 joblib = ">=1.2.0"
 pandas = ">=2.0.2"
 xarray = ">=2023.5.0"
 dask-ml = ">=2023.3.24"
 botocore = ">=1.27.59"
-datacube = {version = ">=1.8.15", extras = ["celery", "performance", "s3"]}
+datacube = {version = ">=1.8.13", extras = ["celery", "performance", "s3"]}
 scikit-learn = ">=1.2.2"
 tqdm = ">=4.65.0"
 requests = ">=2.31.0"
@@ -40,9 +40,9 @@ matplotlib = ">=3.7.1"
 otps = {version = ">=0.3.2", source = "packages.dea.ga.gov.au"}
 owslib = ">=0.29.2"
 aiohttp = ">=3.8.4"
-gdal = ">=3.6.3"
+gdal = "3.6.3"
 pytz = ">=2023.3"
-odc-algo = ">=0.2.3"
+odc-algo = {version = ">=0.2.3", source = "packages.dea.ga.gov.au"}
 fsspec = ">=2023.3.0"
 rasterio = ">=1.3.7"
 pyproj = ">=3.5.0"
@@ -66,7 +66,6 @@ rioxarray = ">=0.14.1"
 numexpr = ">=2.8.4"
 datetime = ">=5.1"
 scipy = ">=1.10.1"
-
 # Package sources for discovery and installation of dependencies.
 
 [[tool.poetry.source]]
