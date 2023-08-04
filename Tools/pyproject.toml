@@ -5,7 +5,7 @@
 # Package metadata.
 [tool.poetry]
 name = "deafrica-tools"
-version = "2.0.2"
+version = "2.0.3"
 description = "Functions and algorithms for analysing Digital Earth Africa data."
 license = "Apache-2.0"
 authors = ["Digital Earth Africa <systems@digitalearthafrica.org>"]
