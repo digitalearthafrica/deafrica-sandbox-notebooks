@@ -113,7 +113,7 @@ def load_era5(
 
         if lat_range is None:
             # find the nearest lat lon boundary points
-            test = ds.sel(lat=lat, lon=lon, method="nearest")
+            test = ds.sel(lat=list(lat), lon=list(lon), method="nearest")
             # define the lat/lon grid
             lat_range = slice(test.lat.max().values, test.lat.min().values)
             lon_range = slice(test.lon.min().values, test.lon.max().values)
