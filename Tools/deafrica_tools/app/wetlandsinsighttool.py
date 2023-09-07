@@ -4,6 +4,12 @@ version of the wetlands insight tool.
 """
 
 # Import required packages
+
+# Force GeoPandas to use Shapely instead of PyGEOS
+# In a future release, GeoPandas will switch to using Shapely by default.
+import os
+os.environ['USE_PYGEOS'] = '0'
+
 import datacube
 import warnings
 import seaborn as sns

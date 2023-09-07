@@ -121,7 +121,7 @@ def _vsos(da, pos, method_sos="first"):
 
     if method_sos == "median":
         # find index (argmin) where distance is smallest absolute value
-        idx = allNaN_arg(xr.ufuncs.fabs(distance), "time", "min").astype("int16")
+        idx = allNaN_arg(np.fabs(distance), "time", "min").astype("int16")
 
     return pos_greenup.isel(time=idx)
 
@@ -165,7 +165,7 @@ def _veos(da, pos, method_eos="last"):
 
     if method_eos == "median":
         # index where median occurs
-        idx = allNaN_arg(xr.ufuncs.fabs(distance), "time", "min").astype("int16")
+        idx = allNaN_arg(np.fabs(distance), "time", "min").astype("int16")
 
     return neg_senesce.isel(time=idx)
 

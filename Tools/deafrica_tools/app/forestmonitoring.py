@@ -1,3 +1,14 @@
+'''
+Functions for loading and interacting with Global Forest Change data in the forest monitoring notebook, inside the Real_world_examples folder.
+'''
+
+# Import required packages
+
+# Force GeoPandas to use Shapely instead of PyGEOS
+# In a future release, GeoPandas will switch to using Shapely by default.
+import os
+os.environ['USE_PYGEOS'] = '0'
+
 import json
 import warnings
 from io import BytesIO
