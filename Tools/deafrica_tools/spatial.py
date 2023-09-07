@@ -645,15 +645,11 @@ def contours_to_arrays(gdf, col):
     -------
     A numpy array with three columns giving the X, Y and Z coordinates
     of each vertex in the input GeoDataFrame.
-<<<<<<< HEAD
 
     """
-=======
-        
-    """        
+      
     # Explode multi-part geometries into multiple single geometries.
     gdf = gdf.explode(ignore_index=True)
->>>>>>> main
 
     coords_zvals = []
 
