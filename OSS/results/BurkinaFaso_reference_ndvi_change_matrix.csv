@@ -1,0 +1,6 @@
+Year of follow up <br> Initial Year,Very low,Low,Normal,High,Very high
+Very low,Stable,Excellent,Excellent,Excellent,Excellent
+Low,Bad,Stable,Excellent,Excellent,Excellent
+Normal,Bad,Bad,Stable,Excellent,Excellent
+High,Bad,Bad,Bad,Stable,Excellent
+Very high,Bad,Bad,Bad,Bad,Stable

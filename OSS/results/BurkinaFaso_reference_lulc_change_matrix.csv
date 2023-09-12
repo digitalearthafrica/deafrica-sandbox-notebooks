@@ -1,0 +1,8 @@
+Year of follow up <br> Initial Year,Treed areas,Prairies,Cultivated land,Wetlands,Artificial surfaces,Other land,Water bodies
+Treed areas,Stable,Bad,Bad,Bad,Bad,Bad,Stable
+Prairies,Excellent,Stable,Bad,Stable,Bad,Bad,Stable
+Cultivated land,Excellent,Excellent,Stable,Excellent,Bad,Bad,Stable
+Wetlands,Excellent,Stable,Bad,Stable,Bad,Bad,Stable
+Artificial surfaces,Excellent,Excellent,Excellent,Excellent,Stable,Excellent,Stable
+Other land,Excellent,Excellent,Excellent,Excellent,Bad,Stable,Stable
+Water bodies,Stable,Stable,Stable,Stable,Stable,Stable,Stable
