@@ -307,7 +307,7 @@ def tidal_stats(
         + ((ds_tides.time.dt.dayofyear - 1) / 365)
         + ((ds_tides.time.dt.hour - 1) / 24)
     )
-    obs_y = ds_tides.tide_height.values.astype(np.float)
+    obs_y = ds_tides.tide_height.values.astype(float)
 
     # Compute linear regression
     obs_linreg = stats.linregress(x=obs_x, y=obs_y)
