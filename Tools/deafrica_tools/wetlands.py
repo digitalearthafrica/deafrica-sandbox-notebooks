@@ -10,6 +10,8 @@ import os
 
 os.environ["USE_PYGEOS"] = "0"
 
+import calendar
+import datetime
 import warnings
 
 import datacube
@@ -200,7 +202,7 @@ def WIT_drill(
     fc_ds = fc_ds.where(mask)
 
     # mask with TC wetness
-    fc_ds_noTCW = fc_ds.where(tcw == False)
+    fc_ds_noTCW = fc_ds.where(tcw is False)
 
     if verbose:
         print("Generating classification")
@@ -528,7 +530,7 @@ def animated_timeseries_WIT(
                     day = ts.day.item()
                     date_string = "{} {} {}".format(day, calendar.month_abbr[month], year)
 
-                except:
+                except Exception:
                     date_string = ds[time_dim][{time_dim: frame_i}].values.item()
 
                 # Create annotation string based on title and date specifications:
