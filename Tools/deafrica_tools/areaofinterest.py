@@ -11,7 +11,8 @@ os.environ['USE_PYGEOS'] = '0'
 
 import geopandas as gpd
 from shapely.geometry import box
-from geojson import Feature, Point, FeatureCollection
+from geojson import Feature, FeatureCollection
+
 
 def define_area(lat=None, lon=None, buffer=None, vector_path=None):
     '''
