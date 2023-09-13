@@ -20,7 +20,6 @@ import xarray as xr
 from dask_ml.wrappers import ParallelPostFit
 from datacube.utils import geometry
 from datacube.utils.geometry import assign_crs
-from deafrica_tools.spatial import xr_rasterize
 from sklearn.base import ClusterMixin
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.cluster import KMeans
@@ -29,6 +28,8 @@ from sklearn.model_selection import BaseCrossValidator
 from sklearn.model_selection import KFold, ShuffleSplit
 from sklearn.utils import check_random_state
 from tqdm.auto import tqdm
+
+from deafrica_tools.spatial import xr_rasterize
 
 
 def sklearn_flatten(input_xr):
