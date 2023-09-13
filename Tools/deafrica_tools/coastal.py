@@ -320,7 +320,7 @@ def pixel_tides(
     times : pandas.DatetimeIndex or list of pandas.Timestamps, optional
         By default, the function will model tides using the times
         contained in the `time` dimension of `ds`. Alternatively, this
-        param can be used to model tides for a custom set of times 
+        param can be used to model tides for a custom set of times
         instead. For example:
         `times=pd.date_range(start="2000", end="2001", freq="5h")`
     resample : bool, optional
@@ -340,7 +340,7 @@ def pixel_tides(
         resolution grid if `ds` has a geographic CRS (e.g. degree units).
         Note: higher resolutions do not necessarily provide better
         tide modelling performance, as results will be limited by the
-        resolution of the underlying global tide model (e.g. 1/16th 
+        resolution of the underlying global tide model (e.g. 1/16th
         degree / ~5 km resolution grid for FES2014).
     buffer : int, optional
         The amount by which to buffer the higher resolution grid extent
@@ -348,10 +348,10 @@ def pixel_tides(
         important as it ensures that ensure pixel-based tides are seamless
         across dataset boundaries. This buffer will eventually be clipped
         away when the low-resolution data is re-projected back to the
-        resolution and extent of the higher resolution dataset. To 
-        ensure that at least two pixels occur outside of the dataset 
-        bounds, the default None applies a 12000 m buffer if `ds` has a 
-        projected CRS (i.e. metre units), or a 0.12 degree buffer if 
+        resolution and extent of the higher resolution dataset. To
+        ensure that at least two pixels occur outside of the dataset
+        bounds, the default None applies a 12000 m buffer if `ds` has a
+        projected CRS (i.e. metre units), or a 0.12 degree buffer if
         `ds` has a geographic CRS (e.g. degree units).
     resample_method : string, optional
         If resampling is requested (see `resample` above), use this
@@ -394,23 +394,23 @@ def pixel_tides(
             "`times=pd.date_range(start='2000', end='2001', freq='5h')`"
         )
 
-    # If custom times are provided, convert them to a consistent 
+    # If custom times are provided, convert them to a consistent
     # pandas.DatatimeIndex format
     if times is not None:
         if isinstance(times, list):
             time_coords = pd.DatetimeIndex(times)
         elif isinstance(times, pd.Timestamp):
             time_coords = pd.DatetimeIndex([times])
-        else: 
+        else:
             time_coords = times
 
     # Otherwise, use times from `ds` directly
     else:
         time_coords = ds.coords["time"]
-        
+
     # Determine spatial dimensions
     y_dim, x_dim = ds.odc.spatial_dims
-    
+
     # Determine resolution and buffer, using different defaults for
     # geographic (i.e. degrees) and projected (i.e. metres) CRSs:
     crs_units = ds.odc.geobox.crs.units[0][0:6]
@@ -436,7 +436,7 @@ def pixel_tides(
                              f"(degree) units?")
         if buffer is None:
             buffer = 12000
-    
+
     # Raise error if resolution is less than dataset resolution
     dataset_res = ds.odc.geobox.resolution.x
     if resolution < dataset_res:
@@ -458,8 +458,8 @@ def pixel_tides(
     )
     rescaled_ds = odc.geo.xr.xr_zeros(rescaled_geobox)
 
-    # Flatten grid to 1D, then add time dimension  
-    flattened_ds = rescaled_ds.stack(z=(x_dim, y_dim))    
+    # Flatten grid to 1D, then add time dimension
+    flattened_ds = rescaled_ds.stack(z=(x_dim, y_dim))
     flattened_ds = flattened_ds.expand_dims(dim={"time": time_coords.values})
 
     # Model tides for each timestep
@@ -474,7 +474,7 @@ def pixel_tides(
         epsg=ds.odc.geobox.crs.epsg,
         **model_tides_kwargs,
     )
-    
+
     # Rename x and y coordinates to match satellite array
     tide_df = tide_df.rename({"x": x_dim, "y": y_dim}, axis=1)
 
@@ -538,13 +538,13 @@ def tidal_tag(
     `tide_m` variable giving the height of the tide at the exact
     moment of each satellite acquisition.
 
-    The function models tides at the centroid of the dataset by default, 
-    but a custom tidal modelling location can be specified using 
+    The function models tides at the centroid of the dataset by default,
+    but a custom tidal modelling location can be specified using
     `tidepost_lat` and `tidepost_lon`.
 
     The default settings use the FES2014 global tidal model, implemented
-    using the pyTMD Python package. FES2014 was produced by NOVELTIS, 
-    LEGOS, CLS Space Oceanography Division and CNES. It is distributed 
+    using the pyTMD Python package. FES2014 was produced by NOVELTIS,
+    LEGOS, CLS Space Oceanography Division and CNES. It is distributed
     by AVISO, with support from CNES (http://www.aviso.altimetry.fr/).
 
     Parameters
@@ -687,18 +687,18 @@ def tidal_stats(
     tides observed by satellites (e.g. Landsat) are biased compared to
     the natural tidal range (e.g. fail to observe either the highest or
     lowest tides etc).
-    
+
     For more information about the tidal statistics computed by this
     function, refer to Figure 8 in Bishop-Taylor et al. 2018:
     https://www.sciencedirect.com/science/article/pii/S0272771418308783#fig8
 
-    The function models tides at the centroid of the dataset by default, 
-    but a custom tidal modelling location can be specified using 
+    The function models tides at the centroid of the dataset by default,
+    but a custom tidal modelling location can be specified using
     `tidepost_lat` and `tidepost_lon`.
-    
+
     The default settings use the FES2014 global tidal model, implemented
-    using the pyTMD Python package. FES2014 was produced by NOVELTIS, 
-    LEGOS, CLS Space Oceanography Division and CNES. It is distributed 
+    using the pyTMD Python package. FES2014 was produced by NOVELTIS,
+    LEGOS, CLS Space Oceanography Division and CNES. It is distributed
     by AVISO, with support from CNES (http://www.aviso.altimetry.fr/).
 
     Parameters
@@ -944,29 +944,29 @@ def tidal_stats(
 
 def transect_distances(transects_gdf, lines_gdf, mode='distance'):
     """
-    Take a set of transects (e.g. shore-normal beach survey lines), and 
+    Take a set of transects (e.g. shore-normal beach survey lines), and
     determine the distance along the transect to each object in a set of
-    lines (e.g. shorelines). Distances are measured in the CRS of the 
+    lines (e.g. shorelines). Distances are measured in the CRS of the
     input datasets.
-    
-    For coastal applications, transects should be drawn from land to 
+
+    For coastal applications, transects should be drawn from land to
     water (with the first point being on land so that it can be used
     as a consistent location from which to measure distances.
-        
+
     The distance calculation can be performed using two modes:
-        - 'distance': Distances are measured from the start of the 
-          transect to where it intersects with each line. Any transect 
-          that intersects a line more than once is ignored. This mode is 
-          useful for measuring e.g. the distance to the shoreline over 
+        - 'distance': Distances are measured from the start of the
+          transect to where it intersects with each line. Any transect
+          that intersects a line more than once is ignored. This mode is
+          useful for measuring e.g. the distance to the shoreline over
           time from a consistent starting location.
         - 'width' Distances are measured between the first and last
-          intersection between a transect and each line. Any transect 
-          that intersects a line only once is ignored. This is useful 
+          intersection between a transect and each line. Any transect
+          that intersects a line only once is ignored. This is useful
           for e.g. measuring the width of a narrow area of coastline over
           time, e.g. the neck of a spit or tombolo.
-          
+
     Parameters
-    ----------     
+    ----------
     transects_gdf : geopandas.GeoDataFrame
         A GeoDataFrame containing one or multiple vector profile lines.
         The GeoDataFrame's index column will be used to name the rows in
@@ -978,21 +978,21 @@ def transect_distances(transects_gdf, lines_gdf, mode='distance'):
         in the output distance table.
     mode : string, optional
         Whether to use 'distance' (for measuring distances from the
-        start of a profile) or 'width' mode (for measuring the width 
+        start of a profile) or 'width' mode (for measuring the width
         between two profile intersections). See docstring above for more
         info; defaults to 'distance'.
-        
+
     Returns
     -------
     distance_df : pandas.DataFrame
         A DataFrame containing distance measurements for each profile
-        line (rows) and line feature (columns). 
+        line (rows) and line feature (columns).
     """
 
     def _intersect_dist(transect_gdf, lines_gdf, mode=mode):
         """
         Take an individual transect, and determine the distance along
-        the transect to each object in a set of lines (e.g. shorelines).        
+        the transect to each object in a set of lines (e.g. shorelines).
         """
 
         # Identify intersections between transects and lines
@@ -1005,7 +1005,7 @@ def transect_distances(transects_gdf, lines_gdf, mode='distance'):
         if mode == 'distance':
             start_point = Point(transect_gdf.geometry.coords[0])
             point_df = intersect_points.apply(
-                lambda x: pd.Series({'start': start_point, 'end': x}) 
+                lambda x: pd.Series({'start': start_point, 'end': x})
                 if x.type == 'Point'
                 else pd.Series({'start': None, 'end': None}))
 
@@ -1015,29 +1015,29 @@ def transect_distances(transects_gdf, lines_gdf, mode='distance'):
         if mode == 'width':
             point_df = intersect_points.apply(
                 lambda x: pd.Series({'start': x.geoms[0], 'end': x.geoms[-1]})
-                if x.type == 'MultiPoint' 
+                if x.type == 'MultiPoint'
                 else pd.Series({'start': None, 'end': None}))
 
         # Calculate distances between valid start and end points
         distance_df = point_df.apply(
             lambda x: x.start.distance(x.end) if x.start else None, axis=1)
-            
+
         return distance_df
 
     # Run code after ignoring Shapely pre-v2.0 warnings
-    with warnings.catch_warnings():        
-        warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning) 
-        
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
+
         # Assert that both datasets use the same CRS
         assert transects_gdf.crs == lines_gdf.crs, ('Please ensure both '
                                                     'input datasets use the same CRS.')
-        
+
         # Run distance calculations
         distance_df = transects_gdf.apply(
-            lambda x: _intersect_dist(x, lines_gdf), axis=1)   
-        
+            lambda x: _intersect_dist(x, lines_gdf), axis=1)
+
         return pd.DataFrame(distance_df)
-    
+
 
 def get_coastlines(bbox: tuple,
                    crs="EPSG:4326",
@@ -1045,29 +1045,29 @@ def get_coastlines(bbox: tuple,
                    drop_wms=True) -> gpd.GeoDataFrame:
     """
     Get DE Africa Coastlines data for a provided bounding box using WFS.
-    
-    For a full description of the DE Africa Coastlines dataset, refer to the 
+
+    For a full description of the DE Africa Coastlines dataset, refer to the
     official Digital Earth Africa product description:
-    
+
     Parameters
     ----------
     bbox : (xmin, ymin, xmax, ymax), or geopandas object
-        Bounding box expressed as a tuple. Alternatively, a bounding 
-        box can be automatically extracted by suppling a 
+        Bounding box expressed as a tuple. Alternatively, a bounding
+        box can be automatically extracted by suppling a
         geopandas.GeoDataFrame or geopandas.GeoSeries.
     crs : str, optional
         Optional CRS for the bounding box. This is ignored if `bbox`
         is provided as a geopandas object.
     layer : str, optional
         Which DE Africa Coastlines layer to load. Options include the annual
-        shoreline vectors ("shorelines") and the rates of change 
+        shoreline vectors ("shorelines") and the rates of change
         statistics points ("statistics"). Defaults to "shorelines".
     drop_wms : bool, optional
         Whether to drop WMS-specific attribute columns from the data.
         These columns are used for visualising the dataset on DE Africa Maps,
         and are unlikely to be useful for scientific analysis. Defaults
         to True.
-    
+
     Returns
     -------
     gpd.GeoDataFrame
@@ -1087,7 +1087,7 @@ def get_coastlines(bbox: tuple,
     describe_layer_response = requests.get(describe_layer_url).json()
     available_layers = [layer["layerName"] for layer in describe_layer_response['layerDescriptions']]
 
-    # Get the layer name. 
+    # Get the layer name.
     if layer == "shorelines":
         layer_name = [i for i in available_layers if "shorelines" in i]
     else:
@@ -1111,4 +1111,3 @@ def get_coastlines(bbox: tuple,
         coastlines_gdf = coastlines_gdf.loc[:, ~coastlines_gdf.columns.str.contains("wms_")]
 
     return coastlines_gdf
-
