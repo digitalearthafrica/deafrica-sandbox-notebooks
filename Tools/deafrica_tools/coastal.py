@@ -11,7 +11,6 @@ import warnings
 
 os.environ["USE_PYGEOS"] = "0"
 
-
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,9 +24,7 @@ import requests
 import xarray as xr
 from odc.geo.geobox import GeoBox
 from owslib.wfs import WebFeatureService
-
-# Fix converters for tidal plot
-from pandas.plotting import register_matplotlib_converters
+from pandas.plotting import register_matplotlib_converters  # Fix converters for tidal plot
 from pyTMD.calc_delta_time import calc_delta_time
 from pyTMD.infer_minor_corrections import infer_minor_corrections
 from pyTMD.predict_tide_drift import predict_tide_drift
