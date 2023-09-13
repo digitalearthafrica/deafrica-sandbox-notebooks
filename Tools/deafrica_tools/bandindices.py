@@ -142,21 +142,17 @@ def calculate_indices(
         # Normalised Difference Vegation Index, Rouse 1973
         "NDVI": lambda ds: (ds.nir - ds.red) / (ds.nir + ds.red),
         # Enhanced Vegetation Index, Huete 2002
-        "EVI": lambda ds: (
-            2.5 * ((ds.nir - ds.red) / (ds.nir + 6 * ds.red - 7.5 * ds.blue + 1))
-        ),
+        "EVI": lambda ds: (2.5 * ((ds.nir - ds.red) / (ds.nir + 6 * ds.red - 7.5 * ds.blue + 1))),
         # Leaf Area Index, Boegh 2002
         "LAI": lambda ds: (
-            3.618
-            * ((2.5 * (ds.nir - ds.red)) / (ds.nir + (6 * ds.red) - (7.5 * ds.blue) + 1))
+            3.618 * ((2.5 * (ds.nir - ds.red)) / (ds.nir + (6 * ds.red) - (7.5 * ds.blue) + 1))
             - 0.118
         ),
         # Soil Adjusted Vegetation Index, Huete 1988
         "SAVI": lambda ds: ((1.5 * (ds.nir - ds.red)) / (ds.nir + ds.red + 0.5)),
         # Mod. Soil Adjusted Vegetation Index, Qi et al. 1994
         "MSAVI": lambda ds: (
-            (2 * ds.nir + 1 - ((2 * ds.nir + 1) ** 2 - 8 * (ds.nir - ds.red)) ** 0.5)
-            / 2
+            (2 * ds.nir + 1 - ((2 * ds.nir + 1) ** 2 - 8 * (ds.nir - ds.red)) ** 0.5) / 2
         ),
         # Normalised Difference Moisture Index, Gao 1996
         "NDMI": lambda ds: (ds.nir - ds.swir_1) / (ds.nir + ds.swir_1),
@@ -186,21 +182,14 @@ def calculate_indices(
         "BSI": lambda ds: ((ds.swir_1 + ds.red) - (ds.nir + ds.blue))
         / ((ds.swir_1 + ds.red) + (ds.nir + ds.blue)),
         # Automated Water Extraction Index (no shadows), Feyisa 2014
-        "AWEI_ns": lambda ds: (
-            4 * (ds.green - ds.swir_1) - (0.25 * ds.nir * +2.75 * ds.swir_2)
-        ),
+        "AWEI_ns": lambda ds: (4 * (ds.green - ds.swir_1) - (0.25 * ds.nir * +2.75 * ds.swir_2)),
         # Automated Water Extraction Index (shadows), Feyisa 2014
         "AWEI_sh": lambda ds: (
             ds.blue + 2.5 * ds.green - 1.5 * (ds.nir + ds.swir_1) - 0.25 * ds.swir_2
         ),
         # Water Index, Fisher 2016
         "WI": lambda ds: (
-            1.7204
-            + 171 * ds.green
-            + 3 * ds.red
-            - 70 * ds.nir
-            - 45 * ds.swir_1
-            - 71 * ds.swir_2
+            1.7204 + 171 * ds.green + 3 * ds.red - 70 * ds.nir - 45 * ds.swir_1 - 71 * ds.swir_2
         ),
         # Tasseled Cap Wetness, Crist 1985
         "TCW": lambda ds: (
@@ -238,7 +227,8 @@ def calculate_indices(
         # Normalized Difference Turbidity Index, Lacaux, J.P. et al. 2007
         "NDTI": lambda ds: (ds.red - ds.green) / (ds.red + ds.green),
         # Modified Bare Soil Index, Nguyen et al. 2021
-        "MBI": lambda ds: ((ds.swir_1 - ds.swir_2 - ds.nir) / (ds.swir_1 + ds.swir_2 + ds.nir)) + 0.5,
+        "MBI": lambda ds: ((ds.swir_1 - ds.swir_2 - ds.nir) / (ds.swir_1 + ds.swir_2 + ds.nir))
+        + 0.5,
     }
 
     # Enhanced Normalised Difference Impervious Surfaces Index, Chen et al. 2019
@@ -246,36 +236,38 @@ def calculate_indices(
         return (ds.green - ds.swir_1) / (ds.green + ds.swir_1)
 
     def swir_diff(ds):
-        return ds.swir_1/ds.swir_2
+        return ds.swir_1 / ds.swir_2
 
     def alpha(ds):
-        return (2*(np.mean(ds.blue)))/(np.mean(swir_diff(ds)) + np.mean(mndwi(ds)**2))
+        return (2 * (np.mean(ds.blue))) / (np.mean(swir_diff(ds)) + np.mean(mndwi(ds) ** 2))
 
     def ENDISI(ds):
         m = mndwi(ds)
         s = swir_diff(ds)
         a = alpha(ds)
-        return (ds.blue - (a)*(s + m**2))/(ds.blue + (a)*(s + m**2))
+        return (ds.blue - (a) * (s + m**2)) / (ds.blue + (a) * (s + m**2))
 
     index_dict["ENDISI"] = ENDISI
 
     ## Artificial Surface Index, Yongquan Zhao & Zhe Zhu 2022
     def af(ds):
         AF = (ds.nir - ds.blue) / (ds.nir + ds.blue)
-        AF_norm = (AF - AF.min(dim=["y", "x"]))/(AF.max(dim=["y", "x"]) - AF.min(dim=["y", "x"]))
+        AF_norm = (AF - AF.min(dim=["y", "x"])) / (AF.max(dim=["y", "x"]) - AF.min(dim=["y", "x"]))
         return AF_norm
 
     def ndvi(ds):
         return (ds.nir - ds.red) / (ds.nir + ds.red)
 
     def msavi(ds):
-        return ((2 * ds.nir + 1 - ((2 * ds.nir + 1) ** 2 - 8 * (ds.nir - ds.red)) ** 0.5) / 2)
+        return (2 * ds.nir + 1 - ((2 * ds.nir + 1) ** 2 - 8 * (ds.nir - ds.red)) ** 0.5) / 2
 
     def vsf(ds):
         NDVI = ndvi(ds)
         MSAVI = msavi(ds)
         VSF = 1 - NDVI * MSAVI
-        VSF_norm = (VSF - VSF.min(dim=["y", "x"]))/(VSF.max(dim=["y", "x"]) - VSF.min(dim=["y", "x"]))
+        VSF_norm = (VSF - VSF.min(dim=["y", "x"])) / (
+            VSF.max(dim=["y", "x"]) - VSF.min(dim=["y", "x"])
+        )
         return VSF_norm
 
     def mbi(ds):
@@ -289,13 +281,17 @@ def calculate_indices(
     def ssf(ds):
         EMBI = embi(ds)
         SSF = 1 - EMBI
-        SSF_norm = (SSF - SSF.min(dim=["y", "x"]))/(SSF.max(dim=["y", "x"]) - SSF.min(dim=["y", "x"]))
+        SSF_norm = (SSF - SSF.min(dim=["y", "x"])) / (
+            SSF.max(dim=["y", "x"]) - SSF.min(dim=["y", "x"])
+        )
         return SSF_norm
 
     # Overall modulation using the  Modulation Factor (MF).
     def mf(ds):
-        MF = ((ds.blue + ds.green) - (ds.nir + ds.swir_1)) / ((ds.blue + ds.green) + (ds.nir + ds.swir_1))
-        MF_norm = (MF - MF.min(dim=["y", "x"]))/(MF.max(dim=["y", "x"]) - MF.min(dim=["y", "x"]))
+        MF = ((ds.blue + ds.green) - (ds.nir + ds.swir_1)) / (
+            (ds.blue + ds.green) + (ds.nir + ds.swir_1)
+        )
+        MF_norm = (MF - MF.min(dim=["y", "x"])) / (MF.max(dim=["y", "x"]) - MF.min(dim=["y", "x"]))
         return MF_norm
 
     def ASI(ds):
@@ -313,7 +309,6 @@ def calculate_indices(
 
     # calculate for each index in the list of indices supplied (indexes)
     for index in indices:
-
         # Select an index function from the dictionary
         index_func = index_dict.get(str(index))
 
@@ -321,7 +316,6 @@ def calculate_indices(
         # invalid option being provided, raise an exception informing user to
         # choose from the list of valid options
         if index is None:
-
             raise ValueError(
                 "No remote sensing `index` was provided. Please "
                 "refer to the function \ndocumentation for a full "
@@ -342,7 +336,6 @@ def calculate_indices(
             ]
             and not normalise
         ):
-
             warnings.warn(
                 f"\nA coefficient-based index ('{index}') normally "
                 "applied to surface reflectance values in the \n"
@@ -352,7 +345,6 @@ def calculate_indices(
             )
 
         elif index_func is None:
-
             raise ValueError(
                 f"The selected index '{index}' is not one of the "
                 "valid remote sensing index options. \nPlease "
@@ -362,9 +354,11 @@ def calculate_indices(
 
         # Deprecation warning if `collection` is specified instead of `satellite_mission`.
         if collection is not None:
-            warnings.warn('`collection` was deprecated in version 0.1.7. Use `satelite_mission` instead.',
-                          DeprecationWarning,
-                          stacklevel=2)
+            warnings.warn(
+                "`collection` was deprecated in version 0.1.7. Use `satelite_mission` instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             # Map the collection values to the valid satellite_mission values.
             if collection == "c2":
                 satellite_mission = "ls"
@@ -375,14 +369,14 @@ def calculate_indices(
                 raise ValueError(
                     f"'{collection}' is not a valid option for "
                     "`collection`. Please specify either \n"
-                    "'c2' or 's2'.")
+                    "'c2' or 's2'."
+                )
 
         # Rename bands to a consistent format if depending on what satellite mission
         # is specified in `satellite_mission`. This allows the same index calculations
         # to be applied to all satellite missions. If no satellite mission was provided,
         # raise an exception.
         if satellite_mission is None:
-
             raise ValueError(
                 "No `satellite_mission` was provided. Please specify "
                 "either 'ls' or 's2' to ensure the \nfunction "
@@ -404,12 +398,10 @@ def calculate_indices(
                 "SR_B4": "nir",
                 "SR_B5": "swir_1",
                 "SR_B7": "swir_2",
-                }
+            }
 
             # Rename bands in dataset to use simple names (e.g. 'red')
-            bands_to_rename = {
-                a: b for a, b in bandnames_dict.items() if a in ds.variables
-            }
+            bands_to_rename = {a: b for a, b in bandnames_dict.items() if a in ds.variables}
 
         elif satellite_mission == "s2":
             sr_max = 10000
@@ -425,12 +417,10 @@ def calculate_indices(
                 "B08": "nir",
                 "B11": "swir_1",
                 "B12": "swir_2",
-                }
+            }
 
             # Rename bands in dataset to use simple names (e.g. 'red')
-            bands_to_rename = {
-                a: b for a, b in bandnames_dict.items() if a in ds.variables
-            }
+            bands_to_rename = {a: b for a, b in bandnames_dict.items() if a in ds.variables}
 
         # Raise error if no valid satellite_mission name is provided:
         else:
@@ -448,8 +438,7 @@ def calculate_indices(
 
         except AttributeError:
             raise ValueError(
-                f"Please verify that all bands required to "
-                f"compute {index} are present in `ds`."
+                f"Please verify that all bands required to " f"compute {index} are present in `ds`."
             )
 
         # Add as a new variable in dataset
@@ -466,8 +455,8 @@ def calculate_indices(
 
 def dualpol_indices(
     ds,
-    co_pol='vv',
-    cross_pol='vh',
+    co_pol="vv",
+    cross_pol="vh",
     index=None,
     custom_varname=None,
     drop=False,
@@ -556,7 +545,7 @@ def dualpol_indices(
         return (1 - ratio(ds)) / (1 + ratio(ds))
 
     def theta(ds):
-        return np.arctan((1 - ratio(ds))**2 / (1 + ratio(ds)**2 - ratio(ds)))
+        return np.arctan((1 - ratio(ds)) ** 2 / (1 + ratio(ds) ** 2 - ratio(ds)))
 
     def P1(ds):
         return 1 / (1 + ratio(ds))
@@ -565,12 +554,12 @@ def dualpol_indices(
         return 1 - P1(ds)
 
     def entropy(ds):
-        return P1(ds)*np.log2(P1(ds)) + P2(ds)*np.log2(P2(ds))
+        return P1(ds) * np.log2(P1(ds)) + P2(ds) * np.log2(P2(ds))
 
     # Dictionary containing remote sensing index band recipes
     index_dict = {
         # Radar Vegetation Index for dual-pol, Trudel et al. 2012
-        "RVI": lambda ds: 4*ds[cross_pol] / (ds[co_pol] + ds[cross_pol]),
+        "RVI": lambda ds: 4 * ds[cross_pol] / (ds[co_pol] + ds[cross_pol]),
         # Vertical dual depolarization index, Periasamy 2018
         "VDDPI": lambda ds: (ds[co_pol] + ds[cross_pol]) / ds[co_pol],
         # cross-pol/co-pol ratio
@@ -589,7 +578,6 @@ def dualpol_indices(
 
     # calculate for each index in the list of indices supplied (indexes)
     for index in indices:
-
         # Select an index function from the dictionary
         index_func = index_dict.get(str(index))
 
@@ -597,7 +585,6 @@ def dualpol_indices(
         # invalid option being provided, raise an exception informing user to
         # choose from the list of valid options
         if index is None:
-
             raise ValueError(
                 "No radar `index` was provided. Please "
                 "refer to the function \ndocumentation for a full "
@@ -605,7 +592,6 @@ def dualpol_indices(
             )
 
         elif index_func is None:
-
             raise ValueError(
                 f"The selected index '{index}' is not one of the "
                 "valid remote sensing index options. \nPlease "
