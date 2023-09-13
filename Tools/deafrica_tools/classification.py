@@ -21,11 +21,9 @@ from dask_ml.wrappers import ParallelPostFit
 from datacube.utils import geometry
 from datacube.utils.geometry import assign_crs
 from sklearn.base import ClusterMixin
-from sklearn.cluster import AgglomerativeClustering
-from sklearn.cluster import KMeans
+from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.mixture import GaussianMixture
-from sklearn.model_selection import BaseCrossValidator
-from sklearn.model_selection import KFold, ShuffleSplit
+from sklearn.model_selection import BaseCrossValidator, KFold, ShuffleSplit
 from sklearn.utils import check_random_state
 from tqdm.auto import tqdm
 
