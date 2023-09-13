@@ -1,0 +1,58 @@
+name: deafrica-tools-env
+channels:
+  - conda-forge
+dependencies:
+  - python = 3.10.6 
+  - gdal = 3.6.3 
+  - pip:
+    - --extra-index-url="https://packages.dea.ga.gov.au"
+    - pip-tools
+    - aiohttp 
+    - boto3 
+    - branca 
+    - dask[array,complete,dataframe] 
+    - dask-ml 
+    - dask-gateway 
+    - datacube[celery,performance,s3] 
+    - fiona 
+    - folium 
+    - fsspec 
+    - gdal 
+    - geojson 
+    - geopandas 
+    - geopy 
+    - hdstats 
+    - ipyleaflet 
+    - ipython 
+    - ipywidgets 
+    - joblib 
+    - matplotlib 
+    - numexpr 
+    - numpy 
+    - odc-algo 
+    - odc-geo 
+    - odc-ui 
+    - owslib 
+    - packaging 
+    - pandas 
+    - pyproj 
+    - pystac[validation] 
+    - python-dateutil 
+    - pytmd 
+    - pytz 
+    - rasterio 
+    - rasterstats 
+    - requests 
+    - scikit-image 
+    - scikit-learn 
+    - scipy 
+    - seaborn 
+    - shapely 
+    - tqdm 
+    - xarray 
+    # Code style
+    - black 
+    - flake8 
+    - isort 
+    # Testing
+    - pytest 
