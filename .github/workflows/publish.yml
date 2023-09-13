@@ -50,21 +50,11 @@ jobs:
         with:
           python-version: "3.10.6" # Version range or exact version of a Python version to use, using SemVer's version range syntax
           architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified.
-      - name: Install GDAL development headers
-        run: |
-          sudo apt-add-repository ppa:ubuntugis/ubuntugis-unstable
-          sudo apt-get update
-          sudo apt-get install libgdal-dev
-      - name: Install Poetry 1.5.0
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 - --version 1.5.0
-          poetry --version
-      - name: Read the pyproject.toml, resolve and install the dependencies
-        run: poetry install --verbose
-      - name: Build the source (sdist) and wheel archives
-        run: poetry build --verbose
-      - name: Set credentials for the PyPI repository
-        run: poetry config pypi-token.pypi ${{ secrets.PYPI_API_TOKEN }}
+      - name: Install pypa/build
+        run: python3 -m pip install build --user
+      - name: Build a binary wheel and a source tarball
+        run: python3 -m build --sdist --wheel --outdir dist/ .
       - name: Publish distribution 📦 to PyPI
-        run: poetry publish
-    
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
