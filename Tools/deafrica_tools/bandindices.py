@@ -8,6 +8,7 @@ import warnings
 
 import numpy as np
 
+
 # Define custom functions
 def calculate_indices(
     ds,
@@ -32,11 +33,11 @@ def calculate_indices(
         A two-dimensional or multi-dimensional array with containing the
         spectral bands required to calculate the index. These bands are
         used as inputs to calculate the selected water index.
-        
+
     index : str or list of strs
         A string giving the name of the index to calculate or a list of
         strings giving the names of the indices to calculate:
-        
+
         * ``'ASI'``  (Artificial Surface Index, Yongquan Zhao & Zhe Zhu 2022)
         * ``'AWEI_ns'`` (Automated Water Extraction Index, no shadows, Feyisa 2014)
         * ``'AWEI_sh'`` (Automated Water Extraction Index, shadows, Feyisa 2014)
@@ -67,16 +68,16 @@ def calculate_indices(
         * ``'TCG'`` (Tasseled Cap Greeness, Crist 1985)
         * ``'TCW'`` (Tasseled Cap Wetness, Crist 1985)
         * ``'WI'`` (Water Index, Fisher 2016)
-        
+
     collection : str
-        Deprecated in version 0.1.7. Use `satellite_mission` instead. 
-        
-        Valid options are: 
+        Deprecated in version 0.1.7. Use `satellite_mission` instead.
+
+        Valid options are:
         * ``'c2'`` (for USGS Landsat Collection 2)
             If 'c2', then `satellite_mission='ls'`.
         * ``'s2'`` (for Sentinel-2)
             If 's2', then `satellite_mission='s2'`.
-        
+
     satellite_mission : str
         An string that tells the function which satellite mission's data is
         being used to calculate the index. This is necessary because
@@ -87,14 +88,14 @@ def calculate_indices(
 
          * ``'ls'`` (for USGS Landsat)
          * ``'s2'`` (for Copernicus Sentinel-2)
-         
+
     custom_varname : str, optional
         By default, the original dataset will be returned with
         a new index variable named after `index` (e.g. 'NDVI'). To
         specify a custom name instead, you can supply e.g.
         `custom_varname='custom_name'`. Defaults to None, which uses
         `index` to name the variable.
-        
+
     normalise : bool, optional
         Some coefficient-based indices (e.g. ``'WI'``, ``'BAEI'``,
         ``'AWEI_ns'``, ``'AWEI_sh'``, ``'TCW'``, ``'TCG'``, ``'TCB'``,
@@ -103,11 +104,11 @@ def calculate_indices(
         scaled between 0.0 and 1.0 prior to calculating the index.
         Setting `normalise=True` first scales values to a 0.0-1.0 range
         by dividing by 10000.0. Defaults to True.
-        
+
     drop : bool, optional
         Provides the option to drop the original input data, thus saving
         space. If `drop=True`, returns only the index and its values.
-        
+
     deep_copy: bool, optional
         If `deep_copy=False`, calculate_indices will modify the original
         array, adding bands to the input dataset and not removing them.
@@ -239,62 +240,73 @@ def calculate_indices(
         # Modified Bare Soil Index, Nguyen et al. 2021
         "MBI": lambda ds: ((ds.swir_1 - ds.swir_2 - ds.nir) / (ds.swir_1 + ds.swir_2 + ds.nir)) + 0.5,
     }
-    
+
     # Enhanced Normalised Difference Impervious Surfaces Index, Chen et al. 2019
     def mndwi(ds):
         return (ds.green - ds.swir_1) / (ds.green + ds.swir_1)
+
     def swir_diff(ds):
         return ds.swir_1/ds.swir_2
+
     def alpha(ds):
         return (2*(np.mean(ds.blue)))/(np.mean(swir_diff(ds)) + np.mean(mndwi(ds)**2))
+
     def ENDISI(ds):
         m = mndwi(ds)
         s = swir_diff(ds)
         a = alpha(ds)
         return (ds.blue - (a)*(s + m**2))/(ds.blue + (a)*(s + m**2))
-    
+
     index_dict["ENDISI"] = ENDISI
-    
+
     ## Artificial Surface Index, Yongquan Zhao & Zhe Zhu 2022
     def af(ds):
         AF = (ds.nir - ds.blue) / (ds.nir + ds.blue)
-        AF_norm = (AF - AF.min(dim=["y","x"]))/(AF.max(dim=["y","x"]) - AF.min(dim=["y","x"]))
+        AF_norm = (AF - AF.min(dim=["y", "x"]))/(AF.max(dim=["y", "x"]) - AF.min(dim=["y", "x"]))
         return AF_norm
+
     def ndvi(ds):
         return (ds.nir - ds.red) / (ds.nir + ds.red)
+
     def msavi(ds):
-        return ((2 * ds.nir + 1 - ((2 * ds.nir + 1) ** 2 - 8 * (ds.nir - ds.red)) ** 0.5) / 2 )
+        return ((2 * ds.nir + 1 - ((2 * ds.nir + 1) ** 2 - 8 * (ds.nir - ds.red)) ** 0.5) / 2)
+
     def vsf(ds):
         NDVI = ndvi(ds)
         MSAVI = msavi(ds)
-        VSF = 1 - NDVI * MSAVI 
-        VSF_norm = (VSF - VSF.min(dim=["y","x"]))/(VSF.max(dim=["y","x"]) - VSF.min(dim=["y","x"]))
+        VSF = 1 - NDVI * MSAVI
+        VSF_norm = (VSF - VSF.min(dim=["y", "x"]))/(VSF.max(dim=["y", "x"]) - VSF.min(dim=["y", "x"]))
         return VSF_norm
+
     def mbi(ds):
         return ((ds.swir_1 - ds.swir_2 - ds.nir) / (ds.swir_1 + ds.swir_2 + ds.nir)) + 0.5
+
     def embi(ds):
         MBI = mbi(ds)
         MNDWI = mndwi(ds)
         return (MBI - MNDWI - 0.5) / (MBI + MNDWI + 1.5)
+
     def ssf(ds):
         EMBI = embi(ds)
         SSF = 1 - EMBI
-        SSF_norm = (SSF - SSF.min(dim=["y","x"]))/(SSF.max(dim=["y","x"]) - SSF.min(dim=["y","x"]))
-        return  SSF_norm
+        SSF_norm = (SSF - SSF.min(dim=["y", "x"]))/(SSF.max(dim=["y", "x"]) - SSF.min(dim=["y", "x"]))
+        return SSF_norm
+
     # Overall modulation using the  Modulation Factor (MF).
     def mf(ds):
         MF = ((ds.blue + ds.green) - (ds.nir + ds.swir_1)) / ((ds.blue + ds.green) + (ds.nir + ds.swir_1))
-        MF_norm = (MF - MF.min(dim=["y","x"]))/(MF.max(dim=["y","x"]) - MF.min(dim=["y","x"]))
+        MF_norm = (MF - MF.min(dim=["y", "x"]))/(MF.max(dim=["y", "x"]) - MF.min(dim=["y", "x"]))
         return MF_norm
+
     def ASI(ds):
         AF = af(ds)
         VSF = vsf(ds)
         SSF = ssf(ds)
         MF = mf(ds)
         return AF * VSF * SSF * MF
-    
+
     index_dict["ASI"] = ASI
-    
+
     # If index supplied is not a list, convert to list. This allows us to
     # iterate through either multiple or single indices in the loop below
     indices = index if isinstance(index, list) else [index]
@@ -311,7 +323,7 @@ def calculate_indices(
         if index is None:
 
             raise ValueError(
-                f"No remote sensing `index` was provided. Please "
+                "No remote sensing `index` was provided. Please "
                 "refer to the function \ndocumentation for a full "
                 "list of valid options for `index` (e.g. 'NDVI')"
             )
@@ -347,11 +359,11 @@ def calculate_indices(
                 "refer to the function documentation for a full "
                 "list of valid options for `index`"
             )
-        
+
         # Deprecation warning if `collection` is specified instead of `satellite_mission`.
         if collection is not None:
-            warnings.warn('`collection` was deprecated in version 0.1.7. Use `satelite_mission` instead.', 
-                          DeprecationWarning, 
+            warnings.warn('`collection` was deprecated in version 0.1.7. Use `satelite_mission` instead.',
+                          DeprecationWarning,
                           stacklevel=2)
             # Map the collection values to the valid satellite_mission values.
             if collection == "c2":
@@ -365,7 +377,6 @@ def calculate_indices(
                     "`collection`. Please specify either \n"
                     "'c2' or 's2'.")
 
-            
         # Rename bands to a consistent format if depending on what satellite mission
         # is specified in `satellite_mission`. This allows the same index calculations
         # to be applied to all satellite missions. If no satellite mission was provided,
@@ -378,12 +389,12 @@ def calculate_indices(
                 "calculates indices using the correct spectral "
                 "bands."
             )
-            
+
         elif satellite_mission == "ls":
             sr_max = 1.0
             # Dictionary mapping full data names to simpler alias names
             # This only applies to properly-scaled "ls" data i.e. from
-            # the Landsat geomedians. calculate_indices will not show 
+            # the Landsat geomedians. calculate_indices will not show
             # correct output for raw (unscaled) Landsat data (i.e. default
             # outputs from dc.load)
             bandnames_dict = {
@@ -394,7 +405,7 @@ def calculate_indices(
                 "SR_B5": "swir_1",
                 "SR_B7": "swir_2",
                 }
-            
+
             # Rename bands in dataset to use simple names (e.g. 'red')
             bands_to_rename = {
                 a: b for a, b in bandnames_dict.items() if a in ds.variables
@@ -451,6 +462,7 @@ def calculate_indices(
 
     # Return input dataset with added water index variable
     return ds
+
 
 def dualpol_indices(
     ds,
@@ -521,9 +533,9 @@ def dualpol_indices(
         original Dataset.
     """
 
-    if not co_pol in list(ds.data_vars):
+    if co_pol not in list(ds.data_vars):
         raise ValueError(f"{co_pol} measurement is not in the dataset")
-    if not cross_pol in list(ds.data_vars):
+    if cross_pol not in list(ds.data_vars):
         raise ValueError(f"{cross_pol} measurement is not in the dataset")
 
     # Set ds equal to a copy of itself in order to prevent the function
@@ -587,7 +599,7 @@ def dualpol_indices(
         if index is None:
 
             raise ValueError(
-                f"No radar `index` was provided. Please "
+                "No radar `index` was provided. Please "
                 "refer to the function \ndocumentation for a full "
                 "list of valid options for `index` (e.g. 'RVI')"
             )
