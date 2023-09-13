@@ -7,29 +7,28 @@ Functions for working with the Wetlands Insight Tool (WIT)
 # Force GeoPandas to use Shapely instead of PyGEOS
 # In a future release, GeoPandas will switch to using Shapely by default.
 import os
-os.environ['USE_PYGEOS'] = '0'
+
+os.environ["USE_PYGEOS"] = "0"
 
 import warnings
-import numpy as np
-import pandas as pd
-import geopandas as gpd
-import seaborn as sns
-import xarray as xr
-import matplotlib.pyplot as plt
-from skimage import exposure
-import matplotlib.animation as animation
-import matplotlib.patheffects as PathEffects
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-from dask.distributed import progress
 
 import datacube
-from datacube.utils import masking
-from datacube.utils import geometry
+import geopandas as gpd
+import matplotlib.animation as animation
+import matplotlib.patheffects as PathEffects
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import xarray as xr
+from datacube.utils import geometry, masking
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from skimage import exposure
 
 from deafrica_tools.bandindices import calculate_indices
+from deafrica_tools.classification import HiddenPrints
 from deafrica_tools.datahandling import load_ard, wofs_fuser
 from deafrica_tools.spatial import xr_rasterize
-from deafrica_tools.classification import HiddenPrints
 
 
 def WIT_drill(
@@ -73,7 +72,7 @@ def WIT_drill(
     TCW_threshold : Int, optional
         The tasseled cap wetness threshold, beyond which a pixel will be
         considered 'wet'. Defaults to -0.035.
-    resample_frequency : str 
+    resample_frequency : str
         Option for resampling time-series of input datasets. This option is useful
         for either smoothing the WIT plot, or because the area of analysis is larger
         than a scene width and therefore requires composites. Options include any
@@ -98,7 +97,7 @@ def WIT_drill(
     """
     # add geom to dc query dict
     if isinstance(gdf, datacube.utils.geometry._base.Geometry):
-        gdf = gpd.GeoDataFrame({'col1':['name'],'geometry':gdf.geom}, crs=gdf.crs)
+        gdf = gpd.GeoDataFrame({"col1": ["name"], "geometry": gdf.geom}, crs=gdf.crs)
     geom = geometry.Geometry(geom=gdf.iloc[0].geometry, crs=gdf.crs)
     query = {"geopolygon": geom, "time": time}
 
@@ -115,7 +114,7 @@ def WIT_drill(
         products=["ls8_sr", "ls7_sr", "ls5_sr"],
         output_crs="epsg:6933",
         min_gooddata=min_gooddata,
-        mask_filters=(['opening', 3], ['dilation', 3]),
+        mask_filters=(["opening", 3], ["dilation", 3]),
         measurements=["red", "green", "blue", "nir", "swir_1", "swir_2"],
         dask_chunks=dask_chunks,
         group_by="solar_day",
@@ -123,28 +122,28 @@ def WIT_drill(
         verbose=verbose,
         **query,
     )
-    
+
     # create polygon mask
     mask = xr_rasterize(gdf.iloc[[0]], ds_ls)
     ds_ls = ds_ls.where(mask)
-    
+
     # calculate tasselled cap wetness within masked AOI
     if verbose:
         print("calculating tasseled cap wetness index ")
-    
-    with HiddenPrints(): #suppres the prints from this func
+
+    with HiddenPrints():  # suppres the prints from this func
         tcw = calculate_indices(
             ds_ls, index=["TCW"], normalise=False, satellite_mission="ls", drop=True
         )
-    
+
     if resample_frequency is not None:
         if verbose:
-            print('Resampling TCW to '+ resample_frequency)
+            print("Resampling TCW to " + resample_frequency)
         tcw = tcw.resample(time=resample_frequency).max()
-    
+
     tcw = tcw.TCW >= TCW_threshold
     tcw = tcw.where(mask, 0)
-    tcw = tcw.persist() 
+    tcw = tcw.persist()
 
     if verbose:
         print("Loading WOfS layers ")
@@ -159,15 +158,15 @@ def WIT_drill(
 
     # boolean of wet/dry
     wofls_wet = masking.make_mask(wofls.water, wet=True)
-    
+
     if resample_frequency is not None:
         if verbose:
-            print('Resampling WOfS to '+ resample_frequency)
+            print("Resampling WOfS to " + resample_frequency)
         wofls_wet = wofls_wet.resample(time=resample_frequency).max()
-    
+
     # mask sure wofs matches other datasets
     wofls_wet = wofls_wet.where(wofls_wet.time == tcw.time)
-    
+
     # apply the polygon mask
     wofls_wet = wofls_wet.where(mask)
 
@@ -184,16 +183,16 @@ def WIT_drill(
         measurements=["pv", "npv", "bs"],
         collection_category="T1",
     )
-    
+
     # use wofls mask to cloud mask FC
     clear_and_dry = masking.make_mask(wofls, dry=True).water
     fc_ds = fc_ds.where(clear_and_dry)
-    
+
     if resample_frequency is not None:
         if verbose:
-            print('Resampling FC to '+ resample_frequency)
+            print("Resampling FC to " + resample_frequency)
         fc_ds = fc_ds.resample(time=resample_frequency).max()
-    
+
     # mask sure fc matches other datasets
     fc_ds = fc_ds.where(fc_ds.time == tcw.time)
 
@@ -215,15 +214,15 @@ def WIT_drill(
 
     # use nanargmax to get the index of the maximum value
     BSPVNPV = fc_int.argmax(dim="variable")
-    
-    #int dytype remocves NaNs so we need to create mask again
+
+    # int dytype remocves NaNs so we need to create mask again
     FC_mask = np.isfinite(fc_ds_noTCW).all(dim="variable")
     BSPVNPV = BSPVNPV.where(FC_mask)
 
     # Restack the Fractional cover dataset all together
     # CAUTION:ARGMAX DEPENDS ON ORDER OF VARIABALES IN
     # DATASET. NEED TO ADJUST BELOW DEPENDING ON ORDER OF FC VARIABLES
-    
+
     FC_dominant = xr.Dataset(
         {
             "bs": (BSPVNPV == 2).where(FC_mask),
@@ -234,16 +233,15 @@ def WIT_drill(
 
     # pixel counts
     pixels = mask.sum(dim=["x", "y"])
-    
 
     if verbose_progress:
         print("Computing wetness")
     tcw_pixel_count = tcw.sum(dim=["x", "y"]).compute()
-    
+
     if verbose_progress:
         print("Computing green veg, dry veg, and bare soil")
     FC_count = FC_dominant.sum(dim=["x", "y"]).compute()
-    
+
     if verbose_progress:
         print("Computing open water")
     wofs_pixels = wofls_wet.sum(dim=["x", "y"]).compute()
@@ -259,9 +257,9 @@ def WIT_drill(
     BS_percent = (FC_count.bs / pixels) * 100
     PV_percent = (FC_count.pv / pixels) * 100
     NPV_percent = (FC_count.npv / pixels) * 100
-    NoData_count = ((
-        100 - wofs_area_percent - tcw_less_wofs - PV_percent - NPV_percent - BS_percent
-    ) / 100) * pixels
+    NoData_count = (
+        (100 - wofs_area_percent - tcw_less_wofs - PV_percent - NPV_percent - BS_percent) / 100
+    ) * pixels
 
     # re-do percentages but now handling any no-data pixels within polygon
     BS_percent = (FC_count.bs / (pixels - NoData_count)) * 100
@@ -270,10 +268,10 @@ def WIT_drill(
     wofs_area_percent = (wofs_pixels / (pixels - NoData_count)) * 100
     tcw_area_percent = (tcw_pixel_count / (pixels - NoData_count)) * 100
     tcw_less_wofs = tcw_area_percent - wofs_area_percent
-    
+
     # Sometimes when we resample datastes, WOfS extent can be
     # greater than the wetness extent, thus make negative values == zero
-    tcw_less_wofs = tcw_less_wofs.where(tcw_less_wofs>=0, 0) 
+    tcw_less_wofs = tcw_less_wofs.where(tcw_less_wofs >= 0, 0)
 
     # start setup of dataframe by adding only one dataset
     df = pd.DataFrame(
@@ -290,7 +288,7 @@ def WIT_drill(
 
     # round numbers
     df = df.round(2)
-    
+
     # save the csv of the output data used to create the stacked plot for the polygon drill
     if export_csv:
         if verbose:
@@ -321,19 +319,14 @@ def animated_timeseries_WIT(
     x_dim="x",
     y_dim="y",
 ):
-
     ###############
     # Setup steps #
     ###############
 
     # Test if all dimensions exist in dataset
     if time_dim in ds and x_dim in ds and y_dim in ds:
-
         # Test if there is one or three bands, and that all exist in both datasets:
-        if ((len(bands) == 3) | (len(bands) == 1)) & all(
-            [(b in ds.data_vars) for b in bands]
-        ):
-
+        if ((len(bands) == 3) | (len(bands) == 1)) & all([(b in ds.data_vars) for b in bands]):
             # Import xarrays as lists of three band numpy arrays
             imagelist, vmin, vmax = _ds_to_arrraylist(
                 ds,
@@ -390,9 +383,7 @@ def animated_timeseries_WIT(
                     "verticalalignment": "top",
                     "fontsize": 15,
                     "color": "white",
-                    "path_effects": [
-                        PathEffects.withStroke(linewidth=3, foreground="black")
-                    ],
+                    "path_effects": [PathEffects.withStroke(linewidth=3, foreground="black")],
                 },
                 **annotation_kwargs,
             )
@@ -413,9 +404,7 @@ def animated_timeseries_WIT(
             ###################
 
             # Set up figure
-            fig, (ax1, ax2) = plt.subplots(
-                ncols=2, gridspec_kw={"width_ratios": [1, 2]}
-            )
+            fig, (ax1, ax2) = plt.subplots(ncols=2, gridspec_kw={"width_ratios": [1, 2]})
             fig.subplots_adjust(left=0, bottom=0, right=1, top=1, wspace=0.2, hspace=0)
             fig.set_size_inches(10.0, height * 0.5, forward=True)
             ax1.axis("off")
@@ -477,9 +466,7 @@ def animated_timeseries_WIT(
             )
             df1 = df1.set_index(df.index)
 
-            line_test = df1.plot(
-                ax=ax2, legend=False, color="black", **pandasplot_kwargs
-            )
+            line_test = df1.plot(ax=ax2, legend=False, color="black", **pandasplot_kwargs)
 
             # set axis limits to the min and max
             ax2.set(xlim=(df.index[0], df.index[-1]), ylim=(0, 100))
@@ -497,15 +484,12 @@ def animated_timeseries_WIT(
 
             # Optionally add shapefile overlay(s) from either string path or list of string paths
             if isinstance(shapefile_path, str):
-
                 shapefile = gpd.read_file(shapefile_path)
                 shapefile.plot(**shapefile_kwargs, ax=ax1)
 
             elif isinstance(shapefile_path, list):
-
                 # Iterate through list of string paths
                 for shapefile in shapefile_path:
-
                     shapefile = gpd.read_file(shapefile)
                     shapefile.plot(**shapefile_kwargs, ax=ax1)
 
@@ -531,25 +515,20 @@ def animated_timeseries_WIT(
             # Function to update figure
 
             def update_figure(frame_i):
-
                 ####################
                 # Plot image panel #
                 ####################
 
                 # If possible, extract dates from time dimension
                 try:
-
                     # Get human-readable date info (e.g. "16 May 1990")
                     ts = ds[time_dim][{time_dim: frame_i}].dt
                     year = ts.year.item()
                     month = ts.month.item()
                     day = ts.day.item()
-                    date_string = "{} {} {}".format(
-                        day, calendar.month_abbr[month], year
-                    )
+                    date_string = "{} {} {}".format(day, calendar.month_abbr[month], year)
 
                 except:
-
                     date_string = ds[time_dim][{time_dim: frame_i}].values.item()
 
                 # Create annotation string based on title and date specifications:
@@ -576,15 +555,12 @@ def animated_timeseries_WIT(
 
                 # Update right panel with temporal line subset, adding each new line into artist_list
                 for i, line in enumerate(line_test.lines):
-
                     # Clip line data to current time, and get x and y values
                     y = df1[
-                        df1.index
-                        <= datetime(year=year, month=month, day=day, hour=23, minute=59)
+                        df1.index <= datetime(year=year, month=month, day=day, hour=23, minute=59)
                     ].iloc[:, i]
                     x = df1[
-                        df1.index
-                        <= datetime(year=year, month=month, day=day, hour=23, minute=59)
+                        df1.index <= datetime(year=year, month=month, day=day, hour=23, minute=59)
                     ].index
 
                     # Plot lines after stripping NaNs (this produces continuous, unbroken lines)
@@ -633,9 +609,7 @@ def animated_timeseries_WIT(
                 print("    Output file type must be either .mp4, .wmv or .gif")
 
         else:
-            print(
-                "Please select either one or three bands that all exist in the input dataset"
-            )
+            print("Please select either one or three bands that all exist in the input dataset")
 
     else:
         print(
@@ -647,9 +621,7 @@ def animated_timeseries_WIT(
 # Define function to convert xarray dataset to list of one or three band numpy arrays
 
 
-def _ds_to_arrraylist(
-    ds, bands, time_dim, x_dim, y_dim, percentile_stretch, image_proc_func=None
-):
+def _ds_to_arrraylist(ds, bands, time_dim, x_dim, y_dim, percentile_stretch, image_proc_func=None):
     """
     Converts an xarray dataset to a list of numpy arrays for plt.imshow plotting
     """
@@ -659,7 +631,6 @@ def _ds_to_arrraylist(
 
     array_list = []
     for i, timestep in enumerate(ds[time_dim]):
-
         # Select single timestep from the data array
         ds_i = ds[{time_dim: i}]
 
@@ -668,20 +639,17 @@ def _ds_to_arrraylist(
         y = len(ds[y_dim])
 
         if len(bands) == 1:
-
             # Create new one band array
             img_toshow = exposure.rescale_intensity(
                 ds_i[bands[0]].values, in_range=(p_low, p_high), out_range="image"
             )
 
         else:
-
             # Create new three band array
             rawimg = np.zeros((y, x, 3), dtype=np.float32)
 
             # Add xarray bands into three dimensional numpy array
             for band, colour in enumerate(bands):
-
                 rawimg[:, :, band] = ds_i[colour].values
 
             # Stretch contrast using percentile values
@@ -691,7 +659,6 @@ def _ds_to_arrraylist(
 
             # Optionally image processing
             if image_proc_func:
-
                 img_toshow = image_proc_func(img_toshow).clip(0, 1)
 
         array_list.append(img_toshow)
@@ -699,18 +666,14 @@ def _ds_to_arrraylist(
     return array_list, p_low, p_high
 
 
-def _add_colourbar(
-    ax, im, vmin, vmax, cmap="Greys", tick_fontsize=15, tick_colour="black"
-):
+def _add_colourbar(ax, im, vmin, vmax, cmap="Greys", tick_fontsize=15, tick_colour="black"):
     """
     Add a nicely formatted colourbar to an animation panel
     """
 
     # Add colourbar
     axins2 = inset_axes(ax, width="97%", height="4%", loc=8, borderpad=1)
-    plt.gcf().colorbar(
-        im, cax=axins2, orientation="horizontal", ticks=np.linspace(vmin, vmax, 3)
-    )
+    plt.gcf().colorbar(im, cax=axins2, orientation="horizontal", ticks=np.linspace(vmin, vmax, 3))
     axins2.xaxis.set_ticks_position("top")
     axins2.tick_params(axis="x", colors=tick_colour, labelsize=tick_fontsize)
 
