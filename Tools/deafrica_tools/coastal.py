@@ -16,8 +16,6 @@ import numpy as np
 import pandas as pd
 import requests
 import xarray as xr
-from datacube.utils.geometry import CRS
-from otps import TimePoint, predict_tide
 from owslib.wfs import WebFeatureService
 # Fix converters for tidal plot
 from pandas.plotting import register_matplotlib_converters
