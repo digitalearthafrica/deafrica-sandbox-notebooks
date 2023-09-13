@@ -7,38 +7,31 @@ Functions for plotting Digital Earth Africa data.
 # Force GeoPandas to use Shapely instead of PyGEOS
 # In a future release, GeoPandas will switch to using Shapely by default.
 import os
-os.environ['USE_PYGEOS'] = '0'
+
+os.environ["USE_PYGEOS"] = "0"
 
 import math
-import folium
-import ipywidgets
+from pathlib import Path
+
 import branca
-import numpy as np
+import folium
 import geopandas as gpd
-import matplotlib as mpl
+import ipywidgets
+import matplotlib.cm as cm
 import matplotlib.patheffects as PathEffects
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-from datetime import datetime
-import matplotlib.cm as cm
-from matplotlib import colors as mcolours
-from pyproj import Transformer
-from IPython.display import display
-from matplotlib.colors import ListedColormap
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from ipyleaflet import Map, Marker, Popup, GeoJSON, basemaps, Choropleth
-from skimage import exposure
-from branca.colormap import linear
-from odc.ui import image_aspect
-
-from matplotlib.animation import FuncAnimation
+import numpy as np
 import pandas as pd
-from pathlib import Path
+from ipyleaflet import Choropleth, GeoJSON, Map, basemaps
+from IPython.display import display
+from matplotlib import colors as mcolours
+from matplotlib.animation import FuncAnimation
+from matplotlib.colors import ListedColormap
+from odc.ui import image_aspect
+from pyproj import Transformer
 from shapely.geometry import box
 from skimage.exposure import rescale_intensity
 from tqdm.auto import tqdm
-import warnings
 
 
 def rgb(
@@ -55,7 +48,6 @@ def rgb(
     savefig_kwargs={},
     **kwargs,
 ):
-
     """
     Takes an xarray dataset and plots RGB images using three imagery
     bands (e.g ['red', 'green', 'blue']). The `index`
@@ -132,7 +124,7 @@ def rgb(
 
     # If bands are not in the dataset
     ds_vars = list(ds.data_vars)
-    if set(bands).issubset(ds_vars) == False:
+    if set(bands).issubset(ds_vars) is False:
         raise ValueError(
             "rgb() bands do not match band names in dataset. "
             "Note the default rgb() bands are ['red', 'green', 'blue']."
@@ -140,7 +132,6 @@ def rgb(
 
     # If ax is supplied via kwargs, ignore aspect and size
     if "ax" in kwargs:
-
         # Create empty aspect size kwarg that will be passed to imshow
         aspect_size_kwarg = {}
     else:
@@ -154,7 +145,6 @@ def rgb(
     # If no value is supplied for `index` (the default), plot using default
     # values and arguments passed via `**kwargs`
     if index is None:
-
         # Select bands and convert to DataArray
         da = ds[bands].to_array()
 
@@ -166,40 +156,32 @@ def rgb(
         # If there are more than three dimensions and the index dimension == 1,
         # squeeze this dimension out to remove it
         if (len(ds.dims) > 2) and ("col" not in kwargs) and (len(da[index_dim]) == 1):
-
             da = da.squeeze(dim=index_dim)
 
         # If there are more than three dimensions and the index dimension
         # is longer than 1, raise exception to tell user to use 'col'/`index`
         elif (len(ds.dims) > 2) and ("col" not in kwargs) and (len(da[index_dim]) > 1):
-
             raise Exception(
-                f"The input dataset `ds` has more than two dimensions: "
+                "The input dataset `ds` has more than two dimensions: "
                 "{list(ds.dims.keys())}. Please select a single observation "
                 "using e.g. `index=0`, or enable faceted plotting by adding "
                 'the arguments e.g. `col="time", col_wrap=4` to the function '
                 "call"
             )
         da = da.compute()
-        img = da.plot.imshow(
-            robust=robust, col_wrap=col_wrap, **aspect_size_kwarg, **kwargs
-        )
+        img = da.plot.imshow(robust=robust, col_wrap=col_wrap, **aspect_size_kwarg, **kwargs)
 
     # If values provided for `index`, extract corresponding observations and
     # plot as either single image or facet plot
     else:
-
         # If a float is supplied instead of an integer index, raise exception
         if isinstance(index, float):
-            raise Exception(
-                f"Please supply `index` as either an integer or a list of " "integers"
-            )
+            raise Exception("Please supply `index` as either an integer or a list of " "integers")
 
         # If col argument is supplied as well as `index`, raise exception
         if "col" in kwargs:
             raise Exception(
-                f"Cannot supply both `index` and `col`; please remove one and "
-                "try again"
+                "Cannot supply both `index` and `col`; please remove one and " "try again"
             )
 
         # Convert index to generic type list so that number of indices supplied
@@ -216,7 +198,6 @@ def rgb(
 
         # If multiple index values are supplied, plot as a faceted plot
         if len(index) > 1:
-
             img = da.plot.imshow(
                 robust=robust,
                 col=index_dim,
@@ -228,7 +209,6 @@ def rgb(
         # If only one index is supplied, squeeze out index_dim and plot as a
         # single panel
         else:
-
             img = da.squeeze(dim=index_dim).plot.imshow(
                 robust=robust, **aspect_size_kwarg, **kwargs
             )
@@ -237,12 +217,11 @@ def rgb(
     # faceted plots have a different API (figure vs fig) so we get around this
     # using a try statement:
     if savefig_path:
-
         print(f"Exporting image to {savefig_path}")
 
         try:
             img.fig.savefig(savefig_path, **savefig_kwargs)
-        except:
+        except Exception:
             img.figure.savefig(savefig_path, **savefig_kwargs)
 
 
@@ -292,12 +271,10 @@ def display_map(x, y, crs="EPSG:4326", margin=-0.5, zoom_bias=0):
 
     # Calculate zoom level based on coordinates
     lat_zoom_level = (
-        _degree_to_zoom_level(min(all_latitude), max(all_latitude), margin=margin)
-        + zoom_bias
+        _degree_to_zoom_level(min(all_latitude), max(all_latitude), margin=margin) + zoom_bias
     )
     lon_zoom_level = (
-        _degree_to_zoom_level(min(all_longitude), max(all_longitude), margin=margin)
-        + zoom_bias
+        _degree_to_zoom_level(min(all_longitude), max(all_longitude), margin=margin) + zoom_bias
     )
     zoom_level = min(lat_zoom_level, lon_zoom_level)
 
@@ -425,7 +402,6 @@ def map_shapefile(
 
     # If continuous is False, remap categorical classes for visualisation
     if not continuous:
-
         # Zip classes data together to make a dictionary
         classes_uni = list(gdf[attribute].unique())
         classes_clean = list(range(0, len(classes_uni)))
@@ -436,7 +412,6 @@ def map_shapefile(
 
     # If continuous is True then do not remap
     else:
-
         # Get values to colour by as a list
         classes = gdf[attribute].tolist()
 
@@ -450,7 +425,6 @@ def map_shapefile(
     lat = (lat1 + lat2) / 2
 
     if default_zoom is None:
-
         # Calculate default zoom from latitude of features
         default_zoom = _degree_to_zoom_level(lat1, lat2, margin=-0.5)
 
@@ -469,9 +443,7 @@ def map_shapefile(
 
     # Get `branca.colormap` object from matplotlib string
     cm_cmap = cm.get_cmap(cmap, 30)
-    colormap = branca.colormap.LinearColormap(
-        [cm_cmap(i) for i in np.linspace(0, 1, 30)]
-    )
+    colormap = branca.colormap.LinearColormap([cm_cmap(i) for i in np.linspace(0, 1, 30)])
 
     # Create the choropleth
     choropleth = Choropleth(
@@ -486,30 +458,25 @@ def map_shapefile(
     # across the 'fillColor' attribute to the 'color' attribute for each
     # feature, then plot the data as a GeoJSON layer rather than the
     # choropleth layer that we use for polygon data.
-    linefeatures = any(
-        x in ["LineString", "MultiLineString"] for x in gdf.geometry.type.values
-    )
+    linefeatures = any(x in ["LineString", "MultiLineString"] for x in gdf.geometry.type.values)
     if linefeatures:
-
         # Copy colour from fill to line edge colour
         for i in keys:
-            choropleth.data["features"][i]["properties"]["style"][
-                "color"
-            ] = choropleth.data["features"][i]["properties"]["style"]["fillColor"]
+            choropleth.data["features"][i]["properties"]["style"]["color"] = choropleth.data[
+                "features"
+            ][i]["properties"]["style"]["fillColor"]
 
         # Add GeoJSON layer to map
         feature_layer = GeoJSON(data=choropleth.data, style=style_kwargs)
         m.add_layer(feature_layer)
 
     else:
-
         # Add Choropleth layer to map
         m.add_layer(choropleth)
 
     # If a column is specified by `hover_col`, print data from the
     # hovered feature above the map
     if hover_col and not linefeatures:
-
         # Use cholopleth object if data is polygon
         lbl = ipywidgets.Label()
         dbg = ipywidgets.Output()
@@ -517,7 +484,6 @@ def map_shapefile(
         display(lbl)
 
     else:
-
         lbl = ipywidgets.Label()
         dbg = ipywidgets.Output()
         feature_layer.on_hover(on_hover)
@@ -682,7 +648,6 @@ def xr_animation(
 
         # Update both `start_time` and `end_time` columns
         for time_col, time_val in zip(["start_time", "end_time"], minmax_times):
-
             # Add time_col if it does not exist
             if time_col not in gdf:
                 gdf[time_col] = np.nan
@@ -704,9 +669,7 @@ def xr_animation(
 
         # Initialise color bar using plot min and max values
         img = ax.imshow(np.array([[vmin, vmax]]), **imshow_defaults)
-        fig.colorbar(
-            img, cax=cax, orientation="horizontal", ticks=np.linspace(vmin, vmax, 2)
-        )
+        fig.colorbar(img, cax=cax, orientation="horizontal", ticks=np.linspace(vmin, vmax, 2))
 
         # Fine-tune appearance of colorbar
         cax.xaxis.set_ticks_position("top")
@@ -736,13 +699,10 @@ def xr_animation(
                 f"of timesteps in `ds` (n={len(times)})"
             )
 
-        times_list = (
-            times.dt.strftime(show_date).values if show_date else [None] * len(times)
-        )
+        times_list = times.dt.strftime(show_date).values if show_date else [None] * len(times)
         text_list = show_text if is_sequence else [show_text] * len(times)
         annotation_list = [
-            "\n".join([str(i) for i in (a, b) if i])
-            for a, b in zip(times_list, text_list)
+            "\n".join([str(i) for i in (a, b) if i]) for a, b in zip(times_list, text_list)
         ]
 
         return annotation_list
@@ -779,7 +739,6 @@ def xr_animation(
 
         # Add geodataframe annotation
         if show_gdf is not None:
-
             # Obtain start and end times to filter geodataframe features
             time_i = ds.time.isel(time=i).values
 
@@ -789,7 +748,6 @@ def xr_animation(
             ]
 
             if len(gdf_subset.index) > 0:
-
                 # Set color to geodataframe field if supplied
                 if ("color" in gdf_subset) and ("color" not in gdf_kwargs):
                     gdf_defaults.update({"color": gdf_subset["color"].tolist()})
@@ -817,15 +775,13 @@ def xr_animation(
     missing_bands = [b for b in bands if b not in ds.data_vars]
     if missing_bands:
         raise ValueError(
-            f"Band(s) {missing_bands} do not exist as "
-            f"variables in `ds` {list(ds.data_vars)}"
+            f"Band(s) {missing_bands} do not exist as " f"variables in `ds` {list(ds.data_vars)}"
         )
 
     # Test if time dimension exists in dataset
     if "time" not in ds.dims:
         raise ValueError(
-            f"`ds` does not contain a 'time' dimension "
-            f"required for generating an animation"
+            "`ds` does not contain a 'time' dimension " "required for generating an animation"
         )
 
     # Set default parameters
@@ -1079,7 +1035,7 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
                 "snow/ice",
                 "clouds",
             ]
-        except:
+        except Exception:
             AttributeError
 
     if "IO" in product:
@@ -1113,8 +1069,8 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
                 "clouds",
                 "rangeland",
             ]
-            ticks = list(np.mean((bounds[i+1], val)) for i, val in enumerate(bounds[:-1]))
-        except:
+            ticks = list(np.mean((bounds[i + 1], val)) for i, val in enumerate(bounds[:-1]))
+        except Exception:
             AttributeError
 
     if "ESA" in product:
@@ -1151,93 +1107,127 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
                 "mangroves",
                 "moss and lichen",
             ]
-        except:
+        except Exception:
             AttributeError
-            
+
     if "CGLS" in product:
         try:
-            labels = {0: {'color': '#282828', 'flag': 'unknown'},
-                      20: {'color': '#FFBB22', 'flag': 'shrubs'},
-                      30: {'color': '#FFFF4C', 'flag': 'herbaceous_vegetation'},
-                      40: {'color': '#F096FF', 'flag': 'cultivated_and_managed_vegetation_or_agriculture'},
-                      50: {'color': '#FA0000', 'flag': 'urban_or_built_up'},
-                      60: {'color': '#B4B4B4', 'flag': 'bare_or_sparse_vegetation'},
-                      70: {'color': '#F0F0F0', 'flag': 'snow_and_ice'},
-                      80: {'color': '#0032C8', 'flag': 'permanent_water_bodies'},
-                      90: {'color': '#0096A0', 'flag': 'herbaceous_wetland'},
-                      100: {'color': '#FAE6A0', 'flag': 'moss_and_lichen'},
-                      111: {'color': '#58481F', 'flag': 'closed_forest_evergreen_needle_leaf'},
-                      112: {'color': '#009900', 'flag': 'closed_forest_evergreen_broad_leaf'},
-                      113: {'color': '#70663E', 'flag': 'closed_forest_deciduous_needle_leaf'},
-                      114: {'color': '#00CC00', 'flag': 'closed_forest_deciduous_broad_leaf'},
-                      115: {'color': '#4E751F', 'flag': 'closed_forest_mixed'},
-                      116: {'color': '#007800', 'flag': 'closed_forest_not_matching_any_of_the_other_definitions'},
-                      121: {'color': '#666000', 'flag': 'open_forest_evergreen_needle_leaf'},
-                      122: {'color': '#8DB400', 'flag': 'open_forest_evergreen_broad_leaf'},
-                      123: {'color': '#8D7400', 'flag': 'open_forest_deciduous_needle_leaf'},
-                      124: {'color': '#A0DC00', 'flag': 'open_forest_deciduous_broad_leaf'},
-                      125: {'color': '#929900', 'flag': 'open_forest_mixed'},
-                      126: {'color': '#648C00', 'flag': 'open_forest_not_matching_any_of_the_other_definitions'},
-                      200: {'color': '#000080', 'flag': 'oceans_seas'}}
+            labels = {
+                0: {"color": "#282828", "flag": "unknown"},
+                20: {"color": "#FFBB22", "flag": "shrubs"},
+                30: {"color": "#FFFF4C", "flag": "herbaceous_vegetation"},
+                40: {
+                    "color": "#F096FF",
+                    "flag": "cultivated_and_managed_vegetation_or_agriculture",
+                },
+                50: {"color": "#FA0000", "flag": "urban_or_built_up"},
+                60: {"color": "#B4B4B4", "flag": "bare_or_sparse_vegetation"},
+                70: {"color": "#F0F0F0", "flag": "snow_and_ice"},
+                80: {"color": "#0032C8", "flag": "permanent_water_bodies"},
+                90: {"color": "#0096A0", "flag": "herbaceous_wetland"},
+                100: {"color": "#FAE6A0", "flag": "moss_and_lichen"},
+                111: {"color": "#58481F", "flag": "closed_forest_evergreen_needle_leaf"},
+                112: {"color": "#009900", "flag": "closed_forest_evergreen_broad_leaf"},
+                113: {"color": "#70663E", "flag": "closed_forest_deciduous_needle_leaf"},
+                114: {"color": "#00CC00", "flag": "closed_forest_deciduous_broad_leaf"},
+                115: {"color": "#4E751F", "flag": "closed_forest_mixed"},
+                116: {
+                    "color": "#007800",
+                    "flag": "closed_forest_not_matching_any_of_the_other_definitions",
+                },
+                121: {"color": "#666000", "flag": "open_forest_evergreen_needle_leaf"},
+                122: {"color": "#8DB400", "flag": "open_forest_evergreen_broad_leaf"},
+                123: {"color": "#8D7400", "flag": "open_forest_deciduous_needle_leaf"},
+                124: {"color": "#A0DC00", "flag": "open_forest_deciduous_broad_leaf"},
+                125: {"color": "#929900", "flag": "open_forest_mixed"},
+                126: {
+                    "color": "#648C00",
+                    "flag": "open_forest_not_matching_any_of_the_other_definitions",
+                },
+                200: {"color": "#000080", "flag": "oceans_seas"},
+            }
 
-            colors = [label['color'] for label in labels.values()]
-            cmap = ListedColormap([label['color'] for label in labels.values()])
-            norm = mcolours.BoundaryNorm(list(labels.keys())+[201], cmap.N+1, extend='max')
-            ticks = list(np.mean((list(list(labels.keys())+[201])[i+1], val)) for i, val in enumerate(list(labels.keys())))
-            cblabels=[label['flag'] for label in labels.values()]
-            
-        except:
+            colors = [label["color"] for label in labels.values()]
+            cmap = ListedColormap([label["color"] for label in labels.values()])
+            norm = mcolours.BoundaryNorm(list(labels.keys()) + [201], cmap.N + 1, extend="max")
+            ticks = list(
+                np.mean((list(list(labels.keys()) + [201])[i + 1], val))
+                for i, val in enumerate(list(labels.keys()))
+            )
+            cblabels = [label["flag"] for label in labels.values()]
+
+        except Exception:
             AttributeError
-    if 'CCI' in product:
+    if "CCI" in product:
         try:
-            labels = {0: {'color': '#282828', 'flag': 'no data'},
-                      10: {'color': '#EBEB34', 'flag': 'cropland, rainfed'},
-                      11: {'color': '#D9EB34', 'flag': 'cropland, rainfed, herbaceous cover'},
-                      12: {'color': '#EBDF34', 'flag': 'cropland, rainfed, tree or shrub cover'},
-                      20: {'color': '#34EBE2', 'flag': 'cropland, irrigated or post-flooding'},
-                      30: {'color': '#EBBD34', 'flag': 'mosaic cropland/natural vegetation'},
-                      40: {'color': '#eba534', 'flag': 'mosaic natural vegetation/cropland'},
-                      50: {'color': '#34eb46', 'flag': 'tree cover, broadleaved, evergreen, closed to open'},
-                      60: {'color': '#21750e', 'flag': 'tree cover, broadleaved, deciduous, closed to open'},
-                      61: {'color': '#449432', 'flag': 'tree cover, broadleaved, deciduous, closed'},
-                      62: {'color': '#5da64c', 'flag': 'tree cover, broadleaved, deciduous, open'},
-                      70: {'color': '#16470b', 'flag': 'tree cover, needleleaved, evergreen, closed to open'},
-                      71: {'color': '#237012', 'flag': 'tree cover, needleleaved, evergreen, closed'},
-                      72: {'color': '#237012', 'flag': 'tree cover, needleleaved, evergreen, open'},
-                      80: {'color': '#31a317', 'flag': 'tree cover, needleleaved, deciduous, closed to open'},
-                      81: {'color': '#57ed34', 'flag': 'tree cover, needleleaved, deciduous, closed'},
-                      82: {'color': '#81f765', 'flag': 'tree cover, needleleaved, deciduous, open'},
-                      90: {'color': '#b6ed64', 'flag': 'tree cover, mixed leaf type'},
-                      100: {'color': '#6f8f3f', 'flag': 'mosaic tree and shrub/herbaceous cover'},
-                      110: {'color': '#ad950c', 'flag': 'mosaic herbaceous cover/tree and shrub'},
-                      120: {'color': '#5e5209', 'flag': 'shrubland'},
-                      121: {'color': '#292302', 'flag': 'shrubland, evergreen'},
-                      122: {'color': '#a89008', 'flag': 'shrubland, deciduous'},
-                      130: {'color': '#f7bf07', 'flag': 'grassland'},
-                      140: {'color': '#f57feb', 'flag': 'lichens and mosses'},
-                      150: {'color': '#f57feb', 'flag': 'sparse vegetation'},
-                      151: {'color': '#fcf7a4', 'flag': 'sparse tree'},
-                      152: {'color': '#d4cf87', 'flag': 'sparse shrub'},
-                      153: {'color': '#b0aa54', 'flag': 'sparse herbaceous cover'},
-                      160: {'color': '#159638', 'flag': 'tree cover, flooded, fresh or brakish water'},
-                      170: {'color': '#22bf81', 'flag': 'tree cover, flooded, saline water'},
-                      180: {'color': '#44eba9', 'flag': 'shrub or herbaceous cover, flooded, fresh/saline/brakish water'},
-                      190: {'color': '#a3273c', 'flag': 'urban areas'},
-                      200: {'color': '#fffbcc', 'flag': 'bare areas'},
-                      201: {'color': '#b0afa4', 'flag': 'consolidated bare areas'},
-                      202: {'color': '#d6d4b6', 'flag': 'unconsolidated bare areas'},
-                      210: {'color': '#1A3EF0', 'flag': 'water bodies'},
-                      220: {'color': '#ffffff', 'flag': 'permanent snow and ice'}}
-                            
-            colors = [label['color'] for label in labels.values()]
-            cmap = ListedColormap([label['color'] for label in labels.values()])
-            norm = mcolours.BoundaryNorm(list(labels.keys())+[221], cmap.N+1, extend='max')
-            ticks = list(np.mean((list(list(labels.keys())+[221])[i+1], val)) for i, val in enumerate(list(labels.keys())))
-            cblabels=[label['flag'] for label in labels.values()]
-                            
-        except:
+            labels = {
+                0: {"color": "#282828", "flag": "no data"},
+                10: {"color": "#EBEB34", "flag": "cropland, rainfed"},
+                11: {"color": "#D9EB34", "flag": "cropland, rainfed, herbaceous cover"},
+                12: {"color": "#EBDF34", "flag": "cropland, rainfed, tree or shrub cover"},
+                20: {"color": "#34EBE2", "flag": "cropland, irrigated or post-flooding"},
+                30: {"color": "#EBBD34", "flag": "mosaic cropland/natural vegetation"},
+                40: {"color": "#eba534", "flag": "mosaic natural vegetation/cropland"},
+                50: {
+                    "color": "#34eb46",
+                    "flag": "tree cover, broadleaved, evergreen, closed to open",
+                },
+                60: {
+                    "color": "#21750e",
+                    "flag": "tree cover, broadleaved, deciduous, closed to open",
+                },
+                61: {"color": "#449432", "flag": "tree cover, broadleaved, deciduous, closed"},
+                62: {"color": "#5da64c", "flag": "tree cover, broadleaved, deciduous, open"},
+                70: {
+                    "color": "#16470b",
+                    "flag": "tree cover, needleleaved, evergreen, closed to open",
+                },
+                71: {"color": "#237012", "flag": "tree cover, needleleaved, evergreen, closed"},
+                72: {"color": "#237012", "flag": "tree cover, needleleaved, evergreen, open"},
+                80: {
+                    "color": "#31a317",
+                    "flag": "tree cover, needleleaved, deciduous, closed to open",
+                },
+                81: {"color": "#57ed34", "flag": "tree cover, needleleaved, deciduous, closed"},
+                82: {"color": "#81f765", "flag": "tree cover, needleleaved, deciduous, open"},
+                90: {"color": "#b6ed64", "flag": "tree cover, mixed leaf type"},
+                100: {"color": "#6f8f3f", "flag": "mosaic tree and shrub/herbaceous cover"},
+                110: {"color": "#ad950c", "flag": "mosaic herbaceous cover/tree and shrub"},
+                120: {"color": "#5e5209", "flag": "shrubland"},
+                121: {"color": "#292302", "flag": "shrubland, evergreen"},
+                122: {"color": "#a89008", "flag": "shrubland, deciduous"},
+                130: {"color": "#f7bf07", "flag": "grassland"},
+                140: {"color": "#f57feb", "flag": "lichens and mosses"},
+                150: {"color": "#f57feb", "flag": "sparse vegetation"},
+                151: {"color": "#fcf7a4", "flag": "sparse tree"},
+                152: {"color": "#d4cf87", "flag": "sparse shrub"},
+                153: {"color": "#b0aa54", "flag": "sparse herbaceous cover"},
+                160: {"color": "#159638", "flag": "tree cover, flooded, fresh or brakish water"},
+                170: {"color": "#22bf81", "flag": "tree cover, flooded, saline water"},
+                180: {
+                    "color": "#44eba9",
+                    "flag": "shrub or herbaceous cover, flooded, fresh/saline/brakish water",
+                },
+                190: {"color": "#a3273c", "flag": "urban areas"},
+                200: {"color": "#fffbcc", "flag": "bare areas"},
+                201: {"color": "#b0afa4", "flag": "consolidated bare areas"},
+                202: {"color": "#d6d4b6", "flag": "unconsolidated bare areas"},
+                210: {"color": "#1A3EF0", "flag": "water bodies"},
+                220: {"color": "#ffffff", "flag": "permanent snow and ice"},
+            }
+
+            colors = [label["color"] for label in labels.values()]  # noqa F841
+            cmap = ListedColormap([label["color"] for label in labels.values()])
+            norm = mcolours.BoundaryNorm(list(labels.keys()) + [221], cmap.N + 1, extend="max")
+            ticks = list(
+                np.mean((list(list(labels.keys()) + [221])[i + 1], val))
+                for i, val in enumerate(list(labels.keys()))
+            )
+            cblabels = [label["flag"] for label in labels.values()]
+
+        except Exception:
             AttributeError
-                            
+
     try:
         im = lulc.plot.imshow(cmap=cmap, norm=norm, add_colorbar=legend, **plot_kwargs)
     except AttributeError:
@@ -1250,7 +1240,7 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
             cb = im.cbar
 
         if "ESRI" in product:
-            cb.set_ticks(np.arange(0, 11, 1)+0.5)
+            cb.set_ticks(np.arange(0, 11, 1) + 0.5)
             cb.set_ticklabels(cblabels)
 
         if "IO" in product:
@@ -1260,11 +1250,11 @@ def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
         if "ESA" in product:
             cb.set_ticks([0, 10, 20, 30, 40, 50, 60, 70, 80, 88.5, 95, 101.5])
             cb.set_ticklabels(cblabels)
-            
+
         if "CGLS" in product:
             cb.set_ticks(ticks)
             cb.set_ticklabels(cblabels)
-                            
+
         if "CCI" in product:
             cb.set_ticks(ticks)
             cb.set_ticklabels(cblabels)
