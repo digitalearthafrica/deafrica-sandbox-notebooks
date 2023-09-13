@@ -304,9 +304,7 @@ def predict_xr(
 
             out_proba = out_proba.reshape(len(y), len(x))
 
-            out_proba = xr.DataArray(
-                out_proba, coords={"x": x, "y": y}, dims=["y", "x"]
-            )
+            out_proba = xr.DataArray(out_proba, coords={"x": x, "y": y}, dims=["y", "x"])
             output_xr["Probabilities"] = out_proba
 
         if return_input is True:
@@ -321,9 +319,7 @@ def predict_xr(
             if len(input_data_flattened.shape[1:]):
                 output_px_shape = input_data_flattened.shape[1:]
 
-            output_features = input_data_flattened.reshape(
-                (len(stacked.z), *output_px_shape)
-            )
+            output_features = input_data_flattened.reshape((len(stacked.z), *output_px_shape))
 
             # set the stacked coordinate to match the input
             output_features = xr.DataArray(
@@ -351,14 +347,10 @@ def predict_xr(
         # convert model to dask predict
         model = ParallelPostFit(model)
         with joblib.parallel_backend("dask", wait_for_workers_timeout=20):
-            output_xr = _predict_func(
-                model, input_xr, persist, proba, clean, return_input
-            )
+            output_xr = _predict_func(model, input_xr, persist, proba, clean, return_input)
 
     else:
-        output_xr = _predict_func(
-            model, input_xr, persist, proba, clean, return_input
-        ).compute()
+        output_xr = _predict_func(model, input_xr, persist, proba, clean, return_input).compute()
 
     return output_xr
 
@@ -624,15 +616,12 @@ def collect_training_data(
 
     # check the dtype of the class field
     if gdf[field].dtype != int:
-        raise ValueError(
-            'The "field" column of the input vector must contain integer dtypes'
-        )
+        raise ValueError('The "field" column of the input vector must contain integer dtypes')
 
     # set up some print statements
     if feature_func is None:
         raise ValueError(
-            "Please supply a feature layer function through the "
-            + "parameter 'feature_func'"
+            "Please supply a feature layer function through the " + "parameter 'feature_func'"
         )
 
     if zonal_stats is not None:
@@ -792,7 +781,6 @@ class KMeans_tree(ClusterMixin):
     """
 
     def __init__(self, n_levels=2, n_clusters=3, **kwargs):
-
         assert n_levels >= 1
 
         self.base_model = KMeans(n_clusters=3, **kwargs)
@@ -835,9 +823,7 @@ class KMeans_tree(ClusterMixin):
                 self.branches[clu].fit(
                     X[labels_old == clu],
                     sample_weight=(
-                        sample_weight[labels_old == clu]
-                        if sample_weight is not None
-                        else None
+                        sample_weight[labels_old == clu] if sample_weight is not None else None
                     ),
                 )
                 self.labels_[labels_old == clu] += self.branches[clu].labels_
@@ -875,9 +861,7 @@ class KMeans_tree(ClusterMixin):
                 result[rescpy == clu] += self.branches[clu].predict(
                     X[rescpy == clu],
                     sample_weight=(
-                        sample_weight[rescpy == clu]
-                        if sample_weight is not None
-                        else None
+                        sample_weight[rescpy == clu] if sample_weight is not None else None
                     ),
                 )
 
@@ -885,12 +869,7 @@ class KMeans_tree(ClusterMixin):
 
 
 def spatial_clusters(
-    coordinates,
-    method="Hierarchical",
-    max_distance=None,
-    n_groups=None,
-    verbose=False,
-    **kwargs
+    coordinates, method="Hierarchical", max_distance=None, n_groups=None, verbose=False, **kwargs
 ):
     """
     Create spatial groups on coorindate data using either KMeans clustering
@@ -930,28 +909,21 @@ def spatial_clusters(
         raise ValueError("method must be one of: 'Hierarchical','KMeans' or 'GMM'")
 
     if (method in ["GMM", "KMeans"]) & (n_groups is None):
-        raise ValueError(
-            "The 'GMM' and 'KMeans' methods requires explicitly setting 'n_groups'"
-        )
+        raise ValueError("The 'GMM' and 'KMeans' methods requires explicitly setting 'n_groups'")
 
     if (method == "Hierarchical") & (max_distance is None):
         raise ValueError("The 'Hierarchical' method requires setting max_distance")
 
     if method == "Hierarchical":
         cluster_label = AgglomerativeClustering(
-            n_clusters=None,
-            linkage="complete",
-            distance_threshold=max_distance,
-            **kwargs
+            n_clusters=None, linkage="complete", distance_threshold=max_distance, **kwargs
         ).fit_predict(coordinates)
 
     if method == "KMeans":
         cluster_label = KMeans(n_clusters=n_groups, **kwargs).fit_predict(coordinates)
 
     if method == "GMM":
-        cluster_label = GaussianMixture(n_components=n_groups, **kwargs).fit_predict(
-            coordinates
-        )
+        cluster_label = GaussianMixture(n_components=n_groups, **kwargs).fit_predict(coordinates)
     if verbose:
         print("n clusters = " + str(len(np.unique(cluster_label))))
 
@@ -1189,9 +1161,7 @@ def spatial_train_test_split(
 
     if kfold_method == "SpatialKFold":
         if n_splits is None:
-            raise ValueError(
-                "n_splits parameter requires an integer value, eg. 'n_splits=5'"
-            )
+            raise ValueError("n_splits parameter requires an integer value, eg. 'n_splits=5'")
         if (test_size is not None) or (train_size is not None):
             warnings.warn(
                 "With the 'SpatialKFold' method, controlling the test/train ratio "
@@ -1290,7 +1260,6 @@ class _BaseSpatialCrossValidator(BaseCrossValidator, metaclass=ABCMeta):
         max_distance=None,
         n_splits=None,
     ):
-
         self.n_groups = n_groups
         self.coordinates = coordinates
         self.method = method
@@ -1320,9 +1289,7 @@ class _BaseSpatialCrossValidator(BaseCrossValidator, metaclass=ABCMeta):
         """
         if X.shape[1] != 2:
             raise ValueError(
-                "X (the coordinate data) must have exactly 2 columns ({} given).".format(
-                    X.shape[1]
-                )
+                "X (the coordinate data) must have exactly 2 columns ({} given).".format(X.shape[1])
             )
         for train, test in super().split(X, y, groups):
             yield train, test
@@ -1457,9 +1424,7 @@ class _SpatialShuffleSplit(_BaseSpatialCrossValidator):
             **kwargs
         )
         if balance < 1:
-            raise ValueError(
-                "The *balance* argument must be >= 1. To disable balance, use 1."
-            )
+            raise ValueError("The *balance* argument must be >= 1. To disable balance, use 1.")
         self.test_size = test_size
         self.train_size = train_size
         self.random_state = random_state
@@ -1606,9 +1571,7 @@ class _SpatialKFold(_BaseSpatialCrossValidator):
 
         if n_splits < 2:
             raise ValueError(
-                "Number of splits must be >=2 for clusterKFold. Given {}.".format(
-                    n_splits
-                )
+                "Number of splits must be >=2 for clusterKFold. Given {}.".format(n_splits)
             )
         self.test_size = test_size
         self.shuffle = shuffle
