@@ -7,28 +7,45 @@ Coastal analyses on Digital Earth Africa data.
 # Force GeoPandas to use Shapely instead of PyGEOS
 # In a future release, GeoPandas will switch to using Shapely by default.
 import os
+import warnings
 
 os.environ['USE_PYGEOS'] = '0'
+
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
+import odc.geo.xr
 import pandas as pd
+import pyproj
+import pyTMD.model
+import pyTMD.time
+import pyTMD.utilities
 import requests
 import xarray as xr
+from odc.geo.geobox import GeoBox
 from owslib.wfs import WebFeatureService
 # Fix converters for tidal plot
 from pandas.plotting import register_matplotlib_converters
+from pyTMD.calc_delta_time import calc_delta_time
+from pyTMD.infer_minor_corrections import infer_minor_corrections
+from pyTMD.predict_tide_drift import predict_tide_drift
+from pyTMD.read_FES_model import extract_FES_constants
+from pyTMD.read_GOT_model import extract_GOT_constants
+from pyTMD.read_netcdf_model import extract_netcdf_constants
+from pyTMD.read_tide_model import extract_tidal_constants
 from scipy import stats
-from shapely.geometry import box
+from shapely.errors import ShapelyDeprecationWarning
+from shapely.geometry import Point, box
 
 from deafrica_tools.datahandling import parallel_apply
 
 register_matplotlib_converters()
 
 
-# URL for the DE Africa Coastlines data on Geoserver. 
+# URL for the DE Africa Coastlines data on Geoserver.
 WFS_ADDRESS = "https://geoserver.digitalearth.africa/geoserver/wfs"
+
 
 def model_tides(
     x,
@@ -120,25 +137,10 @@ def model_tides(
     combination of time and point coordinates.
     """
 
-    import os
-
-    import numpy as np
-    import pyproj
-    import pyTMD.model
-    import pyTMD.time
-    import pyTMD.utilities
-    from pyTMD.calc_delta_time import calc_delta_time
-    from pyTMD.infer_minor_corrections import infer_minor_corrections
-    from pyTMD.predict_tide_drift import predict_tide_drift
-    from pyTMD.read_FES_model import extract_FES_constants
-    from pyTMD.read_GOT_model import extract_GOT_constants
-    from pyTMD.read_netcdf_model import extract_netcdf_constants
-    from pyTMD.read_tide_model import extract_tidal_constants
-
     # Check that tide directory is accessible
     try:
         os.access(directory, os.F_OK)
-    except:
+    except Exception:
         raise FileNotFoundError("Invalid tide directory")
 
     # Get parameters for tide model
@@ -271,7 +273,7 @@ def model_tides(
         minor = infer_minor_corrections(
             t, hc, c, deltat=deltat, corrections=model.format
         )
-    except:
+    except Exception:
         tide.data[:] = predict_tide_drift(
             t, hc, c, DELTAT=deltat, CORRECTIONS=model.format
         )
@@ -317,7 +319,7 @@ def pixel_tides(
         the spatial extent of the low resolution tide modelling grid.
     times : pandas.DatetimeIndex or list of pandas.Timestamps, optional
         By default, the function will model tides using the times
-        contained in the `time` dimension of `ds`. Alternatively, this 
+        contained in the `time` dimension of `ds`. Alternatively, this
         param can be used to model tides for a custom set of times 
         instead. For example:
         `times=pd.date_range(start="2000", end="2001", freq="5h")`
@@ -383,9 +385,6 @@ def pixel_tides(
             `calculate_quantiles`.
     """
 
-    import odc.geo.xr
-    from odc.geo.geobox import GeoBox
-
     # First test if no time dimension and nothing passed to `times`
     if ('time' not in ds.dims) & (times is None):
         raise ValueError(
@@ -441,13 +440,13 @@ def pixel_tides(
     # Raise error if resolution is less than dataset resolution
     dataset_res = ds.odc.geobox.resolution.x
     if resolution < dataset_res:
-            raise ValueError(f"The resolution of the low-resolution tide "
-                             f"modelling grid ({resolution:.2f}) is less "
-                             f"than `ds`'s pixel resolution ({dataset_res:.2f}). "
-                             f"This can cause extremely slow tide modelling "
-                             f"performance. Please select provide a resolution "
-                             f"greater than {dataset_res:.2f} using "
-                             f"`pixel_tides`'s 'resolution' parameter.")
+        raise ValueError(f"The resolution of the low-resolution tide "
+                         f"modelling grid ({resolution:.2f}) is less "
+                         f"than `ds`'s pixel resolution ({dataset_res:.2f}). "
+                         f"This can cause extremely slow tide modelling "
+                         f"performance. Please select provide a resolution "
+                         f"greater than {dataset_res:.2f} using "
+                         f"`pixel_tides`'s 'resolution' parameter.")
 
     # Create a new reduced resolution tide modelling grid after
     # first buffering the grid
@@ -524,6 +523,7 @@ def pixel_tides(
         print("Returning low resolution tide array")
         return tides_lowres
 
+
 def tidal_tag(
     ds,
     ebb_flow=False,
@@ -583,8 +583,6 @@ def tidal_tag(
     location used in the analysis).
 
     """
-
-    import odc.geo.xr
 
     # If custom tide modelling locations are not provided, use the
     # dataset centroid
@@ -831,7 +829,6 @@ def tidal_stats(
     )
     obs_y = ds_tides.tide_m.values.astype(np.float32)
 
-
     # Compute linear regression
     obs_linreg = stats.linregress(x=obs_x, y=obs_y)
     all_linreg = stats.linregress(x=all_x, y=all_y)
@@ -991,11 +988,6 @@ def transect_distances(transects_gdf, lines_gdf, mode='distance'):
         A DataFrame containing distance measurements for each profile
         line (rows) and line feature (columns). 
     """
-    
-    import warnings
-
-    from shapely.errors import ShapelyDeprecationWarning
-    from shapely.geometry import Point
 
     def _intersect_dist(transect_gdf, lines_gdf, mode=mode):
         """
@@ -1038,7 +1030,7 @@ def transect_distances(transects_gdf, lines_gdf, mode='distance'):
         
         # Assert that both datasets use the same CRS
         assert transects_gdf.crs == lines_gdf.crs, ('Please ensure both '
-        'input datasets use the same CRS.')
+                                                    'input datasets use the same CRS.')
         
         # Run distance calculations
         distance_df = transects_gdf.apply(
@@ -1087,7 +1079,7 @@ def get_coastlines(bbox: tuple,
     try:
         crs = str(bbox.crs)
         bbox = bbox.total_bounds
-    except:
+    except Exception:
         pass
 
     # Get the available layers in the coastlines:DEAfrica_Coastlines group.
