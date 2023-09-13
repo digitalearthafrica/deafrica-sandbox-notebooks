@@ -6,9 +6,9 @@ Updated Apr 2020 to directly access Zarr format data in PDS
 Previous code for downloading and loading netcdf adpated from scripts by Andrew Cherry and Brian Killough.
 """
 
+import fsspec
 import numpy as np
 import xarray as xr
-import fsspec
 from datacube.utils.geometry import assign_crs
 
 # # only used for netcdf access
@@ -18,25 +18,30 @@ from datacube.utils.geometry import assign_crs
 # import warnings
 
 
-ERA5_VARS = ['air_pressure_at_mean_sea_level',
- 'air_temperature_at_2_metres',
- 'air_temperature_at_2_metres_1hour_Maximum',
- 'air_temperature_at_2_metres_1hour_Minimum',
- 'dew_point_temperature_at_2_metres',
- 'eastward_wind_at_100_metres',
- 'eastward_wind_at_10_metres',
- 'integral_wrt_time_of_surface_direct_downwelling_shortwave_flux_in_air_1hour_Accumulation',
- 'lwe_thickness_of_surface_snow_amount',
- 'northward_wind_at_100_metres',
- 'northward_wind_at_10_metres',
- 'precipitation_amount_1hour_Accumulation',
- 'sea_surface_temperature',
- 'snow_density',
- 'surface_air_pressure']
+ERA5_VARS = [
+    "air_pressure_at_mean_sea_level",
+    "air_temperature_at_2_metres",
+    "air_temperature_at_2_metres_1hour_Maximum",
+    "air_temperature_at_2_metres_1hour_Minimum",
+    "dew_point_temperature_at_2_metres",
+    "eastward_wind_at_100_metres",
+    "eastward_wind_at_10_metres",
+    "integral_wrt_time_of_surface_direct_downwelling_shortwave_flux_in_air_1hour_Accumulation",
+    "lwe_thickness_of_surface_snow_amount",
+    "northward_wind_at_100_metres",
+    "northward_wind_at_10_metres",
+    "precipitation_amount_1hour_Accumulation",
+    "sea_surface_temperature",
+    "snow_density",
+    "surface_air_pressure",
+]
 
 
 def load_era5(
-    var, lat, lon, time,
+    var,
+    lat,
+    lon,
+    time,
     reduce_func=None,
     resample="1D",
 ):
@@ -73,37 +78,36 @@ def load_era5(
     """
 
     # constrain query to available variables
-    assert var in ERA5_VARS, "var must be one of [{}] (got {})".format(
-        ",".join(ERA5_VARS), var
-    )
-    
+    assert var in ERA5_VARS, "var must be one of [{}] (got {})".format(",".join(ERA5_VARS), var)
+
     # set default reduction function
     if reduce_func is None:
         reduce_func = np.mean
-        
+
     # process date range
     if type(time) in [list, tuple]:
-        date_from = np.datetime64(min(time)).astype('datetime64[D]')
-        date_to = (np.datetime64(max(time))+1).astype('datetime64[D]')-np.timedelta64(1,'D')
+        date_from = np.datetime64(min(time)).astype("datetime64[D]")
+        date_to = (np.datetime64(max(time)) + 1).astype("datetime64[D]") - np.timedelta64(1, "D")
     elif type(time) in [str, np.datetime64]:
-        date_from = np.datetime64(time).astype('datetime64[D]')
-        date_to = (np.datetime64(time)+1).astype('datetime64[D]')-np.timedelta64(1,'D')
+        date_from = np.datetime64(time).astype("datetime64[D]")
+        date_to = (np.datetime64(time) + 1).astype("datetime64[D]") - np.timedelta64(1, "D")
     else:
-        raise(ValueError)
+        raise (ValueError)
 
     # actual lat lon ranges will be infered from nearest match to data
     lat_range = None
     lon_range = None
-    
+
     datasets = []
     # Loop through month and year to access ERA5 zarr
-    month = date_from.astype('datetime64[M]')
-    while month <= date_to.astype('datetime64[M]'):
+    month = date_from.astype("datetime64[M]")
+    while month <= date_to.astype("datetime64[M]"):
         url = f"s3://era5-pds/zarr/{month.astype(object).year:04}/{month.astype(object).month:02}/data/{var}.zarr"
-        ds = xr.open_zarr(fsspec.get_mapper(url, anon=True, 
-                                            client_kwargs={'region_name':'us-east-1'}),
-                          consolidated=True)
-    
+        ds = xr.open_zarr(
+            fsspec.get_mapper(url, anon=True, client_kwargs={"region_name": "us-east-1"}),
+            consolidated=True,
+        )
+
         # re-order along longitude to go from -180 to 180 if needed
         if min(lon) < 0:
             ds = ds.assign_coords({"lon": (((ds.lon + 180) % 360) - 180)})
@@ -115,23 +119,28 @@ def load_era5(
             # define the lat/lon grid
             lat_range = slice(test.lat.max().values, test.lat.min().values)
             lon_range = slice(test.lon.min().values, test.lon.max().values)
-       
+
         if "time0" in ds.dims:
             ds = ds.rename({"time0": "time"})
         if "time1" in ds.dims:
             ds = ds.rename(
                 {"time1": "time"}
             )  # This should INTENTIONALLY error if both times are defined
-        
-        output = ds[[var]].sel(lat=lat_range, lon=lon_range, time=slice(date_from, date_to)).resample(time=resample).reduce(reduce_func)
+
+        output = (
+            ds[[var]]
+            .sel(lat=lat_range, lon=lon_range, time=slice(date_from, date_to))
+            .resample(time=resample)
+            .reduce(reduce_func)
+        )
         output.attrs = ds.attrs
         for v in output.data_vars:
             output[v].attrs = ds[v].attrs
-            
+
         datasets.append(output)
-        month += np.timedelta64(1,'M')
-    
-    return assign_crs(xr.combine_by_coords(datasets), 'EPSG:4326')
+        month += np.timedelta64(1, "M")
+
+    return assign_crs(xr.combine_by_coords(datasets), "EPSG:4326")
 
 
 # # older version of scripts to download and use netcdf
