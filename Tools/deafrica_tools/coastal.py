@@ -9,7 +9,7 @@ Coastal analyses on Digital Earth Africa data.
 import os
 import warnings
 
-os.environ['USE_PYGEOS'] = '0'
+os.environ["USE_PYGEOS"] = "0"
 
 
 import geopandas as gpd
@@ -25,6 +25,7 @@ import requests
 import xarray as xr
 from odc.geo.geobox import GeoBox
 from owslib.wfs import WebFeatureService
+
 # Fix converters for tidal plot
 from pandas.plotting import register_matplotlib_converters
 from pyTMD.calc_delta_time import calc_delta_time
@@ -267,19 +268,11 @@ def model_tides(
     # Depending on pyTMD version (<=1.06 vs > 1.06), use different params
     # TODO: Remove once Sandbox is updated to use pyTMD version 1.0.9
     try:
-        tide.data[:] = predict_tide_drift(
-            t, hc, c, deltat=deltat, corrections=model.format
-        )
-        minor = infer_minor_corrections(
-            t, hc, c, deltat=deltat, corrections=model.format
-        )
+        tide.data[:] = predict_tide_drift(t, hc, c, deltat=deltat, corrections=model.format)
+        minor = infer_minor_corrections(t, hc, c, deltat=deltat, corrections=model.format)
     except Exception:
-        tide.data[:] = predict_tide_drift(
-            t, hc, c, DELTAT=deltat, CORRECTIONS=model.format
-        )
-        minor = infer_minor_corrections(
-            t, hc, c, DELTAT=deltat, CORRECTIONS=model.format
-        )
+        tide.data[:] = predict_tide_drift(t, hc, c, DELTAT=deltat, CORRECTIONS=model.format)
+        minor = infer_minor_corrections(t, hc, c, DELTAT=deltat, CORRECTIONS=model.format)
     tide.data[:] += minor.data[:]
 
     # Replace invalid values with fill value
@@ -386,7 +379,7 @@ def pixel_tides(
     """
 
     # First test if no time dimension and nothing passed to `times`
-    if ('time' not in ds.dims) & (times is None):
+    if ("time" not in ds.dims) & (times is None):
         raise ValueError(
             "`ds` does not contain a 'time' dimension. Times are required "
             "for modelling tides: please pass in a set of custom tides "
@@ -418,44 +411,50 @@ def pixel_tides(
         if resolution is None:
             resolution = 0.05
         elif resolution > 360:
-            raise ValueError(f"A resolution of greater than 360 was "
-                             f"provided, but `ds` has a geographic CRS "
-                             f"in {crs_units} units. Did you accidently "
-                             f"provide a resolution in projected "
-                             f"(i.e. metre) units?")
+            raise ValueError(
+                f"A resolution of greater than 360 was "
+                f"provided, but `ds` has a geographic CRS "
+                f"in {crs_units} units. Did you accidently "
+                f"provide a resolution in projected "
+                f"(i.e. metre) units?"
+            )
         if buffer is None:
             buffer = 0.12
     else:
         if resolution is None:
             resolution = 5000
         elif resolution < 1:
-            raise ValueError(f"A resolution of less than 1 was provided, "
-                             f"but `ds` has a projected CRS in "
-                             f"{crs_units} units. Did you accidently "
-                             f"provide a resolution in geographic "
-                             f"(degree) units?")
+            raise ValueError(
+                f"A resolution of less than 1 was provided, "
+                f"but `ds` has a projected CRS in "
+                f"{crs_units} units. Did you accidently "
+                f"provide a resolution in geographic "
+                f"(degree) units?"
+            )
         if buffer is None:
             buffer = 12000
 
     # Raise error if resolution is less than dataset resolution
     dataset_res = ds.odc.geobox.resolution.x
     if resolution < dataset_res:
-        raise ValueError(f"The resolution of the low-resolution tide "
-                         f"modelling grid ({resolution:.2f}) is less "
-                         f"than `ds`'s pixel resolution ({dataset_res:.2f}). "
-                         f"This can cause extremely slow tide modelling "
-                         f"performance. Please select provide a resolution "
-                         f"greater than {dataset_res:.2f} using "
-                         f"`pixel_tides`'s 'resolution' parameter.")
+        raise ValueError(
+            f"The resolution of the low-resolution tide "
+            f"modelling grid ({resolution:.2f}) is less "
+            f"than `ds`'s pixel resolution ({dataset_res:.2f}). "
+            f"This can cause extremely slow tide modelling "
+            f"performance. Please select provide a resolution "
+            f"greater than {dataset_res:.2f} using "
+            f"`pixel_tides`'s 'resolution' parameter."
+        )
 
     # Create a new reduced resolution tide modelling grid after
     # first buffering the grid
-    print(f"Creating reduced resolution {resolution} x {resolution} "
-          f"{crs_units} tide modelling array")
-    buffered_geobox = ds.odc.geobox.buffered(buffer)
-    rescaled_geobox = GeoBox.from_bbox(
-        bbox=buffered_geobox.boundingbox, resolution=resolution
+    print(
+        f"Creating reduced resolution {resolution} x {resolution} "
+        f"{crs_units} tide modelling array"
     )
+    buffered_geobox = ds.odc.geobox.buffered(buffer)
+    rescaled_geobox = GeoBox.from_bbox(bbox=buffered_geobox.boundingbox, resolution=resolution)
     rescaled_ds = odc.geo.xr.xr_zeros(rescaled_geobox)
 
     # Flatten grid to 1D, then add time dimension
@@ -463,9 +462,7 @@ def pixel_tides(
     flattened_ds = flattened_ds.expand_dims(dim={"time": time_coords.values})
 
     # Model tides for each timestep
-    model = (
-        "FES2014" if "model" not in model_tides_kwargs else model_tides_kwargs["model"]
-    )
+    model = "FES2014" if "model" not in model_tides_kwargs else model_tides_kwargs["model"]
     print(f"Modelling tides using {model} tide model")
     tide_df = model_tides(
         x=flattened_ds[x_dim],
@@ -481,11 +478,9 @@ def pixel_tides(
     # Insert modelled tide values back into flattened array, then unstack
     # back to 3D (y, x, time)
     tides_lowres = (
-
         # Convert dataframe to xarray format
         tide_df.set_index([x_dim, y_dim], append=True)
         .to_xarray()
-
         # Re-index and transpose back into 3D
         .tide_m.reindex_like(rescaled_ds)
         .transpose("time", y_dim, x_dim)
@@ -494,7 +489,6 @@ def pixel_tides(
 
     # Optionally calculate and return quantiles rather than raw data
     if calculate_quantiles is not None:
-
         print("Computing tide quantiles")
         tides_lowres = tides_lowres.quantile(q=calculate_quantiles, dim="time")
         reproject_dim = "quantile"
@@ -507,7 +501,6 @@ def pixel_tides(
 
     # Reproject each timestep into original high resolution grid
     if resample:
-
         print("Reprojecting tides into original array")
         tides_highres = parallel_apply(
             tides_lowres,
@@ -587,7 +580,6 @@ def tidal_tag(
     # If custom tide modelling locations are not provided, use the
     # dataset centroid
     if not tidepost_lat or not tidepost_lon:
-
         tidepost_lon, tidepost_lat = ds.odc.geobox.geographic_extent.centroid.coords[0]
         print(
             f"Setting tide modelling location from dataset centroid: "
@@ -601,9 +593,7 @@ def tidal_tag(
         )
 
     # Use tidal model to compute tide heights for each observation:
-    model = (
-        "FES2014" if "model" not in model_tides_kwargs else model_tides_kwargs["model"]
-    )
+    model = "FES2014" if "model" not in model_tides_kwargs else model_tides_kwargs["model"]
     print(f"Modelling tides using {model} tidal model")
     tide_df = model_tides(
         x=tidepost_lon,
@@ -616,7 +606,6 @@ def tidal_tag(
     # If tides cannot be successfully modeled (e.g. if the centre of the
     # xarray dataset is located is over land), raise an exception
     if tide_df.tide_m.isnull().all():
-
         raise ValueError(
             f"Tides could not be modelled for dataset centroid located "
             f"at {tidepost_lon:.2f}, {tidepost_lat:.2f}. This can occur if "
@@ -630,7 +619,6 @@ def tidal_tag(
 
     # Optionally calculate the tide phase for each observation
     if ebb_flow:
-
         # Model tides for a time 15 minutes prior to each previously
         # modelled satellite acquisition time. This allows us to compare
         # tide heights to see if they are rising or falling.
@@ -647,8 +635,7 @@ def tidal_tag(
         # was higher than the current tide, the tide is 'ebbing'. If the
         # previous tide was lower, the tide is 'flowing'
         tidal_phase = [
-            "Ebb" if i else "Flow"
-            for i in tide_pre_df.tide_m.values > tide_df.tide_m.values
+            "Ebb" if i else "Flow" for i in tide_pre_df.tide_m.values > tide_df.tide_m.values
         ]
 
         # Assign tide phase to the dataset as a new variable
@@ -657,7 +644,6 @@ def tidal_tag(
     # If swap_dims = True, make tide height the primary dimension
     # instead of time
     if swap_dims:
-
         # Swap dimensions and sort by tide height
         ds = ds.swap_dims({"time": "tide_m"})
         ds = ds.sortby("tide_m")
@@ -834,7 +820,6 @@ def tidal_stats(
     all_linreg = stats.linregress(x=all_x, y=all_y)
 
     if plain_english:
-
         print(
             f"\n{spread:.0%} of the {all_range:.2f} m modelled astronomical "
             f"tidal range is observed at this location.\nThe lowest "
@@ -843,7 +828,6 @@ def tidal_stats(
         )
 
         if linear_reg:
-
             if obs_linreg.pvalue > 0.05:
                 print(
                     f"Observed tides show no significant trends "
@@ -875,13 +859,10 @@ def tidal_stats(
                 )
 
     if plot:
-
         # Create plot and add all time and observed tide data
         fig, ax = plt.subplots(figsize=(10, 5))
         all_tides_df.tide_m.plot(ax=ax, alpha=0.4)
-        ds_tides.tide_m.plot.line(
-            ax=ax, marker="o", linewidth=0.0, color="black", markersize=2
-        )
+        ds_tides.tide_m.plot.line(ax=ax, marker="o", linewidth=0.0, color="black", markersize=2)
 
         # Add horizontal lines for spread/offsets
         ax.axhline(obs_min, color="black", linestyle=":", linewidth=1)
@@ -942,7 +923,7 @@ def tidal_stats(
     return pd.Series(output_stats).round(round_stats)
 
 
-def transect_distances(transects_gdf, lines_gdf, mode='distance'):
+def transect_distances(transects_gdf, lines_gdf, mode="distance"):
     """
     Take a set of transects (e.g. shore-normal beach survey lines), and
     determine the distance along the transect to each object in a set of
@@ -997,30 +978,32 @@ def transect_distances(transects_gdf, lines_gdf, mode='distance'):
 
         # Identify intersections between transects and lines
         intersect_points = lines_gdf.apply(
-            lambda x: x.geometry.intersection(transect_gdf.geometry), axis=1)
+            lambda x: x.geometry.intersection(transect_gdf.geometry), axis=1
+        )
 
         # In distance mode, identify transects with one intersection only,
         # and use this as the end point and the start of the transect as the
         # start point when measuring distances
-        if mode == 'distance':
+        if mode == "distance":
             start_point = Point(transect_gdf.geometry.coords[0])
             point_df = intersect_points.apply(
-                lambda x: pd.Series({'start': start_point, 'end': x})
-                if x.type == 'Point'
-                else pd.Series({'start': None, 'end': None}))
+                lambda x: pd.Series({"start": start_point, "end": x})
+                if x.type == "Point"
+                else pd.Series({"start": None, "end": None})
+            )
 
         # In width mode, identify transects with multiple intersections, and
         # use the first intersection as the start point and the second
         # intersection for the end point when measuring distances
-        if mode == 'width':
+        if mode == "width":
             point_df = intersect_points.apply(
-                lambda x: pd.Series({'start': x.geoms[0], 'end': x.geoms[-1]})
-                if x.type == 'MultiPoint'
-                else pd.Series({'start': None, 'end': None}))
+                lambda x: pd.Series({"start": x.geoms[0], "end": x.geoms[-1]})
+                if x.type == "MultiPoint"
+                else pd.Series({"start": None, "end": None})
+            )
 
         # Calculate distances between valid start and end points
-        distance_df = point_df.apply(
-            lambda x: x.start.distance(x.end) if x.start else None, axis=1)
+        distance_df = point_df.apply(lambda x: x.start.distance(x.end) if x.start else None, axis=1)
 
         return distance_df
 
@@ -1029,20 +1012,19 @@ def transect_distances(transects_gdf, lines_gdf, mode='distance'):
         warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
 
         # Assert that both datasets use the same CRS
-        assert transects_gdf.crs == lines_gdf.crs, ('Please ensure both '
-                                                    'input datasets use the same CRS.')
+        assert transects_gdf.crs == lines_gdf.crs, (
+            "Please ensure both " "input datasets use the same CRS."
+        )
 
         # Run distance calculations
-        distance_df = transects_gdf.apply(
-            lambda x: _intersect_dist(x, lines_gdf), axis=1)
+        distance_df = transects_gdf.apply(lambda x: _intersect_dist(x, lines_gdf), axis=1)
 
         return pd.DataFrame(distance_df)
 
 
-def get_coastlines(bbox: tuple,
-                   crs="EPSG:4326",
-                   layer="shorelines",
-                   drop_wms=True) -> gpd.GeoDataFrame:
+def get_coastlines(
+    bbox: tuple, crs="EPSG:4326", layer="shorelines", drop_wms=True
+) -> gpd.GeoDataFrame:
     """
     Get DE Africa Coastlines data for a provided bounding box using WFS.
 
@@ -1085,7 +1067,9 @@ def get_coastlines(bbox: tuple,
     # Get the available layers in the coastlines:DEAfrica_Coastlines group.
     describe_layer_url = "https://geoserver.digitalearth.africa/geoserver/wms?service=WMS&version=1.1.1&request=DescribeLayer&layers=coastlines:DEAfrica_Coastlines&outputFormat=application/json"
     describe_layer_response = requests.get(describe_layer_url).json()
-    available_layers = [layer["layerName"] for layer in describe_layer_response['layerDescriptions']]
+    available_layers = [
+        layer["layerName"] for layer in describe_layer_response["layerDescriptions"]
+    ]
 
     # Get the layer name.
     if layer == "shorelines":
@@ -1095,9 +1079,7 @@ def get_coastlines(bbox: tuple,
 
     # Query WFS.
     wfs = WebFeatureService(url=WFS_ADDRESS, version="1.1.0")
-    response = wfs.getfeature(typename=layer_name,
-                              bbox=tuple(bbox) + (crs,),
-                              outputFormat="json")
+    response = wfs.getfeature(typename=layer_name, bbox=tuple(bbox) + (crs,), outputFormat="json")
 
     # Load data as a geopandas.GeoDataFrame.
     coastlines_gdf = gpd.read_file(response)
