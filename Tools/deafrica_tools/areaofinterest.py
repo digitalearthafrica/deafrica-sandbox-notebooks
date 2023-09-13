@@ -1,5 +1,5 @@
 """
-Function for defining an area of interest using either a point and buffer or a vector file. 
+Function for defining an area of interest using either a point and buffer or a vector file.
 """
 
 # Import required packages
@@ -17,7 +17,7 @@ from geojson import Feature, FeatureCollection
 def define_area(lat=None, lon=None, buffer=None, vector_path=None):
     '''
     Define an area of interest using either a point and buffer or a vector.
-    
+
     Parameters:
     -----------
     lat : float, optional
@@ -28,7 +28,7 @@ def define_area(lat=None, lon=None, buffer=None, vector_path=None):
         The buffer around the center point, in degrees.
     vector_path : str, optional
         The path to a vector defining the area of interest.
-    
+
     Returns:
     --------
     feature_collection : dict
@@ -40,16 +40,16 @@ def define_area(lat=None, lon=None, buffer=None, vector_path=None):
         lon_range = (lon - buffer, lon + buffer)
         box_geom = box(min(lon_range), min(lat_range), max(lon_range), max(lat_range))
         aoi = gpd.GeoDataFrame(geometry=[box_geom], crs='EPSG:4326')
-    
+
     # Define area using vector
     elif vector_path is not None:
         aoi = gpd.read_file(vector_path).to_crs("EPSG:4326")
     # If neither option is provided, raise an error
     else:
         raise ValueError("Either lat/lon/buffer or vector_path must be provided.")
-    
+
     # Convert the GeoDataFrame to a GeoJSON FeatureCollection
     features = [Feature(geometry=row["geometry"], properties=row.drop("geometry").to_dict()) for _, row in aoi.iterrows()]
     feature_collection = FeatureCollection(features)
-    
+
     return feature_collection
