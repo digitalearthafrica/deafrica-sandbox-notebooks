@@ -267,12 +267,12 @@ def predict_xr(
         # reshape for prediction
         input_data_flattened = da.array(input_data_flattened).transpose()
 
-        if clean == True:
+        if clean is True:
             input_data_flattened = da.where(
                 da.isfinite(input_data_flattened), input_data_flattened, 0
             )
 
-        if (proba == True) & (persist == True):
+        if (proba is True) & (persist is True):
             # persisting data so we don't require loading all the data twice
             input_data_flattened = input_data_flattened.persist()
 
@@ -281,7 +281,7 @@ def predict_xr(
         out_class = model.predict(input_data_flattened)
 
         # Mask out NaN or Inf values in results
-        if clean == True:
+        if clean is True:
             out_class = da.where(da.isfinite(out_class), out_class, 0)
 
         # Reshape when writing out
@@ -292,14 +292,14 @@ def predict_xr(
 
         output_xr = output_xr.to_dataset(name="Predictions")
 
-        if proba == True:
+        if proba is True:
             print("   probabilities...")
             out_proba = model.predict_proba(input_data_flattened)
 
             # convert to %
             out_proba = da.max(out_proba, axis=1) * 100.0
 
-            if clean == True:
+            if clean is True:
                 out_proba = da.where(da.isfinite(out_proba), out_proba, 0)
 
             out_proba = out_proba.reshape(len(y), len(x))
@@ -309,7 +309,7 @@ def predict_xr(
             )
             output_xr["Probabilities"] = out_proba
 
-        if return_input == True:
+        if return_input is True:
             print("   input features...")
             # unflatten the input_data_flattened array and append
             # to the output_xr containin the predictions
@@ -347,7 +347,7 @@ def predict_xr(
 
         return assign_crs(output_xr, str(crs))
 
-    if dask == True:
+    if dask is True:
         # convert model to dask predict
         model = ParallelPostFit(model)
         with joblib.parallel_backend("dask", wait_for_workers_timeout=20):
@@ -419,7 +419,7 @@ def _get_training_data_for_shp(
     # mulitprocessing for parallization
     if "dask_chunks" in dc_query.keys():
         dc_query.pop("dask_chunks", None)
-    
+
     # set up query based on polygon
     geom = geometry.Geometry(geom=gdf.iloc[index].geometry, crs=gdf.crs)
     q = {"geopolygon": geom}
@@ -445,7 +445,7 @@ def _get_training_data_for_shp(
                 + " x and y dimensions."
             )
 
-    if return_coords == True:
+    if return_coords is True:
         # turn coords into a variable in the ds
         data["x_coord"] = data.x + 0 * data.y
         data["y_coord"] = data.y + 0 * data.x
@@ -492,7 +492,7 @@ def _get_training_data_parallel(
     try:
         zx = None
         zx = dd.get_client()
-    except:
+    except Exception:
         pass
 
     if zx is not None:
@@ -552,7 +552,7 @@ def collect_training_data(
     max_retries=3,
 ):
     """
-    This function provides methods for gathering training data from the ODC over 
+    This function provides methods for gathering training data from the ODC over
     geometries stored within a geopandas geodataframe. The function will return a
     'model_input' array containing stacked training data arrays with all NaNs & Infs removed.
     In the instance where ncpus > 1, a parallel version of the function will be run
@@ -619,7 +619,7 @@ def collect_training_data(
     Two objects are returned:
     `columns_names`: a list of variable (feature) names
     `model_input`: a numpy.array containing the data values for each feature extracted
-    
+
     """
 
     # check the dtype of the class field
@@ -630,14 +630,14 @@ def collect_training_data(
 
     # set up some print statements
     if feature_func is None:
-         raise ValueError(
+        raise ValueError(
             "Please supply a feature layer function through the "
-            +"parameter 'feature_func'"
+            + "parameter 'feature_func'"
         )
 
     if zonal_stats is not None:
         print("Taking zonal statistic: " + zonal_stats)
-    
+
     # add unique id to gdf to help with indexing failed rows
     # during multiprocessing
     # if zonal_stats is not None:
@@ -758,7 +758,7 @@ def collect_training_data(
     model_col_indices = [column_names.index(var_name) for var_name in idx_var]
     model_input = model_input[:, model_col_indices]
 
-    if clean == True:
+    if clean is True:
         num = np.count_nonzero(np.isnan(model_input).any(axis=1))
         model_input = model_input[~np.isnan(model_input).any(axis=1)]
         model_input = model_input[~np.isinf(model_input).any(axis=1)]
