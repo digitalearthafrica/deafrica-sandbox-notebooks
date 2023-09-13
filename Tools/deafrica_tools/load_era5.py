@@ -6,8 +6,6 @@ Updated Apr 2020 to directly access Zarr format data in PDS
 Previous code for downloading and loading netcdf adpated from scripts by Andrew Cherry and Brian Killough.
 """
 
-import os
-import datetime
 import numpy as np
 import xarray as xr
 import fsspec
