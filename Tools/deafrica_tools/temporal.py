@@ -18,8 +18,6 @@ The key functions are:
 
 """
 
-import sys
-
 import dask
 import hdstats
 import numpy as np
@@ -317,7 +315,7 @@ def xr_phenology(
         try:
             crs = da.geobox.crs
             lazy_phenology = assign_crs(lazy_phenology, str(crs))
-        except:
+        except Exception:
             pass
 
         return lazy_phenology
@@ -334,7 +332,7 @@ def xr_phenology(
     # try to grab the crs info
     try:
         crs = da.geobox.crs
-    except:
+    except Exception:
         pass
 
     # remove any remaining all-NaN pixels
@@ -378,12 +376,12 @@ def xr_phenology(
     for stat in stats[1:]:
         if verbose:
             print("         " + stat)
-        stats_keep = stats_dict.get(stat)
+        stats_keep = stats_dict.get(stat)  # noqa F841
         ds[stat] = stats_dict[stat]
 
     try:
         ds = assign_crs(ds, str(crs))
-    except:
+    except Exception:
         pass
 
     return ds.drop("time")
@@ -465,7 +463,7 @@ def temporal_statistics(da, stats):
                     template[stat] = xr.zeros_like(arr)
         try:
             template = template.drop("spatial_ref")
-        except:
+        except Exception:
             pass
 
         # ensure the time chunk is set to -1
@@ -479,7 +477,7 @@ def temporal_statistics(da, stats):
         try:
             crs = da.geobox.crs
             lazy_ds = assign_crs(lazy_ds, str(crs))
-        except:
+        except Exception:
             pass
 
         return lazy_ds
@@ -488,7 +486,7 @@ def temporal_statistics(da, stats):
     stats = stats if isinstance(stats, list) else [stats]
 
     # grab all the attributes of the xarray
-    x, y, time, attrs = da.x, da.y, da.time, da.attrs
+    x, y, time, attrs = da.x, da.y, da.time, da.attrs  # noqa F841
 
     # deal with any all-NaN pixels by filling with 0's
     mask = da.isnull().all("time")
@@ -571,7 +569,7 @@ def temporal_statistics(da, stats):
     try:
         crs = da.geobox.crs
         ds = assign_crs(ds, str(crs))
-    except:
+    except Exception:
         pass
 
     return ds
