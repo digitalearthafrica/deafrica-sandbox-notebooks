@@ -82,7 +82,7 @@ dependencies= [
 Homepage = "https://github.com/digitalearthafrica/deafrica-sandbox-notebooks"
 Repository = "https://github.com/digitalearthafrica/deafrica-sandbox-notebooks"
 Documentation = "https://docs.digitalearthafrica.org/en/latest/sandbox/notebooks/Tools/index.html"
-BugTracker = "https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues"
+"Bug Tracker" = "https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues"
 
 [tool.setuptools]
 packages = ["deafrica_tools"]
