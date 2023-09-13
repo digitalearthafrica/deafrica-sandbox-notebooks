@@ -2,31 +2,32 @@
 Functions for loading and handling Digital Earth Africa data.
 """
 
+import datetime
 # Import required packages
 import os
-from osgeo import gdal
-import requests
-import zipfile
 import warnings
-import numpy as np
-import xarray as xr
-import pandas as pd
-import datetime
-import pytz
-
+import zipfile
 from collections import Counter
-from datacube.utils import masking
-from scipy.ndimage import binary_dilation
-from odc.algo import mask_cleanup
 from copy import deepcopy
-import odc.algo
+from datetime import datetime
 
-from skimage.morphology import binary_erosion,binary_dilation,disk
+import numpy as np
+import odc.algo
+import pandas as pd
+import pytz
+import requests
+import xarray as xr
+from datacube.utils import masking
+from dateutil import parser
+from odc.algo import mask_cleanup
+from osgeo import gdal
+from scipy.ndimage import binary_dilation
 from scipy.ndimage.filters import uniform_filter
 from scipy.ndimage.measurements import variance
-from datetime import datetime
-from dateutil import parser
+from skimage.morphology import binary_dilation, binary_erosion, disk
+
 from deafrica_tools.bandindices import calculate_indices
+
 
 def _dc_query_only(**kw):
     """
@@ -1019,8 +1020,9 @@ def parallel_apply(ds, dim, func, *args):
     """
 
     from concurrent.futures import ProcessPoolExecutor
-    from tqdm import tqdm
     from itertools import repeat
+
+    from tqdm import tqdm
 
     with ProcessPoolExecutor() as executor:
 
