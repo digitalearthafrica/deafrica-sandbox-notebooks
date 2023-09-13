@@ -11,6 +11,7 @@ from collections import Counter
 from copy import deepcopy
 from datetime import datetime
 
+import numexpr
 import numpy as np
 import odc.algo
 import pandas as pd
@@ -263,7 +264,7 @@ def load_ard(
     
     # convert products to list if user passed as a string
     if type(products) == str:
-        products=[products]
+        products = [products]
     
     if all(["ls" in product for product in products]):
         product_type = "ls"
@@ -432,7 +433,7 @@ def load_ard(
     # a predicate filter)
     if predicate:
         if verbose:
-            print(f"Filtering datasets using filter function")
+            print("Filtering datasets using filter function")
         dataset_list = [ds for ds in dataset_list if predicate(ds)]
 
     # Raise exception if filtering removes all datasets
@@ -468,16 +469,15 @@ def load_ard(
         pq_mask = (ds[fmask_band] & mask) != 0
         
         # only run if data bands are present 
-        if len(data_bands) > 0: 
-            
-        # identify pixels that will become negative after rescaling (but not 0 values)
-            invalid = (
+        if len(data_bands) > 0:
+            # identify pixels that will become negative after rescaling (but not 0 values)
+            invalid = ( # noqa F841
                     ((ds[data_bands] < (-1.0 * -0.2 / 0.0000275)) & (ds[data_bands] > 0))
                     .to_array(dim="band")
                     .any(dim="band")
                     )
 
-        #merge masks
+        # merge masks
         pq_mask = np.logical_or(pq_mask, pq_mask)
 
     # sentinel 2
@@ -544,7 +544,7 @@ def load_ard(
     # Remove sentinel-2 pixels valued 1 (scene edges, terrain shadow)
     if product_type == "s2":
         valid_data_mask = (ds_data > 1).to_array(dim="band").all(dim="band")
-        ds_data =  odc.algo.keep_good_only(ds_data, where=valid_data_mask)
+        ds_data = odc.algo.keep_good_only(ds_data, where=valid_data_mask)
         
     # Mask data if either of the above masks were generated
     if mask is not None:
@@ -586,7 +586,7 @@ def load_ard(
         trans_emiss = ["atmospheric_transmittance", "emissivity", "emissivity_stddev"]
         qa = ["pixel_quality", "radiometric_saturation"]
 
-        if mask_pixel_quality == False:
+        if mask_pixel_quality is False:
             # set nodata to NaNs before rescaling
             # in the case where masking hasn't already done this
             for band in ds.data_vars:
@@ -841,8 +841,8 @@ def dilate(array, dilation=10, invert=True):
     """
 
     y, x = np.ogrid[
-        -dilation : (dilation + 1),
-        -dilation : (dilation + 1),
+        -dilation: (dilation + 1),
+        -dilation: (dilation + 1),
     ]
 
     # disk-like radial dilation
@@ -984,6 +984,7 @@ def nearest(
             is_before_closer, da_before[index_name], da_after[index_name]
         )
     return nearest_array
+
 
 def parallel_apply(ds, dim, func, *args):
     """
