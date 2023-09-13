@@ -7,26 +7,25 @@ Coastal analyses on Digital Earth Africa data.
 # Force GeoPandas to use Shapely instead of PyGEOS
 # In a future release, GeoPandas will switch to using Shapely by default.
 import os
+
 os.environ['USE_PYGEOS'] = '0'
 
-import requests
-import numpy as np
-import xarray as xr
-import pandas as pd
 import geopandas as gpd
 import matplotlib.pyplot as plt
-from scipy import stats
-from otps import TimePoint
-from otps import predict_tide
-from shapely.geometry import box
+import numpy as np
+import pandas as pd
+import requests
+import xarray as xr
 from datacube.utils.geometry import CRS
+from otps import TimePoint, predict_tide
 from owslib.wfs import WebFeatureService
+# Fix converters for tidal plot
+from pandas.plotting import register_matplotlib_converters
+from scipy import stats
+from shapely.geometry import box
 
 from deafrica_tools.datahandling import parallel_apply
 
-
-# Fix converters for tidal plot
-from pandas.plotting import register_matplotlib_converters
 register_matplotlib_converters()
 
 
@@ -124,18 +123,19 @@ def model_tides(
     """
 
     import os
-    import pyproj
+
     import numpy as np
-    import pyTMD.time
+    import pyproj
     import pyTMD.model
+    import pyTMD.time
     import pyTMD.utilities
     from pyTMD.calc_delta_time import calc_delta_time
     from pyTMD.infer_minor_corrections import infer_minor_corrections
     from pyTMD.predict_tide_drift import predict_tide_drift
-    from pyTMD.read_tide_model import extract_tidal_constants
-    from pyTMD.read_netcdf_model import extract_netcdf_constants
-    from pyTMD.read_GOT_model import extract_GOT_constants
     from pyTMD.read_FES_model import extract_FES_constants
+    from pyTMD.read_GOT_model import extract_GOT_constants
+    from pyTMD.read_netcdf_model import extract_netcdf_constants
+    from pyTMD.read_tide_model import extract_tidal_constants
 
     # Check that tide directory is accessible
     try:
@@ -995,6 +995,7 @@ def transect_distances(transects_gdf, lines_gdf, mode='distance'):
     """
     
     import warnings
+
     from shapely.errors import ShapelyDeprecationWarning
     from shapely.geometry import Point
 
