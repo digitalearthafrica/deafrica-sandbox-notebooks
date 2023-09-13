@@ -24,7 +24,7 @@ from osgeo import gdal
 from scipy.ndimage import binary_dilation
 from scipy.ndimage.filters import uniform_filter
 from scipy.ndimage.measurements import variance
-from skimage.morphology import binary_dilation, binary_erosion, disk
+from skimage.morphology import disk
 
 from deafrica_tools.bandindices import calculate_indices
 
