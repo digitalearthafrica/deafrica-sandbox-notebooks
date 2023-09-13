@@ -7,11 +7,12 @@ Function for defining an area of interest using either a point and buffer or a v
 # Force GeoPandas to use Shapely instead of PyGEOS
 # In a future release, GeoPandas will switch to using Shapely by default.
 import os
+
 os.environ['USE_PYGEOS'] = '0'
 
 import geopandas as gpd
-from shapely.geometry import box
 from geojson import Feature, FeatureCollection
+from shapely.geometry import box
 
 
 def define_area(lat=None, lon=None, buffer=None, vector_path=None):
