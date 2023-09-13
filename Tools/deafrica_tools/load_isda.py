@@ -2,20 +2,14 @@
 Functions to retrieve iSDAsoil data.
 """
 
-import numpy as np
-import pandas as pd
-import xarray as xr
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import rasterio as rio
-from pyproj import Transformer
-import matplotlib.pyplot as plt
-import os
-import numpy as np
-
 from urllib.parse import urlparse
+
 import boto3
-from pystac import stac_io, Catalog
+import numpy as np
+import rasterio as rio  # noqa F401
+import xarray as xr
+from pystac import Catalog, stac_io
+
 
 #this function allows us to directly query the data on s3, adapted from iSDA tutorial https://github.com/iSDA-Africa/isdasoil-tutorial/blob/main/iSDAsoil-tutorial.ipynb
 def my_read_method(uri):
