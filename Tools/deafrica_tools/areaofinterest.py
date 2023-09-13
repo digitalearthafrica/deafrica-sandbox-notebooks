@@ -8,7 +8,7 @@ Function for defining an area of interest using either a point and buffer or a v
 # In a future release, GeoPandas will switch to using Shapely by default.
 import os
 
-os.environ['USE_PYGEOS'] = '0'
+os.environ["USE_PYGEOS"] = "0"
 
 import geopandas as gpd
 from geojson import Feature, FeatureCollection
@@ -16,7 +16,7 @@ from shapely.geometry import box
 
 
 def define_area(lat=None, lon=None, buffer=None, vector_path=None):
-    '''
+    """
     Define an area of interest using either a point and buffer or a vector.
 
     Parameters:
@@ -34,13 +34,13 @@ def define_area(lat=None, lon=None, buffer=None, vector_path=None):
     --------
     feature_collection : dict
         A GeoJSON feature collection representing the area of interest.
-    '''
+    """
     # Define area using point and buffer
     if lat is not None and lon is not None and buffer is not None:
         lat_range = (lat - buffer, lat + buffer)
         lon_range = (lon - buffer, lon + buffer)
         box_geom = box(min(lon_range), min(lat_range), max(lon_range), max(lat_range))
-        aoi = gpd.GeoDataFrame(geometry=[box_geom], crs='EPSG:4326')
+        aoi = gpd.GeoDataFrame(geometry=[box_geom], crs="EPSG:4326")
 
     # Define area using vector
     elif vector_path is not None:
@@ -50,7 +50,10 @@ def define_area(lat=None, lon=None, buffer=None, vector_path=None):
         raise ValueError("Either lat/lon/buffer or vector_path must be provided.")
 
     # Convert the GeoDataFrame to a GeoJSON FeatureCollection
-    features = [Feature(geometry=row["geometry"], properties=row.drop("geometry").to_dict()) for _, row in aoi.iterrows()]
+    features = [
+        Feature(geometry=row["geometry"], properties=row.drop("geometry").to_dict())
+        for _, row in aoi.iterrows()
+    ]
     feature_collection = FeatureCollection(features)
 
     return feature_collection
