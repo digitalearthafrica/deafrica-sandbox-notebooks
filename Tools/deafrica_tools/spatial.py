@@ -1,35 +1,36 @@
-'''
+"""
 Spatial analyses functions for Digital Earth Africa data.
-'''
+"""
 
 # Import required packages
-import dask
+
 
 # Force GeoPandas to use Shapely instead of PyGEOS
 # In a future release, GeoPandas will switch to using Shapely by default.
 import os
-os.environ['USE_PYGEOS'] = '0'
 
+os.environ["USE_PYGEOS"] = "0"
+
+import multiprocessing as mp
+
+import dask
 import fiona
-import collections
-import numpy as np
-import xarray as xr
-from osgeo import osr
-from osgeo import ogr
 import geopandas as gpd
+import numpy as np
+import odc.geo.xr
+import pandas as pd
 import rasterio.features
 import scipy.interpolate
-import multiprocessing as mp
-from scipy import ndimage as nd
-from skimage.measure import label
-from rasterstats import zonal_stats
-from skimage.measure import find_contours
-from geopy.geocoders import Nominatim
-from shapely.geometry import mapping, shape
+import xarray as xr
+from datacube.api.query import query_group_by
+from datacube.model.utils import xr_apply
 from datacube.utils.cog import write_cog
-from datacube.utils.geometry import assign_crs
 from datacube.utils.geometry import CRS, Geometry
-from shapely.geometry import LineString, MultiLineString, shape
+from geopy.geocoders import Nominatim
+from rasterstats import zonal_stats
+from shapely.geometry import LineString, MultiLineString, mapping, shape
+from skimage.measure import find_contours, label
+
 
 def add_geobox(ds, crs=None):
     """
@@ -57,10 +58,6 @@ def add_geobox(ds, crs=None):
 
     """
 
-    # Import the odc-geo package to add `.odc.x` attributes
-    # to our input xarray object
-    import odc.geo.xr
-
     # If a CRS is not found, use custom provided CRS
     if ds.odc.crs is None and crs is not None:
         ds = ds.odc.assign_crs(crs)
@@ -73,6 +70,7 @@ def add_geobox(ds, crs=None):
         )
 
     return ds
+
 
 def xr_vectorize(
     da,
@@ -139,9 +137,7 @@ def xr_vectorize(
 
     # Create a geopandas dataframe populated with the polygon shapes
     attribute_name = attribute_col if attribute_col is not None else "attribute"
-    gdf = gpd.GeoDataFrame(
-        data={attribute_name: values}, geometry=polygons, crs=da.odc.crs
-    )
+    gdf = gpd.GeoDataFrame(data={attribute_name: values}, geometry=polygons, crs=da.odc.crs)
 
     # If a file path is supplied, export to file
     if output_path is not None:
@@ -150,6 +146,7 @@ def xr_vectorize(
         gdf.to_file(output_path)
 
     return gdf
+
 
 def xr_rasterize(
     gdf,
@@ -379,21 +376,19 @@ def subpixel_contours(
 
     # If z_values is supplied is not a list, convert to list:
     z_values = (
-        z_values
-        if (isinstance(z_values, list) or isinstance(z_values, np.ndarray))
-        else [z_values]
+        z_values if (isinstance(z_values, list) or isinstance(z_values, np.ndarray)) else [z_values]
     )
 
     # If dask collection, load into memory
     if dask.is_dask_collection(da):
         if verbose:
-            print(f"Loading data into memory using Dask")
+            print("Loading data into memory using Dask")
         da = da.compute()
 
     # Test number of dimensions in supplied data array
     if len(da.shape) == 2:
         if verbose:
-            print(f"Operating in multiple z-value, single array mode")
+            print("Operating in multiple z-value, single array mode")
         dim = "z_value"
         contour_arrays = {
             _time_format(i, time_format): _contours_to_multiline(da, i, min_vertices)
@@ -404,7 +399,7 @@ def subpixel_contours(
         # Test if only a single z-value is given when operating in
         # single z-value, multiple arrays mode
         if verbose:
-            print(f"Operating in single z-value, multiple arrays mode")
+            print("Operating in single z-value, multiple arrays mode")
         if len(z_values) > 1:
             raise ValueError(
                 "Please provide a single z-value when operating "
@@ -412,9 +407,7 @@ def subpixel_contours(
             )
 
         contour_arrays = {
-            _time_format(i, time_format): _contours_to_multiline(
-                da_i, z_values[0], min_vertices
-            )
+            _time_format(i, time_format): _contours_to_multiline(da_i, z_values[0], min_vertices)
             for i, da_i in da.groupby(dim)
         }
 
@@ -507,84 +500,79 @@ def subpixel_contours(
 
     return contours_gdf
 
-def interpolate_2d(ds, 
-                   x_coords, 
-                   y_coords, 
-                   z_coords, 
-                   method='linear',
-                   factor=1,
-                   verbose=False,
-                   **kwargs):
-    
+
+def interpolate_2d(
+    ds, x_coords, y_coords, z_coords, method="linear", factor=1, verbose=False, **kwargs
+):
     """
-    This function takes points with X, Y and Z coordinates, and 
-    interpolates Z-values across the extent of an existing xarray 
+    This function takes points with X, Y and Z coordinates, and
+    interpolates Z-values across the extent of an existing xarray
     dataset. This can be useful for producing smooth surfaces from point
-    data that can be compared directly against satellite data derived 
+    data that can be compared directly against satellite data derived
     from an OpenDataCube query.
-    
+
     Supported interpolation methods include 'linear', 'nearest' and
-    'cubic (using `scipy.interpolate.griddata`), and 'rbf' (using 
+    'cubic (using `scipy.interpolate.griddata`), and 'rbf' (using
     `scipy.interpolate.Rbf`).
-    
+
     Last modified: February 2020
-    
+
     Parameters
-    ----------  
+    ----------
     ds : xarray DataArray or Dataset
-        A two-dimensional or multi-dimensional array from which x and y 
-        dimensions will be copied and used for the area in which to 
-        interpolate point data. 
+        A two-dimensional or multi-dimensional array from which x and y
+        dimensions will be copied and used for the area in which to
+        interpolate point data.
     x_coords, y_coords : numpy array
-        Arrays containing X and Y coordinates for all points (e.g. 
+        Arrays containing X and Y coordinates for all points (e.g.
         longitudes and latitudes).
     z_coords : numpy array
-        An array containing Z coordinates for all points (e.g. 
-        elevations). These are the values you wish to interpolate 
+        An array containing Z coordinates for all points (e.g.
+        elevations). These are the values you wish to interpolate
         between.
     method : string, optional
         The method used to interpolate between point values. This string
-        is either passed to `scipy.interpolate.griddata` (for 'linear', 
-        'nearest' and 'cubic' methods), or used to specify Radial Basis 
+        is either passed to `scipy.interpolate.griddata` (for 'linear',
+        'nearest' and 'cubic' methods), or used to specify Radial Basis
         Function interpolation using `scipy.interpolate.Rbf` ('rbf').
         Defaults to 'linear'.
     factor : int, optional
-        An optional integer that can be used to subsample the spatial 
+        An optional integer that can be used to subsample the spatial
         interpolation extent to obtain faster interpolation times, then
-        up-sample this array back to the original dimensions of the 
-        data as a final step. For example, setting `factor=10` will 
-        interpolate data into a grid that has one tenth of the 
-        resolution of `ds`. This approach will be significantly faster 
-        than interpolating at full resolution, but will potentially 
+        up-sample this array back to the original dimensions of the
+        data as a final step. For example, setting `factor=10` will
+        interpolate data into a grid that has one tenth of the
+        resolution of `ds`. This approach will be significantly faster
+        than interpolating at full resolution, but will potentially
         produce less accurate or reliable results.
     verbose : bool, optional
         Print debugging messages. Default False.
-    **kwargs : 
-        Optional keyword arguments to pass to either 
-        `scipy.interpolate.griddata` (if `method` is 'linear', 'nearest' 
+    **kwargs :
+        Optional keyword arguments to pass to either
+        `scipy.interpolate.griddata` (if `method` is 'linear', 'nearest'
         or 'cubic'), or `scipy.interpolate.Rbf` (is `method` is 'rbf').
-      
+
     Returns
     -------
     interp_2d_array : xarray DataArray
-        An xarray DataArray containing with x and y coordinates copied 
-        from `ds_array`, and Z-values interpolated from the points data. 
+        An xarray DataArray containing with x and y coordinates copied
+        from `ds_array`, and Z-values interpolated from the points data.
     """
-    
+
     # Extract xy and elev points
     points_xy = np.vstack([x_coords, y_coords]).T
-    
-    # Extract x and y coordinates to interpolate into. 
-    # If `factor` is greater than 1, the coordinates will be subsampled 
-    # for faster run-times. If the last x or y value in the subsampled 
-    # grid aren't the same as the last x or y values in the original 
-    # full resolution grid, add the final full resolution grid value to 
+
+    # Extract x and y coordinates to interpolate into.
+    # If `factor` is greater than 1, the coordinates will be subsampled
+    # for faster run-times. If the last x or y value in the subsampled
+    # grid aren't the same as the last x or y values in the original
+    # full resolution grid, add the final full resolution grid value to
     # ensure data is interpolated up to the very edge of the array
     if ds.x[::factor][-1].item() == ds.x[-1].item():
         x_grid_coords = ds.x[::factor].values
     else:
         x_grid_coords = ds.x[::factor].values.tolist() + [ds.x[-1].item()]
-        
+
     if ds.y[::factor][-1].item() == ds.y[-1].item():
         y_grid_coords = ds.y[::factor].values
     else:
@@ -592,33 +580,27 @@ def interpolate_2d(ds,
 
     # Create grid to interpolate into
     grid_y, grid_x = np.meshgrid(x_grid_coords, y_grid_coords)
-    
-    # Apply scipy.interpolate.griddata interpolation methods
-    if method in ('linear', 'nearest', 'cubic'):
-        
-        # Interpolate x, y and z values 
-        interp_2d = scipy.interpolate.griddata(points=points_xy, 
-                                               values=z_coords, 
-                                               xi=(grid_y, grid_x), 
-                                               method=method,
-                                               **kwargs)
-    
-    # Apply Radial Basis Function interpolation
-    elif method == 'rbf':
 
-        # Interpolate x, y and z values 
-        rbf = scipy.interpolate.Rbf(x_coords, y_coords, z_coords, **kwargs)  
+    # Apply scipy.interpolate.griddata interpolation methods
+    if method in ("linear", "nearest", "cubic"):
+        # Interpolate x, y and z values
+        interp_2d = scipy.interpolate.griddata(
+            points=points_xy, values=z_coords, xi=(grid_y, grid_x), method=method, **kwargs
+        )
+
+    # Apply Radial Basis Function interpolation
+    elif method == "rbf":
+        # Interpolate x, y and z values
+        rbf = scipy.interpolate.Rbf(x_coords, y_coords, z_coords, **kwargs)
         interp_2d = rbf(grid_y, grid_x)
 
     # Create xarray dataarray from the data and resample to ds coords
-    interp_2d_da = xr.DataArray(interp_2d, 
-                                coords=[y_grid_coords, x_grid_coords], 
-                                dims=['y', 'x'])
-    
+    interp_2d_da = xr.DataArray(interp_2d, coords=[y_grid_coords, x_grid_coords], dims=["y", "x"])
+
     # If factor is greater than 1, resample the interpolated array to
     # match the input `ds` array
-    if factor > 1: 
-        interp_2d_da = interp_2d_da.interp_like(ds)   
+    if factor > 1:
+        interp_2d_da = interp_2d_da.interp_like(ds)
 
     return interp_2d_da
 
@@ -647,7 +629,7 @@ def contours_to_arrays(gdf, col):
     of each vertex in the input GeoDataFrame.
 
     """
-      
+
     # Explode multi-part geometries into multiple single geometries.
     gdf = gdf.explode(ignore_index=True)
 
@@ -657,56 +639,50 @@ def contours_to_arrays(gdf, col):
         val = gdf.iloc[i][col]
 
         try:
-            coords = np.concatenate(
-                [np.vstack(x.coords.xy).T for x in gdf.iloc[i].geometry.geoms]
-            )
-        except:
+            coords = np.concatenate([np.vstack(x.coords.xy).T for x in gdf.iloc[i].geometry.geoms])
+        except Exception:
             coords = np.vstack(gdf.iloc[i].geometry.coords.xy).T
 
-        coords_zvals.append(
-            np.column_stack((coords, np.full(np.shape(coords)[0], fill_value=val)))
-        )
+        coords_zvals.append(np.column_stack((coords, np.full(np.shape(coords)[0], fill_value=val))))
 
     return np.concatenate(coords_zvals)
 
 
 def largest_region(bool_array, **kwargs):
-    
-    '''
-    Takes a boolean array and identifies the largest contiguous region of 
-    connected True values. This is returned as a new array with cells in 
+    """
+    Takes a boolean array and identifies the largest contiguous region of
+    connected True values. This is returned as a new array with cells in
     the largest region marked as True, and all other cells marked as False.
-    
+
     Parameters
-    ----------  
+    ----------
     bool_array : boolean array
         A boolean array (numpy or xarray.DataArray) with True values for
-        the areas that will be inspected to find the largest group of 
+        the areas that will be inspected to find the largest group of
         connected cells
-    **kwargs : 
+    **kwargs :
         Optional keyword arguments to pass to `measure.label`
-        
+
     Returns
     -------
     largest_region : boolean array
-        A boolean array with cells in the largest region marked as True, 
-        and all other cells marked as False.       
-        
-    '''
-    
+        A boolean array with cells in the largest region marked as True,
+        and all other cells marked as False.
+
+    """
+
     # First, break boolean array into unique, discrete regions/blobs
     blobs_labels = label(bool_array, background=0, **kwargs)
-    
+
     # Count the size of each blob, excluding the background class (0)
-    ids, counts = np.unique(blobs_labels[blobs_labels > 0], 
-                            return_counts=True) 
-    
+    ids, counts = np.unique(blobs_labels[blobs_labels > 0], return_counts=True)
+
     # Identify the region ID of the largest blob
     largest_region_id = ids[np.argmax(counts)]
-    
+
     # Produce a boolean array where 1 == the largest region
     largest_region = blobs_labels == largest_region_id
-    
+
     return largest_region
 
 
@@ -727,23 +703,17 @@ def transform_geojson_wgs_to_epsg(geojson, EPSG):
         a geojson dictionary containing a 'coordinates' key, in the desired CRS
 
     """
-    gg = Geometry(geojson['geometry'], CRS('epsg:4326'))
-    gg = gg.to_crs(CRS(f'epsg:{EPSG}'))
+    gg = Geometry(geojson["geometry"], CRS("epsg:4326"))
+    gg = gg.to_crs(CRS(f"epsg:{EPSG}"))
     return gg.__geo_interface__
 
 
-def zonal_stats_parallel(shp,
-                         raster,
-                         statistics,
-                         out_shp,
-                         ncpus,
-                         **kwargs):
-
+def zonal_stats_parallel(shp, raster, statistics, out_shp, ncpus, **kwargs):
     """
     Summarizing raster datasets based on vector geometries in parallel.
-    Each cpu recieves an equal chunk of the dataset. 
+    Each cpu recieves an equal chunk of the dataset.
     Utilizes the perrygeo/rasterstats package.
-    
+
     Parameters
     ----------
     shp : str
@@ -758,85 +728,87 @@ def zonal_stats_parallel(shp,
     out_shp: str
         Path to export shapefile containing zonal statistics.
     ncpus: int
-        number of cores to parallelize the operations over. 
-    kwargs: 
+        number of cores to parallelize the operations over.
+    kwargs:
         Any other keyword arguments to rasterstats.zonal_stats()
         See https://github.com/perrygeo/python-rasterstats for
         all options
-            
+
     Returns
     -------
     Exports a shapefile to disk containing the zonal statistics requested
-    
+
     """
-    
-    #yields n sized chunks from list l (used for splitting task to multiple processes)
+
+    # yields n sized chunks from list l (used for splitting task to multiple processes)
     def chunks(l, n):
         for i in range(0, len(l), n):
-            yield l[i:i + n]
+            yield l[i : i + n]
 
-    #calculates zonal stats and adds results to a dictionary
-    def worker(z,raster,d):	
-        z_stats = zonal_stats(z,raster,stats=statistics,**kwargs)	
-        for i in range(0,len(z_stats)):
-            d[z[i]['id']]=z_stats[i]
+    # calculates zonal stats and adds results to a dictionary
+    def worker(z, raster, d):
+        z_stats = zonal_stats(z, raster, stats=statistics, **kwargs)
+        for i in range(0, len(z_stats)):
+            d[z[i]["id"]] = z_stats[i]
 
-    #write output polygon
-    def write_output(zones, out_shp,d):
-        #copy schema and crs from input and add new fields for each statistic			
+    # write output polygon
+    def write_output(zones, out_shp, d):
+        # copy schema and crs from input and add new fields for each statistic
         schema = zones.schema.copy()
         crs = zones.crs
-        for stat in statistics:			
-            schema['properties'][stat] = 'float'
+        for stat in statistics:
+            schema["properties"][stat] = "float"
 
-        with fiona.open(out_shp, 'w', 'ESRI Shapefile', schema, crs) as output:
+        with fiona.open(out_shp, "w", "ESRI Shapefile", schema, crs) as output:
             for elem in zones:
-                for stat in statistics:			
-                    elem['properties'][stat]=d[elem['id']][stat]
-                output.write({'properties':elem['properties'],'geometry': mapping(shape(elem['geometry']))})
-    
+                for stat in statistics:
+                    elem["properties"][stat] = d[elem["id"]][stat]
+                output.write(
+                    {"properties": elem["properties"], "geometry": mapping(shape(elem["geometry"]))}
+                )
+
     with fiona.open(shp) as zones:
         jobs = []
 
         # create manager dictionary (polygon ids=keys, stats=entries)
         # where multiple processes can write without conflicts
-        man = mp.Manager()	
-        d = man.dict()	
+        man = mp.Manager()
+        d = man.dict()
 
-        #split zone polygons into 'ncpus' chunks for parallel processing 
+        # split zone polygons into 'ncpus' chunks for parallel processing
         # and call worker() for each
-        split = chunks(zones, len(zones)//ncpus)
+        split = chunks(zones, len(zones) // ncpus)
         for z in split:
-            p = mp.Process(target=worker,args=(z, raster,d))
+            p = mp.Process(target=worker, args=(z, raster, d))
             p.start()
             jobs.append(p)
 
-        #wait that all chunks are finished
+        # wait that all chunks are finished
         [j.join() for j in jobs]
 
-        write_output(zones,out_shp,d)		
+        write_output(zones, out_shp, d)
 
-        
+
 def reverse_geocode(coords, site_classes=None, state_classes=None):
     """
-    Takes a latitude and longitude coordinate, and performs a reverse 
-    geocode to return a plain-text description of the location in the 
+    Takes a latitude and longitude coordinate, and performs a reverse
+    geocode to return a plain-text description of the location in the
     form:
-        
+
         Site, State
-        
+
     E.g.: `reverse_geocode(coords=(-35.282163, 149.128835))`
-    
+
         'Canberra, Australian Capital Territory'
 
     Parameters
     ----------
     coords : tuple of floats
-        A tuple of (latitude, longitude) coordinates used to perform 
+        A tuple of (latitude, longitude) coordinates used to perform
         the reverse geocode.
     site_classes : list of strings, optional
-        A list of strings used to define the site part of the plain 
-        text location description. Because the contents of the geocoded 
+        A list of strings used to define the site part of the plain
+        text location description. Because the contents of the geocoded
         address can vary greatly depending on location, these strings
         are tested against the address one by one until a match is made.
 
@@ -845,66 +817,70 @@ def reverse_geocode(coords, site_classes=None, state_classes=None):
             ``['city', 'town', 'village', 'suburb', 'hamlet', 'county', 'municipality']``
 
     state_classes : list of strings, optional
-        A list of strings used to define the state part of the plain 
-        text location description. These strings are tested against the 
-        address one by one until a match is made. Defaults to: 
+        A list of strings used to define the state part of the plain
+        text location description. These strings are tested against the
+        address one by one until a match is made. Defaults to:
         `['state', 'territory']`.
     Returns
     -------
-    If a valid geocoded address is found, a plain text location 
+    If a valid geocoded address is found, a plain text location
     description will be returned:
-    
+
         'Site, State'
-    
+
     If no valid address is found, formatted coordinates will be returned
     instead:
-    
-        'XX.XX S, XX.XX E'   
+
+        'XX.XX S, XX.XX E'
     """
 
     # Run reverse geocode using coordinates
-    geocoder = Nominatim(user_agent='Digital Earth Africa')
+    geocoder = Nominatim(user_agent="Digital Earth Africa")
     out = geocoder.reverse(coords)
-    
+
     # Create plain text-coords as fall-back
-    lat = f'{-coords[0]:.2f} S' if coords[0] < 0 else f'{coords[0]:.2f} N'
-    lon = f'{-coords[1]:.2f} W' if coords[1] < 0 else f'{coords[1]:.2f} E'
+    lat = f"{-coords[0]:.2f} S" if coords[0] < 0 else f"{coords[0]:.2f} N"
+    lon = f"{-coords[1]:.2f} W" if coords[1] < 0 else f"{coords[1]:.2f} E"
 
     try:
-        
         # Get address from geocoded data
-        address = out.raw['address']
+        address = out.raw["address"]
 
         # Use site and state classes if supplied; else use defaults
-        default_site_classes = ['city', 'town', 'village', 'suburb', 'hamlet', 
-                                'county', 'municipality']
-        default_state_classes = ['state', 'territory']
+        default_site_classes = [
+            "city",
+            "town",
+            "village",
+            "suburb",
+            "hamlet",
+            "county",
+            "municipality",
+        ]
+        default_state_classes = ["state", "territory"]
         site_classes = site_classes if site_classes else default_site_classes
         state_classes = state_classes if state_classes else default_state_classes
 
         # Return the first site or state class that exists in address dict
         site = next((address[k] for k in site_classes if k in address), None)
         state = next((address[k] for k in state_classes if k in address), None)
-        
+
         # If site and state exist in the data, return this.
         # Otherwise, return N/E/S/W coordinates.
         if site and state:
-
             # Return as site, state formatted string
-            return f'{site}, {state}'
-        
-        else:
-            
-            # If no geocoding result, return N/E/S/W coordinates
-            print('No valid geocoded location; returning coordinates instead')
-            return f'{lat}, {lon}'
-              
-    except (KeyError, AttributeError):
+            return f"{site}, {state}"
 
+        else:
+            # If no geocoding result, return N/E/S/W coordinates
+            print("No valid geocoded location; returning coordinates instead")
+            return f"{lat}, {lon}"
+
+    except (KeyError, AttributeError):
         # If no geocoding result, return N/E/S/W coordinates
-        print('No valid geocoded location; returning coordinates instead')
-        return f'{lat}, {lon}'
-    
+        print("No valid geocoded location; returning coordinates instead")
+        return f"{lat}, {lon}"
+
+
 def sun_angles(dc, query):
     """
     For a given spatiotemporal query, calculate mean sun
@@ -926,9 +902,6 @@ def sun_angles(dc, query):
         An `xarray.set` containing a 'sun_elevation' and
         'sun_azimuth' variables.
     """
-
-    from datacube.api.query import query_group_by
-    from datacube.model.utils import xr_apply
 
     # Identify satellite datasets and group outputs using the
     # same approach used to group satellite imagery (i.e. solar day)
