@@ -7,7 +7,9 @@ import os
 import warnings
 import zipfile
 from collections import Counter
+from concurrent.futures import ProcessPoolExecutor
 from copy import deepcopy
+from itertools import repeat
 
 import numexpr
 import numpy as np
@@ -24,10 +26,9 @@ from scipy.ndimage import binary_dilation
 from scipy.ndimage.filters import uniform_filter
 from scipy.ndimage.measurements import variance
 from skimage.morphology import disk
+from tqdm import tqdm
 
 from deafrica_tools.bandindices import calculate_indices
-
-# from datetime import datetime
 
 
 def _dc_query_only(**kw):
@@ -996,11 +997,6 @@ def parallel_apply(ds, dim, func, *args):
         A concatenated dataset containing an output for each array
         along the input `dim` dimension.
     """
-
-    from concurrent.futures import ProcessPoolExecutor
-    from itertools import repeat
-
-    from tqdm import tqdm
 
     with ProcessPoolExecutor() as executor:
         # Apply func in parallel
