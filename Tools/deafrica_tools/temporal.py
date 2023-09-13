@@ -19,12 +19,13 @@ The key functions are:
 """
 
 import sys
+
 import dask
+import hdstats
 import numpy as np
 import xarray as xr
-import hdstats
-from packaging import version
 from datacube.utils.geometry import assign_crs
+from packaging import version
 
 
 def allNaN_arg(da, dim, stat):
@@ -182,7 +183,7 @@ def _los(da, eos, sos):
     LOS = Length of season (in DOY)
     """
     los = eos - sos
-    #handle negative values
+    # handle negative values
     los = xr.where(
         los >= 0,
         los,
@@ -223,7 +224,7 @@ def xr_phenology(
     ],
     method_sos="first",
     method_eos="last",
-    verbose=True
+    verbose=True,
 ):
     """
     Obtain land surface phenology metrics from an
@@ -521,9 +522,9 @@ def temporal_statistics(da, stats):
         n3 = zz[:, :, 2]
 
         # intialise dataset with first statistic
-        ds = xr.DataArray(
-            n1, attrs=attrs, coords={"x": x, "y": y}, dims=["y", "x"]
-        ).to_dataset(name=stats[0] + "_n1")
+        ds = xr.DataArray(n1, attrs=attrs, coords={"x": x, "y": y}, dims=["y", "x"]).to_dataset(
+            name=stats[0] + "_n1"
+        )
 
         # add other datasets
         for i, j in zip([n2, n3], ["n2", "n3"]):
@@ -537,9 +538,9 @@ def temporal_statistics(da, stats):
         ds = first_func(da)
 
         # convert back to xarray dataset
-        ds = xr.DataArray(
-            ds, attrs=attrs, coords={"x": x, "y": y}, dims=["y", "x"]
-        ).to_dataset(name=stats[0])
+        ds = xr.DataArray(ds, attrs=attrs, coords={"x": x, "y": y}, dims=["y", "x"]).to_dataset(
+            name=stats[0]
+        )
 
     # loop through the other functions
     for stat in stats[1:]:
