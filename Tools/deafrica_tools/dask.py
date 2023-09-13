@@ -2,8 +2,9 @@
 Functions for simplifying the creation of a local dask cluster.
 """
 
-from importlib.util import find_spec
 import os
+from importlib.util import find_spec
+
 import dask
 from aiohttp import ClientConnectionError
 from datacube.utils.dask import start_local_dask
