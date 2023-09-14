@@ -1,0 +1,52 @@
+# Dependencies listed should match those in the ../pyproject.toml
+# Version constraints should match those in 
+# https://github.com/digitalearthafrica/deafrica-sandbox/blob/main/docker/requirements.in
+aiohttp
+aiobotocore[boto3]==2.4.2 # for boto3 # using aiobotocore[awscli,boto3]==2.4.2 caused pip-compile to fail
+branca
+dask[complete]==2023.3.1
+dask-ml
+dask-gateway==2023.1.1
+datacube[performance,s3]==1.8.15
+fiona
+folium==0.12.1
+fsspec
+gdal==3.6.3
+geojson
+geopandas
+geopy
+hdstats==0.2.1
+ipyleaflet==0.17.2
+ipython==8.13.1
+ipywidgets==8.0.6
+joblib
+matplotlib
+numexpr
+numpy
+odc-algo
+odc-geo
+odc-ui==0.2.1.dev3673 --extra-index-url="https://packages.dea.ga.gov.au"
+owslib
+packaging
+pandas
+pyproj
+pystac-client # for pystac
+python-dateutil
+pyTMD==1.0.6
+pytz
+rasterio
+rasterstats
+requests
+scikit-image
+scikit-learn
+scipy
+seaborn
+shapely
+tqdm
+xarray
+# Code style
+black
+flake8==6.0.0 # needs to be compatible with pycodestyle-2.10.0
+isort
+# Testing
+pytest
