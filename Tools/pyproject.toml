@@ -75,7 +75,7 @@ dependencies= [
     "xarray",
     # Code style
     "black",
-    "flake8",
+    "flake8==6.0.0", # remove constraint in the next sandbox image upgrade
     "isort",
     # Testing
     "pytest",
