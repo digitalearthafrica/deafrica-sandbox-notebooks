@@ -1,6 +1,6 @@
 # pyproject.toml
 [build-system]
-requires = ["setuptools", "setuptools-scm"]
+requires = ["setuptools>=61.0", "wheel", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
 
@@ -28,13 +28,15 @@ classifiers=[
 ]
 requires-python = ">=3.9,<3.12"
 dependencies= [
+    # Version constraints should match those in 
+    # https://github.com/digitalearthafrica/deafrica-sandbox/blob/main/docker/requirements.in
     "aiohttp",
-    "boto3",
+    "aiobotocore[boto3]", # for boto3
     "branca",
-    "dask[array,complete,dataframe]",
+    "dask[complete]",
     "dask-ml",
     "dask-gateway",
-    "datacube[celery,performance,s3]",
+    "datacube[performance,s3]",
     "fiona",
     "folium",
     "fsspec",
@@ -57,9 +59,9 @@ dependencies= [
     "packaging",
     "pandas",
     "pyproj",
-    "pystac[validation]",
+    "pystac-client",  # for pystac
     "python-dateutil",
-    "pytmd",
+    "pyTMD",
     "pytz",
     "rasterio",
     "rasterstats",
