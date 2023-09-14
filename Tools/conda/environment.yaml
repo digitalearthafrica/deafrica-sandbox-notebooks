@@ -1,4 +1,4 @@
-name: deafrica-tools-env-2
+name: deafrica-tools-env
 channels:
   - conda-forge
 dependencies:
