@@ -2,7 +2,7 @@
 # Version constraints should match those in 
 # https://github.com/digitalearthafrica/deafrica-sandbox/blob/main/docker/requirements.in
 aiohttp
-aiobotocore[boto3]==2.4.2 # for boto3
+aiobotocore[boto3]==2.4.2 # for boto3 # using aiobotocore[awscli,boto3]==2.4.2 caused pip-compile to fail
 branca
 dask[complete]==2023.3.1
 dask-ml
