@@ -8,7 +8,6 @@ import os
 
 os.environ['USE_PYGEOS'] = '0'
 
-import collections
 import multiprocessing as mp
 
 import dask
@@ -23,11 +22,9 @@ import xarray as xr
 from datacube.api.query import query_group_by
 from datacube.model.utils import xr_apply
 from datacube.utils.cog import write_cog
-from datacube.utils.geometry import CRS, Geometry, assign_crs
+from datacube.utils.geometry import CRS, Geometry
 from geopy.geocoders import Nominatim
-from osgeo import ogr, osr
 from rasterstats import zonal_stats
-from scipy import ndimage as nd
 from shapely.geometry import LineString, MultiLineString, mapping, shape
 from skimage.measure import find_contours, label
 
