@@ -67,6 +67,7 @@ def add_geobox(ds, crs=None):
 
     return ds
 
+
 def xr_vectorize(
     da,
     attribute_col=None,
@@ -143,6 +144,7 @@ def xr_vectorize(
         gdf.to_file(output_path)
 
     return gdf
+
 
 def xr_rasterize(
     gdf,
@@ -380,13 +382,13 @@ def subpixel_contours(
     # If dask collection, load into memory
     if dask.is_dask_collection(da):
         if verbose:
-            print(f"Loading data into memory using Dask")
+            print("Loading data into memory using Dask")
         da = da.compute()
 
     # Test number of dimensions in supplied data array
     if len(da.shape) == 2:
         if verbose:
-            print(f"Operating in multiple z-value, single array mode")
+            print("Operating in multiple z-value, single array mode")
         dim = "z_value"
         contour_arrays = {
             _time_format(i, time_format): _contours_to_multiline(da, i, min_vertices)
@@ -397,7 +399,7 @@ def subpixel_contours(
         # Test if only a single z-value is given when operating in
         # single z-value, multiple arrays mode
         if verbose:
-            print(f"Operating in single z-value, multiple arrays mode")
+            print("Operating in single z-value, multiple arrays mode")
         if len(z_values) > 1:
             raise ValueError(
                 "Please provide a single z-value when operating "
@@ -499,6 +501,7 @@ def subpixel_contours(
         contours_gdf.to_file(filename=output_path)
 
     return contours_gdf
+
 
 def interpolate_2d(ds,
                    x_coords,
@@ -653,7 +656,7 @@ def contours_to_arrays(gdf, col):
             coords = np.concatenate(
                 [np.vstack(x.coords.xy).T for x in gdf.iloc[i].geometry.geoms]
             )
-        except:
+        except Exception:
             coords = np.vstack(gdf.iloc[i].geometry.coords.xy).T
 
         coords_zvals.append(
@@ -768,15 +771,15 @@ def zonal_stats_parallel(shp,
         for i in range(0, len(l), n):
             yield l[i:i + n]
 
-    #calculates zonal stats and adds results to a dictionary
-    def worker(z,raster,d):
-        z_stats = zonal_stats(z,raster,stats=statistics,**kwargs)
-        for i in range(0,len(z_stats)):
-            d[z[i]['id']]=z_stats[i]
+    # calculates zonal stats and adds results to a dictionary
+    def worker(z, raster, d):
+        z_stats = zonal_stats(z, raster, stats=statistics, **kwargs)
+        for i in range(0, len(z_stats)):
+            d[z[i]['id']] = z_stats[i]
 
-    #write output polygon
-    def write_output(zones, out_shp,d):
-        #copy schema and crs from input and add new fields for each statistic
+    # write output polygon
+    def write_output(zones, out_shp, d):
+        # copy schema and crs from input and add new fields for each statistic
         schema = zones.schema.copy()
         crs = zones.crs
         for stat in statistics:
@@ -785,8 +788,8 @@ def zonal_stats_parallel(shp,
         with fiona.open(out_shp, 'w', 'ESRI Shapefile', schema, crs) as output:
             for elem in zones:
                 for stat in statistics:
-                    elem['properties'][stat]=d[elem['id']][stat]
-                output.write({'properties':elem['properties'],'geometry': mapping(shape(elem['geometry']))})
+                    elem['properties'][stat] = d[elem['id']][stat]
+                output.write({'properties': elem['properties'], 'geometry': mapping(shape(elem['geometry']))})
 
     with fiona.open(shp) as zones:
         jobs = []
@@ -796,18 +799,18 @@ def zonal_stats_parallel(shp,
         man = mp.Manager()
         d = man.dict()
 
-        #split zone polygons into 'ncpus' chunks for parallel processing
+        # split zone polygons into 'ncpus' chunks for parallel processing
         # and call worker() for each
         split = chunks(zones, len(zones)//ncpus)
         for z in split:
-            p = mp.Process(target=worker,args=(z, raster,d))
+            p = mp.Process(target=worker, args=(z, raster, d))
             p.start()
             jobs.append(p)
 
-        #wait that all chunks are finished
+        # wait that all chunks are finished
         [j.join() for j in jobs]
 
-        write_output(zones,out_shp,d)
+        write_output(zones, out_shp, d)
 
 
 def reverse_geocode(coords, site_classes=None, state_classes=None):
@@ -897,6 +900,7 @@ def reverse_geocode(coords, site_classes=None, state_classes=None):
         # If no geocoding result, return N/E/S/W coordinates
         print('No valid geocoded location; returning coordinates instead')
         return f'{lat}, {lon}'
+
 
 def sun_angles(dc, query):
     """
