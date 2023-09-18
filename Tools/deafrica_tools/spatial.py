@@ -2,34 +2,31 @@
 Spatial analyses functions for Digital Earth Africa data.
 '''
 
-# Import required packages
-import dask
-
 # Force GeoPandas to use Shapely instead of PyGEOS
 # In a future release, GeoPandas will switch to using Shapely by default.
 import os
+
 os.environ['USE_PYGEOS'] = '0'
 
-import fiona
 import collections
-import numpy as np
-import xarray as xr
-from osgeo import osr
-from osgeo import ogr
+import multiprocessing as mp
+
+import dask
+import fiona
 import geopandas as gpd
+import numpy as np
 import rasterio.features
 import scipy.interpolate
-import multiprocessing as mp
-from scipy import ndimage as nd
-from skimage.measure import label
-from rasterstats import zonal_stats
-from skimage.measure import find_contours
-from geopy.geocoders import Nominatim
-from shapely.geometry import mapping, shape
+import xarray as xr
 from datacube.utils.cog import write_cog
-from datacube.utils.geometry import assign_crs
-from datacube.utils.geometry import CRS, Geometry
-from shapely.geometry import LineString, MultiLineString, shape
+from datacube.utils.geometry import CRS, Geometry, assign_crs
+from geopy.geocoders import Nominatim
+from osgeo import ogr, osr
+from rasterstats import zonal_stats
+from scipy import ndimage as nd
+from shapely.geometry import LineString, MultiLineString, mapping, shape
+from skimage.measure import find_contours, label
+
 
 def add_geobox(ds, crs=None):
     """
