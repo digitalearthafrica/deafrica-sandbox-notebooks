@@ -15,9 +15,13 @@ import dask
 import fiona
 import geopandas as gpd
 import numpy as np
+import odc.geo.xr  # adds  `.odc.x` attributes to our xarray objects.
+import pandas as pd
 import rasterio.features
 import scipy.interpolate
 import xarray as xr
+from datacube.api.query import query_group_by
+from datacube.model.utils import xr_apply
 from datacube.utils.cog import write_cog
 from datacube.utils.geometry import CRS, Geometry, assign_crs
 from geopy.geocoders import Nominatim
@@ -53,11 +57,6 @@ def add_geobox(ds, crs=None):
         spatial information.
 
     """
-
-    # Import the odc-geo package to add `.odc.x` attributes
-    # to our input xarray object
-    import odc.geo.xr
-
     # If a CRS is not found, use custom provided CRS
     if ds.odc.crs is None and crs is not None:
         ds = ds.odc.assign_crs(crs)
@@ -923,10 +922,6 @@ def sun_angles(dc, query):
         An `xarray.set` containing a 'sun_elevation' and
         'sun_azimuth' variables.
     """
-
-    from datacube.api.query import query_group_by
-    from datacube.model.utils import xr_apply
-
     # Identify satellite datasets and group outputs using the
     # same approach used to group satellite imagery (i.e. solar day)
     gb = query_group_by(**query)
