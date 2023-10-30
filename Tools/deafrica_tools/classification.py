@@ -624,7 +624,7 @@ def collect_training_data(
     """
 
     # check the dtype of the class field
-    if gdf[field].dtype != np.int:
+    if gdf[field].dtype != int:
         raise ValueError(
             'The "field" column of the input vector must contain integer dtypes'
         )

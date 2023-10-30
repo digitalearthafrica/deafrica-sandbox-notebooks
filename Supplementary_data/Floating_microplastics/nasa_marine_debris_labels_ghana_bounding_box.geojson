@@ -1,0 +1,8 @@
+{
+"type": "FeatureCollection",
+"name": "nasa_marine_debris_labels_ghana_bounding_box",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Polygon", "coordinates": [ [ [ -0.354115647263825, 5.502138932421798 ], [ -0.32464868053794, 5.420378475449974 ], [ -0.194829482894536, 5.467166105057495 ], [ -0.224296449620422, 5.548926562029319 ], [ -0.354115647263825, 5.502138932421798 ] ] ] } }
+]
+}
