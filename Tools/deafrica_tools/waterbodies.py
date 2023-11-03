@@ -1,6 +1,6 @@
 """
 Loading and processing DE Africa Water Bodies data.
-Last modified: October 2023
+Last modified: November 2023
 """
 
 # Import required packages
@@ -11,8 +11,8 @@ from owslib.etree import etree
 import pandas as pd
 
 # URL for the DE Africa Water Bodies data on Dev Geoserver.
-WFS_ADDRESS = "https://geoserver.dev.digitalearth.africa/geoserver/wfs"
-
+WFS_ADDRESS = "https://geoserver.digitalearth.africa/geoserver/wfs"
+WFS_LAYER = "waterbodies:DEAfrica_Waterbodies"
 
 def get_waterbody(geohash: str) -> gpd.GeoDataFrame:
     """Gets a waterbody polygon and metadata by geohash.
@@ -32,7 +32,7 @@ def get_waterbody(geohash: str) -> gpd.GeoDataFrame:
     filter_ = PropertyIsEqualTo(propertyname="UID", literal=geohash)
     filterxml = etree.tostring(filter_.toXML()).decode("utf-8")
     response = wfs.getfeature(
-        typename="waterbodies1:waterbodies_v0_0_1",
+        typename=WFS_LAYER,
         filter=filterxml,
         outputFormat="json",
     )
@@ -58,7 +58,7 @@ def get_waterbodies(bbox: tuple, crs="EPSG:4326") -> gpd.GeoDataFrame:
     
     wfs = WebFeatureService(url=WFS_ADDRESS, version="1.1.0")
     response = wfs.getfeature(
-        typename="waterbodies1:waterbodies_v0_0_1",
+        typename=WFS_LAYER,
         bbox=tuple(bbox) + (crs,),
         outputFormat="json",
     )
@@ -86,7 +86,7 @@ def get_geohashes(bbox: tuple = None, crs: str = "EPSG:4326") -> [str]:
     if bbox is not None:
         bbox = bbox + (crs,)
     response = wfs.getfeature(
-        typename="waterbodies1:waterbodies_v0_0_1",
+        typename=WFS_LAYER,
         propertyname="UID",
         outputFormat="json",
         bbox=bbox,
