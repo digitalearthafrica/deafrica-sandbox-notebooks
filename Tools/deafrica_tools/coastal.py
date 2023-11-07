@@ -3,35 +3,34 @@ Coastal analyses on Digital Earth Africa data.
 """
 
 # Import required packages
-
-# Force GeoPandas to use Shapely instead of PyGEOS
-# In a future release, GeoPandas will switch to using Shapely by default.
 import os
-
-os.environ['USE_PYGEOS'] = '0'
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import pyproj
+import pyTMD.io
+import pyTMD.time
+import pyTMD.utilities
 import requests
 import xarray as xr
 from datacube.utils.geometry import CRS
 from otps import TimePoint, predict_tide
 from owslib.wfs import WebFeatureService
-
-# Fix converters for tidal plot
 from pandas.plotting import register_matplotlib_converters
 from scipy import stats
 from shapely.geometry import box
 
 from deafrica_tools.datahandling import parallel_apply
 
+# Fix converters for tidal plot
 register_matplotlib_converters()
 
 
 # URL for the DE Africa Coastlines data on Geoserver. 
 WFS_ADDRESS = "https://geoserver.digitalearth.africa/geoserver/wfs"
+
 
 def model_tides(
     x,
@@ -122,15 +121,6 @@ def model_tides(
     A pandas.DataFrame containing tide heights for every
     combination of time and point coordinates.
     """
-
-    import os
-
-    import numpy as np
-    import pyproj
-    import pyTMD.io
-    import pyTMD.time
-    import pyTMD.utilities
-
     # Check that tide directory is accessible
     try:
         os.access(directory, os.F_OK)
@@ -1035,7 +1025,7 @@ def transect_distances(transects_gdf, lines_gdf, mode='distance'):
             lambda x: _intersect_dist(x, lines_gdf), axis=1)   
         
         return pd.DataFrame(distance_df)
-    
+   
 
 def get_coastlines(bbox: tuple,
                    crs="EPSG:4326",
@@ -1109,4 +1099,3 @@ def get_coastlines(bbox: tuple,
         coastlines_gdf = coastlines_gdf.loc[:, ~coastlines_gdf.columns.str.contains("wms_")]
 
     return coastlines_gdf
-
