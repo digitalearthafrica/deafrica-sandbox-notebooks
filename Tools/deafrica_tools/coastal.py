@@ -7,26 +7,26 @@ Coastal analyses on Digital Earth Africa data.
 # Force GeoPandas to use Shapely instead of PyGEOS
 # In a future release, GeoPandas will switch to using Shapely by default.
 import os
+
 os.environ['USE_PYGEOS'] = '0'
 
-import requests
-import numpy as np
-import xarray as xr
-import pandas as pd
 import geopandas as gpd
 import matplotlib.pyplot as plt
-from scipy import stats
-from otps import TimePoint
-from otps import predict_tide
-from shapely.geometry import box
+import numpy as np
+import pandas as pd
+import requests
+import xarray as xr
 from datacube.utils.geometry import CRS
+from otps import TimePoint, predict_tide
 from owslib.wfs import WebFeatureService
-
-from deafrica_tools.datahandling import parallel_apply
-
 
 # Fix converters for tidal plot
 from pandas.plotting import register_matplotlib_converters
+from scipy import stats
+from shapely.geometry import box
+
+from deafrica_tools.datahandling import parallel_apply
+
 register_matplotlib_converters()
 
 
@@ -124,18 +124,12 @@ def model_tides(
     """
 
     import os
-    import pyproj
+
     import numpy as np
+    import pyproj
+    import pyTMD.io
     import pyTMD.time
-    import pyTMD.model
     import pyTMD.utilities
-    from pyTMD.calc_delta_time import calc_delta_time
-    from pyTMD.infer_minor_corrections import infer_minor_corrections
-    from pyTMD.predict_tide_drift import predict_tide_drift
-    from pyTMD.read_tide_model import extract_tidal_constants
-    from pyTMD.read_netcdf_model import extract_netcdf_constants
-    from pyTMD.read_GOT_model import extract_GOT_constants
-    from pyTMD.read_FES_model import extract_FES_constants
 
     # Check that tide directory is accessible
     try:
@@ -144,7 +138,7 @@ def model_tides(
         raise FileNotFoundError("Invalid tide directory")
 
     # Get parameters for tide model
-    model = pyTMD.model(directory, format="netcdf", compressed=False).elevation(model)
+    model = pyTMD.io.model(directory, format="netcdf", compressed=False).elevation(model)
 
     # If time passed as a single Timestamp, convert to datetime64
     if isinstance(time, pd.Timestamp):
@@ -181,69 +175,69 @@ def model_tides(
 
     # Read tidal constants and interpolate to grid points
     if model.format in ("OTIS", "ATLAS"):
-        amp, ph, D, c = extract_tidal_constants(
+        amp, ph, D, c = pyTMD.io.OTIS.extract_constants(
             lon,
             lat,
             model.grid_file,
             model.model_file,
             model.projection,
-            TYPE=model.type,
-            METHOD=method,
-            EXTRAPOLATE=extrapolate,
-            CUTOFF=cutoff,
-            GRID=model.format,
+            type=model.type,
+            method=method,
+            extrapolate=extrapolate,
+            cutoff=cutoff,
+            grid=model.format,
         )
         deltat = np.zeros_like(t)
 
     elif model.format == "netcdf":
-        amp, ph, D, c = extract_netcdf_constants(
+        amp, ph, D, c = pyTMD.io.ATLAS.extract_constants(
             lon,
             lat,
             model.grid_file,
             model.model_file,
-            TYPE=model.type,
-            METHOD=method,
-            EXTRAPOLATE=extrapolate,
-            CUTOFF=cutoff,
-            SCALE=model.scale,
-            GZIP=model.compressed,
+            type=model.type,
+            method=method,
+            extrapolate=extrapolate,
+            cutoff=cutoff,
+            scale=model.scale,
+            compressed=model.compressed,
         )
         deltat = np.zeros_like(t)
 
     elif model.format == "GOT":
-        amp, ph, c = extract_GOT_constants(
+        amp, ph, c = pyTMD.io.GOT.extract_constants(
             lon,
             lat,
             model.model_file,
-            METHOD=method,
-            EXTRAPOLATE=extrapolate,
-            CUTOFF=cutoff,
-            SCALE=model.scale,
-            GZIP=model.compressed,
+            method=method,
+            extrapolate=extrapolate,
+            cutoff=cutoff,
+            scale=model.scale,
+            compressed=model.compressed,
         )
 
         # Interpolate delta times from calendar dates to tide time
-        deltat = calc_delta_time(delta_file, t)
+        deltat = pyTMD.time.interpolate_delta_time(delta_file, t)
 
     elif model.format == "FES":
-        amp, ph = extract_FES_constants(
+        amp, ph = pyTMD.io.FES.extract_constants(
             lon,
             lat,
             model.model_file,
-            TYPE=model.type,
-            VERSION=model.version,
-            METHOD=method,
-            EXTRAPOLATE=extrapolate,
-            CUTOFF=cutoff,
-            SCALE=model.scale,
-            GZIP=model.compressed,
+            type=model.type,
+            version=model.version,
+            method=method,
+            extrapolate=extrapolate,
+            cutoff=cutoff,
+            scale=model.scale,
+            compressed=model.compressed,
         )
 
         # Available model constituents
         c = model.constituents
 
         # Interpolate delta times from calendar dates to tide time
-        deltat = calc_delta_time(delta_file, t)
+        deltat = pyTMD.time.interpolate_delta_time(delta_file, t)
 
     # Calculate complex phase in radians for Euler's
     cph = -1j * ph * np.pi / 180.0
@@ -252,7 +246,7 @@ def model_tides(
     hc = amp * np.exp(cph)
 
     # Repeat constituents to length of time and number of input
-    # coords before passing to `predict_tide_drift`
+    # coords before passing to `pyTMD.predict.map`
     t, hc, deltat = (
         np.tile(t, n_points),
         hc.repeat(n_times, axis=0),
@@ -264,22 +258,16 @@ def model_tides(
     tide = np.ma.zeros((npts), fill_value=np.nan)
     tide.mask = np.any(hc.mask, axis=1)
 
-    # Depending on pyTMD version (<=1.06 vs > 1.06), use different params
-    # TODO: Remove once Sandbox is updated to use pyTMD version 1.0.9
-    try:
-        tide.data[:] = predict_tide_drift(
-            t, hc, c, deltat=deltat, corrections=model.format
-        )
-        minor = infer_minor_corrections(
-            t, hc, c, deltat=deltat, corrections=model.format
-        )
-    except:
-        tide.data[:] = predict_tide_drift(
-            t, hc, c, DELTAT=deltat, CORRECTIONS=model.format
-        )
-        minor = infer_minor_corrections(
-            t, hc, c, DELTAT=deltat, CORRECTIONS=model.format
-        )
+    # TODO find which predict methods best matches previously used predict_tide_drift
+    # pyTMD.predict.map
+    # pyTMD.predict.time_series
+    # pyTMD.predict.drift
+    tide.data[:] = pyTMD.predict.drift(
+        t, hc, c, deltat=deltat, corrections=model.format
+    )
+    minor = pyTMD.predict.infer_minor(
+        t, hc, c, deltat=deltat, corrections=model.format
+    )
     tide.data[:] += minor.data[:]
 
     # Replace invalid values with fill value
@@ -995,6 +983,7 @@ def transect_distances(transects_gdf, lines_gdf, mode='distance'):
     """
     
     import warnings
+
     from shapely.errors import ShapelyDeprecationWarning
     from shapely.geometry import Point
 
