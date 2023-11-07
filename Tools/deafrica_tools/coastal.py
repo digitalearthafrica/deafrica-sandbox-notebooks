@@ -8,6 +8,7 @@ import os
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
+import odc.geo.xr
 import pandas as pd
 import pyproj
 import pyTMD.io
@@ -16,6 +17,7 @@ import pyTMD.utilities
 import requests
 import xarray as xr
 from datacube.utils.geometry import CRS
+from odc.geo.geobox import GeoBox
 from otps import TimePoint, predict_tide
 from owslib.wfs import WebFeatureService
 from pandas.plotting import register_matplotlib_converters
@@ -362,10 +364,6 @@ def pixel_tides(
             or tide height quantiles for every quantile provided by
             `calculate_quantiles`.
     """
-
-    import odc.geo.xr
-    from odc.geo.geobox import GeoBox
-
     # First test if no time dimension and nothing passed to `times`
     if ('time' not in ds.dims) & (times is None):
         raise ValueError(
@@ -504,6 +502,7 @@ def pixel_tides(
         print("Returning low resolution tide array")
         return tides_lowres
 
+
 def tidal_tag(
     ds,
     ebb_flow=False,
@@ -563,9 +562,6 @@ def tidal_tag(
     location used in the analysis).
 
     """
-
-    import odc.geo.xr
-
     # If custom tide modelling locations are not provided, use the
     # dataset centroid
     if not tidepost_lat or not tidepost_lon:
