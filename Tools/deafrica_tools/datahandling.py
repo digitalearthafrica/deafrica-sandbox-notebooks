@@ -6,8 +6,10 @@ import os
 import warnings
 import zipfile
 from collections import Counter
+from concurrent.futures import ProcessPoolExecutor
 from copy import deepcopy
 from datetime import datetime
+from itertools import repeat
 
 import numexpr
 import numpy as np
@@ -22,6 +24,7 @@ from datacube.utils import masking
 from dateutil import parser
 from odc.algo import mask_cleanup
 from osgeo import gdal
+from tqdm import tqdm
 
 from deafrica_tools.bandindices import calculate_indices
 
@@ -992,11 +995,6 @@ def parallel_apply(ds, dim, func, *args):
         A concatenated dataset containing an output for each array
         along the input `dim` dimension.
     """
-
-    from concurrent.futures import ProcessPoolExecutor
-    from itertools import repeat
-
-    from tqdm import tqdm
 
     with ProcessPoolExecutor() as executor:
         # Apply func in parallel
