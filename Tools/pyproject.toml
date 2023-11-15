@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "deafrica-tools"
-version = "2.3.0"
+version = "2.3.2"
 description = "Functions and algorithms for analysing Digital Earth Africa data."
 authors = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
 maintainers = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
@@ -61,7 +61,7 @@ dependencies= [
     "pyproj",
     "pystac-client",  # for pystac
     "python-dateutil",
-    "pyTMD",
+    "pyTMD > 2",
     "pytz",
     "rasterio",
     "rasterstats",
