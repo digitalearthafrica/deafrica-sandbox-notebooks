@@ -1,5 +1,5 @@
 """
-Function for defining an area of interest using either a point and buffer or a shapefile file. 
+Function for defining an area of interest using either a point and buffer or a vector file. 
 """
 
 # Import required packages
@@ -13,9 +13,9 @@ import geopandas as gpd
 from shapely.geometry import box
 from geojson import Feature, Point, FeatureCollection
 
-def define_area(lat=None, lon=None, buffer=None, shapefile_path=None):
+def define_area(lat=None, lon=None, buffer=None, vector_path=None):
     '''
-    Define an area of interest using either a point and buffer or a shapefile.
+    Define an area of interest using either a point and buffer or a vector.
     
     Parameters:
     -----------
@@ -25,8 +25,8 @@ def define_area(lat=None, lon=None, buffer=None, shapefile_path=None):
         The longitude of the center point of the area of interest.
     buffer : float, optional
         The buffer around the center point, in degrees.
-    shapefile_path : str, optional
-        The path to a shapefile defining the area of interest.
+    vector_path : str, optional
+        The path to a vector defining the area of interest.
     
     Returns:
     --------
@@ -40,12 +40,12 @@ def define_area(lat=None, lon=None, buffer=None, shapefile_path=None):
         box_geom = box(min(lon_range), min(lat_range), max(lon_range), max(lat_range))
         aoi = gpd.GeoDataFrame(geometry=[box_geom], crs='EPSG:4326')
     
-    # Define area using shapefile
-    elif shapefile_path is not None:
-        aoi = gpd.read_file(shapefile_path).to_crs("EPSG:4326")
+    # Define area using vector
+    elif vector_path is not None:
+        aoi = gpd.read_file(vector_path).to_crs("EPSG:4326")
     # If neither option is provided, raise an error
     else:
-        raise ValueError("Either lat/lon/buffer or shapefile_path must be provided.")
+        raise ValueError("Either lat/lon/buffer or vector_path must be provided.")
     
     # Convert the GeoDataFrame to a GeoJSON FeatureCollection
     features = [Feature(geometry=row["geometry"], properties=row.drop("geometry").to_dict()) for _, row in aoi.iterrows()]
