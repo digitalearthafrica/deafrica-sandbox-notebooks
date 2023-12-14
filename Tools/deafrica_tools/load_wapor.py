@@ -302,9 +302,14 @@ def load_wapor(
         _description_
     """
     # Parse the time range.
-    time_range_ = [pd.to_datetime(i) for i in time_range]
-    start_date = min(time_range_)
-    end_date = max(time_range_)
+    if isinstance(time_range, str):
+        start_date = end_date = pd.to_datetime(time_range)
+    elif isinstance(time_range, tuple):
+        time_range_ = [pd.to_datetime(i) for i in time_range]
+        start_date = min(time_range_)
+        end_date = max(time_range_)
+    else:
+        raise TypeError(f"Expected time_range to be a tuple not {type(time_range)}")
 
     start_idx = get_time_label(mapset_code=mapset_code, date=start_date)
     end_idx = get_time_label(mapset_code=mapset_code, date=end_date)
