@@ -98,6 +98,64 @@ def get_mapset_rasters(mapset_code: str) -> pd.DataFrame:
     return all_mapset_rasters
 
 
+def parse_start_date(date_str: str) -> datetime:
+    try:
+        date_dt = datetime.strptime(date_str, "%Y")
+    except ValueError:
+        try:
+            date_dt = datetime.strptime(date_str, "%Y-%m")
+        except ValueError:
+            try:
+                date_dt = datetime.strptime(date_str, "%Y-%m-%d")
+            except Exception:
+                raise ValueError(
+                    'Expected date string in the formats "%Y" or "%Y-%m" or "%Y-%m-%d"'
+                )
+            else:
+                year = date_dt.year
+                month = date_dt.month
+                day = date_dt.day
+        else:
+            year = date_dt.year
+            month = date_dt.month
+            day = 1
+    else:
+        year = date_dt.year
+        month = 1
+        day = 1
+
+    return datetime(year, month, day)
+
+
+def parse_end_date(date_str: str) -> datetime:
+    try:
+        date_dt = datetime.strptime(date_str, "%Y")
+    except ValueError:
+        try:
+            date_dt = datetime.strptime(date_str, "%Y-%m")
+        except ValueError:
+            try:
+                date_dt = datetime.strptime(date_str, "%Y-%m-%d")
+            except Exception:
+                raise ValueError(
+                    'Expected date string in the formats "%Y" or "%Y-%m" or "%Y-%m-%d"'
+                )
+            else:
+                year = date_dt.year
+                month = date_dt.month
+                day = date_dt.day
+        else:
+            year = date_dt.year
+            month = date_dt.month
+            day = calendar.monthrange(year, month)[1]
+    else:
+        year = date_dt.year
+        month = 12
+        day = 31
+
+    return datetime(year, month, day)
+
+
 def get_dekad_start_dates(
     year: str | int, month: str | int
 ) -> tuple[pd.Timestamp, pd.Timestamp, pd.Timestamp]:
@@ -303,13 +361,15 @@ def load_wapor(
     """
     # Parse the time range.
     if isinstance(time_range, str):
-        start_date = end_date = pd.to_datetime(time_range)
+        start_date = end_date = time_range
     elif isinstance(time_range, tuple):
-        time_range_ = [pd.to_datetime(i) for i in time_range]
-        start_date = min(time_range_)
-        end_date = max(time_range_)
+        start_date = time_range[0]
+        end_date = time_range[-1]
     else:
         raise TypeError(f"Expected time_range to be a tuple not {type(time_range)}")
+
+    start_date = parse_start_date(start_date)
+    end_date = parse_end_date(end_date)
 
     start_idx = get_time_label(mapset_code=mapset_code, date=start_date)
     end_idx = get_time_label(mapset_code=mapset_code, date=end_date)
