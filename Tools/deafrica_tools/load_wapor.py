@@ -8,6 +8,8 @@ import requests
 import rioxarray
 import xarray as xr
 
+from deafrica_tools.spatial import add_geobox
+
 pd.set_option("display.max_colwidth", None)
 
 BASE_URL = "https://data.apps.fao.org/gismgr/api/v2/catalog/workspaces/WAPOR-3/mapsets"
@@ -406,6 +408,7 @@ def load_wapor(
         da_combined = xr.concat(da_list, dim="time")
         ds = da_combined.to_dataset(name=mapset_code)
         ds.attrs = da_combined.attrs
+        ds = add_geobox(ds, crs=ds.rio.crs)
     else:
         print(f"No data available for the time range {time_range}")
         ds = xr.Dataset()
