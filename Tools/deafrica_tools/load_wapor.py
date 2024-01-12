@@ -345,6 +345,7 @@ def load_wapor(
     lat_range: tuple[float, float],
     lon_range: tuple[float, float],
     time_range: tuple[str, str],
+    dask_chunks: dict = {},
 ) -> xr.Dataset:
     """
     Load a WaPOR v3 mapset.
@@ -392,7 +393,7 @@ def load_wapor(
         da_list = []
         for url in raster_urls:
             da = (
-                rioxarray.open_rasterio(url)
+                rioxarray.open_rasterio(url, chunks=dask_chunks)
                 .squeeze()
                 .rio.clip_box(
                     minx=minx,
