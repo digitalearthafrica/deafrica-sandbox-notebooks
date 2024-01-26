@@ -16,12 +16,12 @@ import pytz
 
 from collections import Counter
 from datacube.utils import masking
-from scipy.ndimage import binary_dilation
 from odc.algo import mask_cleanup
 from copy import deepcopy
 import odc.algo
 
 from skimage.morphology import binary_erosion,binary_dilation,disk
+from scipy.ndimage import binary_dilation
 from scipy.ndimage.filters import uniform_filter
 from scipy.ndimage.measurements import variance
 from datetime import datetime
@@ -412,7 +412,7 @@ def load_ard(
             datasets = [
                 i
                 for i in datasets
-                if i.time.begin < datetime.datetime(2003, 5, 31, tzinfo=pytz.UTC)
+                if i.time.begin < datetime(2003, 5, 31, tzinfo=pytz.UTC)
             ]
 
         # Add any returned datasets to list
