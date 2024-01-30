@@ -34,7 +34,8 @@ ERA5_VARS = ['air_pressure_at_mean_sea_level',
  'precipitation_amount_1hour_Accumulation',
  'sea_surface_temperature',
  'snow_density',
- 'surface_air_pressure']
+ 'surface_air_pressure',
+             'total_precipitation_6hr','total_precipitation_12hr','total_precipitation_24hr']
 
 
 def load_era5(
@@ -101,39 +102,74 @@ def load_era5(
     # Loop through month and year to access ERA5 zarr
     month = date_from.astype('datetime64[M]')
     while month <= date_to.astype('datetime64[M]'):
-        url = f"s3://era5-pds/zarr/{month.astype(object).year:04}/{month.astype(object).month:02}/data/{var}.zarr"
-        ds = xr.open_zarr(fsspec.get_mapper(url, anon=True, 
-                                            client_kwargs={'region_name':'us-east-1'}),
-                          consolidated=True)
-    
-        # re-order along longitude to go from -180 to 180 if needed
-        if min(lon) < 0:
-            ds = ds.assign_coords({"lon": (((ds.lon + 180) % 360) - 180)})
-            ds = ds.reindex({"lon": np.sort(ds.lon)})
-
-        if lat_range is None:
-            # find the nearest lat lon boundary points
-            test = ds.sel(lat=list(lat), lon=list(lon), method="nearest")
-            # define the lat/lon grid
-            lat_range = slice(test.lat.max().values, test.lat.min().values)
-            lon_range = slice(test.lon.min().values, test.lon.max().values)
-       
-        if "time0" in ds.dims:
-            ds = ds.rename({"time0": "time"})
-        if "time1" in ds.dims:
-            ds = ds.rename(
-                {"time1": "time"}
-            )  # This should INTENTIONALLY error if both times are defined
         
-        output = ds[[var]].sel(lat=lat_range, lon=lon_range, time=slice(date_from, date_to)).resample(time=resample).reduce(reduce_func)
-        output.attrs = ds.attrs
-        for v in output.data_vars:
-            output[v].attrs = ds[v].attrs
-            
-        datasets.append(output)
-        month += np.timedelta64(1,'M')
+        try:
+        
+            url = f"s3://era5-pds/zarr/{month.astype(object).year:04}/{month.astype(object).month:02}/data/{var}.zarr"
+            ds = xr.open_zarr(fsspec.get_mapper(url, anon=True, 
+                                            client_kwargs={'region_name':'us-east-1'}),
+                          consolidated=True)    
     
-    return assign_crs(xr.combine_by_coords(datasets), 'EPSG:4326')
+            # re-order along longitude to go from -180 to 180 if needed
+            if min(lon) < 0:
+                ds = ds.assign_coords({"lon": (((ds.lon + 180) % 360) - 180)})
+                ds = ds.reindex({"lon": np.sort(ds.lon)})
+
+            if lat_range is None:
+                # find the nearest lat lon boundary points
+                test = ds.sel(lat=list(lat), lon=list(lon), method="nearest")
+                # define the lat/lon grid
+                lat_range = slice(test.lat.max().values, test.lat.min().values)
+                lon_range = slice(test.lon.min().values, test.lon.max().values)
+
+            if "time0" in ds.dims:
+                ds = ds.rename({"time0": "time"})
+            if "time1" in ds.dims:
+                ds = ds.rename(
+                    {"time1": "time"}
+                )  # This should INTENTIONALLY error if both times are defined
+
+            output = ds[[var]].sel(lat=lat_range, lon=lon_range, time=slice(date_from, date_to)).resample(time=resample).reduce(reduce_func)
+            output.attrs = ds.attrs
+            for v in output.data_vars:
+                output[v].attrs = ds[v].attrs
+
+            datasets.append(output)
+            month += np.timedelta64(1,'M')
+            return assign_crs(xr.combine_by_coords(datasets), 'EPSG:4326')
+    
+        except:
+            ERA5_dict = {'air_pressure_at_mean_sea_level':'mean_sea_level_pressure',
+                 'air_temperature_at_2_metres':'2m_temperature',
+                 'dew_point_temperature_at_2_metres':'2d',
+                 'eastward_wind_at_10_metres':'10m_u_component_of_wind',
+                 'northward_wind_at_10_metres':'10m_v_component_of_wind',
+                 'total_precipitation_6hr': 'total_precipitation_6hr',
+                 'total_precipitation_12hr': 'total_precipitation_12hr',
+                 'total_precipitation_24hr':'total_precipitation_24hr',
+                 'sea_surface_temperature':'sea_surface_temperature',
+                 'surface_air_pressure':'surface_pressure'}
+    
+            ds = xr.open_zarr(
+                    'gs://gcp-public-data-arco-era5/ar/1959-2022-wb13-6h-0p25deg-chunk-1.zarr-v2', 
+                    chunks={'time': 48},
+                    consolidated=True)[ERA5_dict[var]].sel(time=slice(date_from, date_to))
+            
+            ds = xr.open_zarr(
+            'gs://gcp-public-data-arco-era5/ar/1959-2022-wb13-6h-0p25deg-chunk-1.zarr-v2', 
+            chunks={'time': 48},
+            consolidated=True)[ERA5_dict[var]].sel(time=slice(date_from, date_to))
+
+            ds = (ds.assign_coords(
+                    longitude=(((ds.longitude + 180) % 360) - 180))
+                  .sortby('longitude')
+                  .sel(latitude=slice(lat[1], lat[0]), longitude = slice(lon[0], lon[1])))
+
+            ds = ds.resample(time=resample).reduce(reduce_func)
+
+            return assign_crs(ds.to_dataset().rename({ERA5_dict[var]: var,
+                                                     'longitude':'lon',
+                                                     'latitude':'lat'}), 'EPSG:4326')
 
 
 # # older version of scripts to download and use netcdf
