@@ -154,16 +154,18 @@ def load_era5(
                     'gs://gcp-public-data-arco-era5/ar/1959-2022-wb13-6h-0p25deg-chunk-1.zarr-v2', 
                     chunks={'time': 48},
                     consolidated=True)[ERA5_dict[var]].sel(time=slice(date_from, date_to))
-            
-            ds = xr.open_zarr(
-            'gs://gcp-public-data-arco-era5/ar/1959-2022-wb13-6h-0p25deg-chunk-1.zarr-v2', 
-            chunks={'time': 48},
-            consolidated=True)[ERA5_dict[var]].sel(time=slice(date_from, date_to))
 
-            ds = (ds.assign_coords(
-                    longitude=(((ds.longitude + 180) % 360) - 180))
-                  .sortby('longitude')
-                  .sel(latitude=slice(lat[1], lat[0]), longitude = slice(lon[0], lon[1])))
+            ds = ds.assign_coords(
+                    longitude=(((ds.longitude + 180) % 360) - 180)).sortby('longitude')
+            
+            if lat_range is None:
+                # find the nearest lat lon boundary points
+                test = ds.sel(latitude=list(lat), longitude=list(lon), method="nearest")
+                # define the lat/lon grid
+                lat_range = slice(test.latitude.max().values, test.latitude.min().values)
+                lon_range = slice(test.longitude.min().values, test.longitude.max().values)
+                  
+            ds = ds.sel(latitude=lat_range, longitude = lon_range)
 
             ds = ds.resample(time=resample).reduce(reduce_func)
 
