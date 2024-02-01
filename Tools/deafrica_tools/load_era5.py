@@ -21,21 +21,14 @@ from datacube.utils.geometry import assign_crs
 
 
 ERA5_VARS = ['air_pressure_at_mean_sea_level',
- 'air_temperature_at_2_metres',
- 'air_temperature_at_2_metres_1hour_Maximum',
- 'air_temperature_at_2_metres_1hour_Minimum',
- 'dew_point_temperature_at_2_metres',
- 'eastward_wind_at_100_metres',
- 'eastward_wind_at_10_metres',
- 'integral_wrt_time_of_surface_direct_downwelling_shortwave_flux_in_air_1hour_Accumulation',
- 'lwe_thickness_of_surface_snow_amount',
- 'northward_wind_at_100_metres',
- 'northward_wind_at_10_metres',
- 'precipitation_amount_1hour_Accumulation',
- 'sea_surface_temperature',
- 'snow_density',
- 'surface_air_pressure',
-             'total_precipitation_6hr','total_precipitation_12hr','total_precipitation_24hr']
+                 'air_temperature_at_2_metres',
+                 'eastward_wind_at_10_metres',
+                 'northward_wind_at_10_metres',
+                 'total_precipitation_6hr',
+                 'total_precipitation_12hr',
+                 'total_precipitation_24hr',
+                 'sea_surface_temperature',
+                 'surface_pressure']
 
 
 def load_era5(
@@ -141,14 +134,13 @@ def load_era5(
         except:
             ERA5_dict = {'air_pressure_at_mean_sea_level':'mean_sea_level_pressure',
                  'air_temperature_at_2_metres':'2m_temperature',
-                 'dew_point_temperature_at_2_metres':'2d',
                  'eastward_wind_at_10_metres':'10m_u_component_of_wind',
                  'northward_wind_at_10_metres':'10m_v_component_of_wind',
                  'total_precipitation_6hr': 'total_precipitation_6hr',
                  'total_precipitation_12hr': 'total_precipitation_12hr',
                  'total_precipitation_24hr':'total_precipitation_24hr',
                  'sea_surface_temperature':'sea_surface_temperature',
-                 'surface_air_pressure':'surface_pressure'}
+                 'surface_pressure':'surface_pressure'}
     
             ds = xr.open_zarr(
                     'gs://gcp-public-data-arco-era5/ar/1959-2022-wb13-6h-0p25deg-chunk-1.zarr-v2', 
