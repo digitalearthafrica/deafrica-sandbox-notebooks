@@ -1,47 +1,83 @@
 # Load python packages.
 
+import calendar
 from datetime import datetime
 
 import numpy as np
 import pandas as pd
 import xarray as xr
 
-from deafrica_tools.load_wapor import get_dekad_start_dates
 
-
-def bin_by_dekad(ds: xr.Dataset | xr.DataArray) -> xr.Dataset | xr.DataArray:
+def get_dekad_date(date: str | datetime | pd.Timestamp) -> pd.Timestamp:
     """
-    Bin a timeseries by dekad (10-day) intervals.
+    Checks the dekad of a date and returns the dekad date.
 
     Parameters
     ----------
-    ds : xr.Dataset | xr.DataArray
-        Timeseries to bin
+    date : str | datetime | pd.Timestamp
+        Date to check.
+
+    Returns
+    -------
+    pd.Timestamp
+        Date of the dekad.
+    """
+    # Get the year and month from the date.
+    if isinstance(date, pd.Timestamp):
+        timestamp = date
+    else:
+        timestamp = pd.Timestamp(date)
+
+    year = timestamp.year
+    month = timestamp.month
+
+    # First day of the month
+    start_date = datetime(year, month, 1)
+    # Last day of the month.
+    end_date = datetime(year, month, calendar.monthrange(year, month)[1])
+
+    d1_start_date, d2_start_date, d3_start_date = pd.date_range(
+        start=start_date, end=end_date, freq="10D", inclusive="left"
+    )
+
+    if d1_start_date <= timestamp < d2_start_date:
+        return d1_start_date
+    elif d2_start_date <= timestamp < d3_start_date:
+        return d2_start_date
+    else:
+        return d3_start_date
+
+
+def resample_ds(ds: xr.Dataset | xr.DataArray) -> xr.Dataset | xr.DataArray:
+    """
+    Resample a timeseries by dekad.
+
+    Parameters
+    ----------
+    ds: xr.Dataset | xr.DataArray
+        Timeseries to resample.
 
     Returns
     -------
     xr.Dataset | xr.DataArray
-        Dekadal timeseries.
+        Resampled timeseries.
+
     """
-    # Get the dekadal (10-day) rainfall record.
-    years = np.sort(np.unique(ds.time.dt.year.values))
-    months = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+    # Apply the vectorized get_dekad_date function to the time values
+    # of the timeseries and create an array whose unique values should be used
+    # to group the timeseries.
+    group = xr.DataArray(
+        data=np.vectorize(get_dekad_date)(ds.time.values),
+        coords=ds.time.coords,
+        dims=ds.time.dims,
+        name="dekad_date",
+        attrs=ds.time.attrs,
+    )
 
-    bin_labels = []
-    for year in years:
-        for month in months:
-            # Each month has 3 dekads.
-            bin_labels.extend(get_dekad_start_dates(year=year, month=month))
+    # Resample the timeseries into 10-day intervals.
+    ds_resampled = ds.groupby(group).mean(dim="time").compute()
+    ds_resampled = ds_resampled.rename({"dekad_date": "time"})
 
-    bins = bin_labels.copy()
-    bins.append(pd.Timestamp(year=year + 1, month=1, day=1))
-
-    # Resample the dataset using the bins
-    ds_resampled = ds.groupby_bins("time", bins, labels=bin_labels, right=False).mean()
-    ds_resampled = ds_resampled.rename({"time_bins": "time"})
-
-    # Drop values only if all values along the time dimension are NaN:
-    ds_resampled = ds_resampled.dropna(dim="time", how="all")
     return ds_resampled
 
 
@@ -68,7 +104,14 @@ def get_dekad_no_in_month(date: str | datetime | pd.Timestamp) -> int:
     year = timestamp.year
     month = timestamp.month
 
-    d1_start_date, d2_start_date, d3_start_date = get_dekad_start_dates(year=year, month=month)
+    # First day of the month
+    start_date = datetime(year, month, 1)
+    # Last day of the month.
+    end_date = datetime(year, month, calendar.monthrange(year, month)[1])
+
+    d1_start_date, d2_start_date, d3_start_date = pd.date_range(
+        start=start_date, end=end_date, freq="10D", inclusive="left"
+    )
 
     if d1_start_date <= timestamp < d2_start_date:
         return 1
@@ -106,7 +149,7 @@ def get_dekad_no_in_year(date: str | datetime | pd.Timestamp) -> int:
 
 def group_by_dekad_no_in_year(ds) -> dict:
     """
-    Group a timeseries by dekad in the year.
+    Group a timeseries by dekad number in the year.
 
     Parameters
     ----------
@@ -119,12 +162,11 @@ def group_by_dekad_no_in_year(ds) -> dict:
         Mapping from group labels to indices.
 
     """
-    # Vectorize the get_dekad_no_in_year function
-    vfunc = np.vectorize(get_dekad_no_in_year)
-    # Apply the vectorize function to the time values of the timeseries
-    # and create an Array whose unique values should be used to group the timeseries
+    # Apply the vectorized get_dekad_no_in_year function to the time values of
+    # the timeseries and create an Array whose unique values should be used to
+    # group the timeseries
     group = xr.DataArray(
-        data=vfunc(ds.time.values),
+        data=np.vectorize(get_dekad_no_in_year)(ds.time.values),
         coords=ds.time.coords,
         dims=ds.time.dims,
         name="dekad_no_in_year",
@@ -179,7 +221,9 @@ def get_data_for_ip(
             continue
         else:
             try:
-                sel_by_dekad = sel_by_year.isel(time=group_by_dekad_no_in_year(sel_by_year)[dekad])
+                sel_by_dekad = sel_by_year.isel(
+                    time=group_by_dekad_no_in_year(sel_by_year)[dekad]
+                )
             except KeyError:
                 print(f"No data available for year {year} dekad {dekad}")
                 continue
@@ -188,13 +232,9 @@ def get_data_for_ip(
 
     if ds_list:
         ds_merged = xr.concat(ds_list, dim="time").sortby("time")
+        return ds_merged
     else:
-        if isinstance(ds, xr.Dataset):
-            ds_merged = xr.Dataset()
-        elif isinstance(ds, xr.DataArray):
-            ds_merged = xr.DataArray()
-
-    return ds_merged
+        return None
 
 
 def get_actual_avg_for_ip(
@@ -226,15 +266,12 @@ def get_actual_avg_for_ip(
     # Get the data for the interest period.
     ds_ip = get_data_for_ip(ds=ds, y=y, d=d, ip=ip)
 
-    if ds_ip:
+    if ds_ip is not None:
         # Get the average over the interest period
-        actual_avg_for_ip = ds_ip.sum(dim="time") / ip
+        actual_avg_for_ip = ds_ip.mean(dim="time")
+        return actual_avg_for_ip
     else:
-        if isinstance(ds_ip, xr.Dataset):
-            actual_avg_for_ip = xr.Dataset()
-        elif isinstance(ds_ip, xr.DataArray):
-            actual_avg_for_ip = xr.DataArray()
-    return actual_avg_for_ip
+        return None
 
 
 def get_longterm_avg_for_ip(
@@ -260,20 +297,25 @@ def get_longterm_avg_for_ip(
     xr.Dataset | xr.DataArray
         Long term average for the interest period over the years of available data.
     """
-    # Number of years with data
-    years = np.sort(np.unique(ds.time.dt.year.values))
-    n = len(years)
+    years = np.unique(ds.time.dt.year.values)
 
-    sum_k = 0
+    ds_list = []
     for y in years:
         # Calculate the actual average for the interest period for each year.
         actual_avg_for_ip_for_year = get_actual_avg_for_ip(ds=ds, y=y, d=d, ip=ip)
-        if actual_avg_for_ip_for_year:
-            sum_k = sum_k + actual_avg_for_ip_for_year
+        if actual_avg_for_ip_for_year is not None:
+            ds_list.append(
+                actual_avg_for_ip_for_year.assign_coords(year=y).expand_dims(
+                    {"year": 1}
+                )
+            )
 
-    longterm_avg_for_ip = sum_k / n
-
-    return longterm_avg_for_ip
+    if ds_list:
+        ds_merged = xr.concat(ds_list, dim="year").sortby("year")
+        longterm_avg_for_ip = ds_merged.mean("year")
+        return longterm_avg_for_ip
+    else:
+        return None
 
 
 # From https://www.geeksforgeeks.org/maximum-consecutive-ones-or-zeros-in-a-binary-array/
@@ -301,19 +343,25 @@ def max_consecutive_ones(arr: np.ndarray) -> int:
     result = 0
 
     for i in range(0, n):
-        # Reset count when 0 is found
-        if arr[i] == 0:
-            count = 0
-
         # If 1 is found, increment count
         # and update result if count
         # becomes more.
-        else:
+        if arr[i] == 1:
             # increase count
             count += 1
             result = max(result, count)
+        # Reset count if one is not found
+        else:
+            count = 0
 
     return result
+
+
+def get_no_data_mask(arr):
+    """
+    Check if all values in an array are NaN
+    """
+    return np.all(np.isnan(arr))
 
 
 def get_actual_run_length_in_ip(
@@ -354,7 +402,15 @@ def get_actual_run_length_in_ip(
     # Get the data for the interest period from the timeseries.
     ds_ip = get_data_for_ip(ds=ds, y=y, d=d, ip=ip)
 
-    if ds_ip:
+    if ds_ip is not None:
+        no_data_mask = xr.apply_ufunc(
+            get_no_data_mask,
+            ds_ip,
+            input_core_dims=[["time"]],
+            vectorize=True,
+            dask="allowed",
+        )
+
         # Get the long term average for the interest period.
         longterm_avg_for_ip = get_longterm_avg_for_ip(ds=ds, d=d, ip=ip)
 
@@ -365,21 +421,26 @@ def get_actual_run_length_in_ip(
 
         # Can also use numpy.apply_along_axis
         actual_run_length_in_ip = xr.apply_ufunc(
-            max_consecutive_ones, ds_ip_masked, input_core_dims=[["time"]], vectorize=True
+            max_consecutive_ones,
+            ds_ip_masked,
+            input_core_dims=[["time"]],
+            vectorize=True,
+            dask="allowed",
         )
 
-        # Modify the run  length.
-        mod_actual_run_length_in_ip =  actual_run_length_in_ip
+        mod_actual_run_length_in_ip = (
+            actual_run_length_in_ip.max() + 1
+        ) - actual_run_length_in_ip
+
+        mod_actual_run_length_in_ip = mod_actual_run_length_in_ip.where(~no_data_mask)
+
+        return mod_actual_run_length_in_ip
 
     else:
-        if isinstance(ds_ip, xr.Dataset):
-            actual_run_length_in_ip = xr.Dataset()
-        elif isinstance(ds_ip, xr.DataArray):
-            actual_run_length_in_ip = xr.DataArray()
-    return actual_run_length_in_ip
+        return None
 
 
-def get_longterm_avg_for_run_length_in_ip(
+def get_longterm_avg_run_length_in_ip(
     ds: xr.Dataset | xr.DataArray,
     d: int,
     ip: int,
@@ -402,30 +463,37 @@ def get_longterm_avg_for_run_length_in_ip(
         Interest period e.g. 3,4,5 dekads
     inverse: bool
         Whether to calculate continuous deficit or excess, by default False.
-        If inverse==False run length is the maximum number of sucessive dekads below
-        the long term average in the interest period.
-        If inverse==True run length is the maximum number of sucessive dekads above
-        the long term average in the interest period.
+        If inverse==False run length is the maximum number of sucessive dekads
+        below the long term average in the interest period.
+        If inverse==True run length is the maximum number of sucessive dekads
+        above the long term average in the interest period.
 
     Returns
     -------
     xr.Dataset | xr.DataArray
-        Long term average for run length in the interest period over the years of available data.
+        Long term average for run length in the interest period over the years
+        of available data.
     """
-    # Number of years with data
-    years = np.sort(np.unique(ds.time.dt.year.values))
-    n = len(years)
+    years = np.unique(ds.time.dt.year.values)
 
     # Note: not using the get_actual_run_length_in_ip function for each year
-    # because of the repeated calculation of the long term mean
+    # to avoid of the repeated calculation of the long term mean
     longterm_avg_for_ip = get_longterm_avg_for_ip(ds=ds, d=d, ip=ip)
 
-    sum_k = 0
+    ds_list = []
     for y in years:
         # Get the data for the interest period from the timeseries.
         ds_ip_y = get_data_for_ip(ds=ds, y=y, d=d, ip=ip)
 
-        if ds_ip_y:
+        if ds_ip_y is not None:
+            no_data_mask_y = xr.apply_ufunc(
+                get_no_data_mask,
+                ds_ip_y,
+                input_core_dims=[["time"]],
+                vectorize=True,
+                dask="allowed",
+            )
+
             if inverse:
                 ds_ip_masked_y = xr.where(ds_ip_y > longterm_avg_for_ip, 1, 0)
             else:
@@ -433,11 +501,84 @@ def get_longterm_avg_for_run_length_in_ip(
 
             # Can also use numpy.apply_along_axis
             actual_run_length_in_ip_y = xr.apply_ufunc(
-                max_consecutive_ones, ds_ip_masked_y, input_core_dims=[["time"]], vectorize=True
+                max_consecutive_ones,
+                ds_ip_masked_y,
+                input_core_dims=[["time"]],
+                vectorize=True,
+                dask="allowed",
             )
-            if actual_run_length_in_ip_y:
-                sum_k = sum_k + actual_run_length_in_ip_y
 
-    longterm_avg_for_run_length_in_ip = sum_k / n
+            mod_actual_run_length_in_ip_y = (
+                actual_run_length_in_ip_y.max() + 1
+            ) - actual_run_length_in_ip_y
 
-    return longterm_avg_for_run_length_in_ip
+            mod_actual_run_length_in_ip_y = mod_actual_run_length_in_ip_y.where(
+                ~no_data_mask_y
+            )
+
+            ds_list.append(
+                mod_actual_run_length_in_ip_y.assign_coords(year=y).expand_dims(
+                    {"year": 1}
+                )
+            )
+
+    if ds_list:
+        ds_merged = xr.concat(ds_list, dim="year").sortby("year")
+        longterm_avg_run_length_in_ip = ds_merged.mean("year")
+        return longterm_avg_run_length_in_ip
+    else:
+        return None
+
+
+def calculate_drought_index(
+    ds: xr.Dataset | xr.DataArray,
+    y: int,
+    d: int,
+    ip: int,
+    inverse: bool = False,
+):
+    """
+    Calculate the Drought Index for the year {y} and dekad {d} using an
+    interest period of {ip} dekads.
+
+    Parameters
+    ----------
+    ds: xr.Dataset | xr.DataArray
+        Dekadal (10-day) timeseries
+    y: int
+        Year of interest
+    d: int
+        Dekad of interest in the year of interest.
+        Note: A year has 36 dekads following a 1-based index i.e. 1 to 36
+    ip: int
+        Interest period e.g. 3,4,5 dekads
+    inverse: bool
+        Whether to calculate continuous deficit or excess, by default False.
+        If inverse==False run length is the maximum number of sucessive dekads
+        below the long term average in the interest period.
+        If inverse==True run length is the maximum number of sucessive dekads
+        above the long term average in the interest period.
+
+    Returns
+    -------
+    xr.Dataset | xr.DataArray
+        Drough Index
+    """
+
+    actual_avg_for_ip = get_actual_avg_for_ip(ds=ds, y=y, d=d, ip=ip)
+
+    longterm_avg_for_ip = get_longterm_avg_for_ip(ds=ds, d=d, ip=ip)
+
+    actual_run_length_in_ip = get_actual_run_length_in_ip(ds=ds, y=y, d=d, ip=ip)
+
+    longterm_avg_run_length_in_ip = get_longterm_avg_run_length_in_ip(
+        ds=ds, d=d, ip=ip, inverse=inverse
+    )
+
+    DI = (actual_avg_for_ip / longterm_avg_for_ip) * np.sqrt(
+        actual_run_length_in_ip / longterm_avg_run_length_in_ip
+    )
+
+    DI_scaled = (DI - DI.min()) / (DI.max() - DI.min())
+
+    return DI_scaled
