@@ -123,7 +123,6 @@ def get_time_series(geohash: str = None, waterbody: pd.Series = None) -> pd.Data
     wb_timeseries = pd.read_csv(url)
     # Tidy up the dataframe.
     wb_timeseries.dropna(inplace=True)
-    wb_timeseries.columns = ["date", "pc_wet", "px_wet", "area_wet_m2", "pc_dry", "px_dry", "area_dry_m2", "pc_invalid", "px_invalid", "area_invalid_m2"]
     wb_timeseries = wb_timeseries.set_index("date")
     wb_timeseries.index = pd.to_datetime(wb_timeseries.index)
     return wb_timeseries
