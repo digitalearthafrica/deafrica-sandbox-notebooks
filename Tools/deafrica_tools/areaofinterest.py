@@ -41,9 +41,9 @@ def define_area(lat=None, lon=None, buffer=None, lat_buffer=None, lon_buffer=Non
     buffer : float, optional
         The buffer around the center point, in degrees. This is used if separate latitude and longitude buffers are not provided.
     lat_buffer : float, optional
-        The buffer around the center point in the latitude direction, in degrees.
+        The buffer around the center point, extending along the latitude, in degrees.
     lon_buffer : float, optional
-        The buffer around the center point in the longitude direction, in degrees.
+        The buffer around the center point, extending along the longitude, in degrees.
     vector_path : str, optional
         The path to a vector defining the area of interest.
     
