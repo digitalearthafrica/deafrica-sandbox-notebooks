@@ -8,7 +8,6 @@ import rasterio
 import requests
 import xarray as xr
 from datacube.testutils.io import rio_slurp_read, rio_slurp_reproject
-from odc.geo import Resolution
 from odc.geo.geobox import GeoBox
 from odc.geo.geom import Geometry
 from odc.geo.xr import wrap_xr
@@ -383,8 +382,6 @@ def load_wapor(
     lat_range: tuple[float, float],
     lon_range: tuple[float, float],
     time_range: tuple[str, str],
-    output_crs: str = None,
-    resolution: tuple = None,
 ) -> xr.Dataset:
 
     # Parse the time range.
@@ -415,19 +412,8 @@ def load_wapor(
     if raster_urls:
         with rasterio.open(raster_urls[0]) as src:
             geobox = GeoBox.from_rio(src)
-        if not output_crs and not resolution:
             gbox = GeoBox.from_geopolygon(
                 geopolygon=bounding_box, resolution=geobox.resolution, crs=geobox.crs
-            )
-        elif output_crs and not resolution:
-            gbox = GeoBox.from_geopolygon(
-                geopolygon=bounding_box, resolution=geobox.resolution, crs=geobox.crs
-            ).to_crs(crs=output_crs, resolution="auto")
-        elif output_crs and resolution:
-            gbox = GeoBox.from_geopolygon(
-                geopolygon=bounding_box,
-                resolution=Resolution(y=resolution[0], x=resolution[1]),
-                crs=output_crs,
             )
         da_list = []
         with tqdm(
