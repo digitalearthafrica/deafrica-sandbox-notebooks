@@ -8,6 +8,7 @@ import rasterio
 import requests
 import xarray as xr
 from datacube.testutils.io import rio_slurp_read, rio_slurp_reproject
+from odc.geo import Resolution
 from odc.geo.geobox import GeoBox
 from odc.geo.geom import BoundingBox
 from odc.geo.xr import wrap_xr
@@ -381,23 +382,10 @@ def load_wapor(
     lat_range: tuple[float, float],
     lon_range: tuple[float, float],
     time_range: tuple[str, str],
-    dask_chunks: dict = {},
+    output_crs: str = None,
+    resolution: tuple = None,
 ) -> xr.Dataset:
-    """
-    Load a WaPOR v3 mapset.
 
-    Parameters
-    ----------
-    mapset_code : str
-    lat_range : tuple[float, float]
-    lon_range : tuple[float, float]
-    time_range : tuple[str, str]
-
-    Returns
-    -------
-    xr.Dataset
-        _description_
-    """
     # Parse the time range.
     if isinstance(time_range, str):
         start_date = end_date = time_range
@@ -422,13 +410,31 @@ def load_wapor(
     if raster_urls:
         with rasterio.open(raster_urls[0]) as src:
             geobox = GeoBox.from_rio(src)
-        gbox = GeoBox.from_bbox(
-            BoundingBox(
-                min(lon_range), min(lat_range), max(lon_range), max(lat_range), crs="EPSG:4326"
-            ),
-            resolution=geobox.resolution,
-            crs=geobox.crs,
-        )
+
+        if not output_crs and not resolution:
+            gbox = GeoBox.from_bbox(
+                BoundingBox(
+                    min(lon_range), min(lat_range), max(lon_range), max(lat_range), crs="EPSG:4326"
+                ),
+                resolution=geobox.resolution,
+                crs=geobox.crs,
+            )
+        elif output_crs and not resolution:
+            gbox = GeoBox.from_bbox(
+                BoundingBox(
+                    min(lon_range), min(lat_range), max(lon_range), max(lat_range), crs="EPSG:4326"
+                ),
+                resolution=geobox.resolution,
+                crs=geobox.crs,
+            ).to_crs(crs=output_crs, resolution="auto")
+        elif output_crs and resolution:
+            gbox = GeoBox.from_bbox(
+                BoundingBox(
+                    min(lon_range), min(lat_range), max(lon_range), max(lat_range), crs="EPSG:4326"
+                ),
+                resolution=Resolution(y=resolution[0], x=resolution[1]),
+                crs=output_crs,
+            )
         da_list = []
         with tqdm(
             iterable=raster_urls, desc=f"Load data for {mapset_code}", total=len(raster_urls)
