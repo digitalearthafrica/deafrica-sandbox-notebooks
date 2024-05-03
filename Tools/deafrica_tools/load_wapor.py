@@ -10,8 +10,9 @@ import xarray as xr
 from datacube.testutils.io import rio_slurp_read, rio_slurp_reproject
 from odc.geo import Resolution
 from odc.geo.geobox import GeoBox
-from odc.geo.geom import BoundingBox
+from odc.geo.geom import Geometry
 from odc.geo.xr import wrap_xr
+from shapely.geometry import box
 from tqdm import tqdm
 
 pd.set_option("display.max_colwidth", None)
@@ -407,31 +408,24 @@ def load_wapor(
     df_mapset_rasters.set_index("dates", inplace=True)
     raster_urls = df_mapset_rasters.loc[start_idx:end_idx]["downloadUrl"].to_list()
 
+    bounding_box = Geometry(
+        geom=box(min(lon_range), min(lat_range), max(lon_range), max(lat_range)), crs="EPSG:4326"
+    )
+
     if raster_urls:
         with rasterio.open(raster_urls[0]) as src:
             geobox = GeoBox.from_rio(src)
-
         if not output_crs and not resolution:
-            gbox = GeoBox.from_bbox(
-                BoundingBox(
-                    min(lon_range), min(lat_range), max(lon_range), max(lat_range), crs="EPSG:4326"
-                ),
-                resolution=geobox.resolution,
-                crs=geobox.crs,
+            gbox = GeoBox.from_geopolygon(
+                geopolygon=bounding_box, resolution=geobox.resolution, crs=geobox.crs
             )
         elif output_crs and not resolution:
-            gbox = GeoBox.from_bbox(
-                BoundingBox(
-                    min(lon_range), min(lat_range), max(lon_range), max(lat_range), crs="EPSG:4326"
-                ),
-                resolution=geobox.resolution,
-                crs=geobox.crs,
+            gbox = GeoBox.from_geopolygon(
+                geopolygon=bounding_box, resolution=geobox.resolution, crs=geobox.crs
             ).to_crs(crs=output_crs, resolution="auto")
         elif output_crs and resolution:
-            gbox = GeoBox.from_bbox(
-                BoundingBox(
-                    min(lon_range), min(lat_range), max(lon_range), max(lat_range), crs="EPSG:4326"
-                ),
+            gbox = GeoBox.from_geopolygon(
+                geopolygon=bounding_box,
                 resolution=Resolution(y=resolution[0], x=resolution[1]),
                 crs=output_crs,
             )
