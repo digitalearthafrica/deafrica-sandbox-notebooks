@@ -8,44 +8,37 @@ import pandas as pd
 import xarray as xr
 
 
-def get_dekad_date(date: str | datetime | pd.Timestamp) -> pd.Timestamp:
+def get_dekad_date(date: np.datetime64) -> np.datetime64:
     """
     Checks the dekad of a date and returns the dekad date.
 
     Parameters
     ----------
-    date : str | datetime | pd.Timestamp
+    date : np.datetime64
         Date to check.
 
     Returns
     -------
-    pd.Timestamp
+    np.datetime64
         Date of the dekad.
     """
-    # Get the year and month from the date.
-    if isinstance(date, pd.Timestamp):
-        timestamp = date
-    else:
-        timestamp = pd.Timestamp(date)
-
+    timestamp = pd.Timestamp(date)
     year = timestamp.year
     month = timestamp.month
 
-    # First day of the month
-    start_date = datetime(year, month, 1)
-    # Last day of the month.
-    end_date = datetime(year, month, calendar.monthrange(year, month)[1])
+    first_day = datetime(year, month, 1)
+    last_day = datetime(year, month, calendar.monthrange(year, month)[1])
 
     d1_start_date, d2_start_date, d3_start_date = pd.date_range(
-        start=start_date, end=end_date, freq="10D", inclusive="left"
+        start=first_day, end=last_day, freq="10D", inclusive="left"
     )
 
     if d1_start_date <= timestamp < d2_start_date:
-        return d1_start_date
+        return np.datetime64(d1_start_date)
     elif d2_start_date <= timestamp < d3_start_date:
-        return d2_start_date
+        return np.datetime64(d2_start_date)
     else:
-        return d3_start_date
+        return np.datetime64(d3_start_date)
 
 
 def resample_ds(ds: xr.Dataset | xr.DataArray) -> xr.Dataset | xr.DataArray:
