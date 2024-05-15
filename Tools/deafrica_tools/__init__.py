@@ -1,6 +1,6 @@
 __locales__ = __path__[0] + '/locales'
 
-__version__ = '2.3.7'
+__version__ = '2.3.8'
 
 def set_lang(lang=None):
     if lang is None:
