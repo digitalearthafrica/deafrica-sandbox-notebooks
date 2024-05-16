@@ -11,7 +11,7 @@ from owslib.etree import etree
 import pandas as pd
 import plotly.graph_objects as go
 
-# URL for the DE Africa Water Bodies data on Dev Geoserver.
+# URL for the DE Africa Water Bodies data on PROD Geoserver.
 WFS_ADDRESS = "https://geoserver.digitalearth.africa/geoserver/wfs"
 WFS_LAYER = "waterbodies:DEAfrica_Waterbodies"
 API_ADDRESS = "https://api.digitalearth.africa/waterbodies/"
@@ -22,7 +22,7 @@ def get_waterbody(geohash: str) -> gpd.GeoDataFrame:
     Parameters
     ----------
     geohash : str
-        The geohash/UID for a waterbody in DE Africa Water Bodies.
+        The geohash/uid for a waterbody in DE Africa Water Bodies.
     
     Returns
     -------
@@ -31,7 +31,7 @@ def get_waterbody(geohash: str) -> gpd.GeoDataFrame:
     """
     
     wfs = WebFeatureService(url=WFS_ADDRESS, version="1.1.0")
-    filter_ = PropertyIsEqualTo(propertyname="UID", literal=geohash)
+    filter_ = PropertyIsEqualTo(propertyname="uid", literal=geohash)
     filterxml = etree.tostring(filter_.toXML()).decode("utf-8")
     response = wfs.getfeature(
         typename=WFS_LAYER,
@@ -89,12 +89,12 @@ def get_geohashes(bbox: tuple = None, crs: str = "EPSG:4326") -> [str]:
         bbox = bbox + (crs,)
     response = wfs.getfeature(
         typename=WFS_LAYER,
-        propertyname="UID",
+        propertyname="uid",
         outputFormat="json",
         bbox=bbox,
     )
     wb_gpd = gpd.read_file(response)
-    return list(wb_gpd["UID"])
+    return list(wb_gpd["uid"])
 
 
 def get_time_series(geohash: str = None, waterbody: pd.Series = None) -> pd.DataFrame:
@@ -103,7 +103,7 @@ def get_time_series(geohash: str = None, waterbody: pd.Series = None) -> pd.Data
     Parameters
     ----------
     geohash : str
-        The geohash/UID for a waterbody in DE Africa Water Bodies.
+        The geohash/uid for a waterbody in DE Africa Water Bodies.
     waterbody : pd.Series
         One row of a GeoDataFrame representing a waterbody.
     
@@ -119,9 +119,9 @@ def get_time_series(geohash: str = None, waterbody: pd.Series = None) -> pd.Data
 
     if geohash is not None:
         wb = get_waterbody(geohash)
-        wb_id = wb.WB_ID.item()
+        wb_id = wb.wb_id.item()
     else:
-        wb_id = waterbody.WB_ID.item()
+        wb_id = waterbody.wb_id.item()
     url = API_ADDRESS + f"waterbody/{wb_id}/observations/csv"
     wb_timeseries = pd.read_csv(url)
     # Tidy up the dataframe.
