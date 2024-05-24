@@ -1,0 +1,117 @@
+msgid ""
+msgstr ""
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: POEditor.com\n"
+"Project-Id-Version: deafrica_tools\n"
+"Language: fr\n"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:83
+msgid "None"
+msgstr "Aucun"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:84
+msgid "ESRI World Imagery"
+msgstr "Imagerie mondiale ESRI"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:85
+msgid "Sentinel-2 Geomedian"
+msgstr "Sentinel-2 Geomedian"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:86
+msgid "Water Observations from Space"
+msgstr "Observations de l'eau depuis l'espace-WOfS"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:99
+msgid "Wetlands Insight Tool"
+msgstr "Outil d'analyse des zones humides"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:100
+msgid "Select parameters and AOI"
+msgstr "Sélectionner les paramètres et la zone d'intérêt"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:124
+msgid "Total polygon area"
+msgstr "Superficie totale du polygone"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:128
+msgid "Area falls within recommended limit"
+msgstr "La zone se situe dans la limite recommandée"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:131
+msgid "Area is too large, please update your polygon"
+msgstr "La zone est trop grande, veuillez réduire votre polygone"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:151
+msgid "Map Overlays"
+msgstr "Superpositions de cartes"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:176
+msgid "Run"
+msgstr "Exécuter"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:183
+msgid "Map Overlay:"
+msgstr "Carte superposée :"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:185
+msgid "Start Date:"
+msgstr "Date de début :"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:187
+msgid "End Date:"
+msgstr "Date de fin :"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:189
+msgid "Minimum Good Data:"
+msgstr "Minimum de bonnes données :"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:191
+msgid "Resampling Frequency:"
+msgstr "Fréquence de rééchantillonnage :"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:193
+msgid "Output CSV:"
+msgstr "Sortie CSV :"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:195
+msgid "Output Plot:"
+msgstr "Tracé de sortie :"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:308
+msgid "Progress"
+msgstr "Progrès"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:326
+msgid "WIT complete"
+msgstr "WIT achevée"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:328
+msgid "No polygon selected"
+msgstr "Aucun polygone sélectionné"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:365
+msgid "open water"
+msgstr "eau libre"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:366
+msgid "wet"
+msgstr "humide"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:367
+msgid "green veg"
+msgstr "végétation verts"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:368
+msgid "dry veg"
+msgstr "végétation seche"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:369
+msgid "bare soil"
+msgstr "sol nu"
+
+#: Tools/deafrica_tools/app/wetlandsinsighttool.py:382
+msgid "Percentage Fractional Cover, Wetness, and Water"
+msgstr "Pourcentage de couverture fractionnée, humidité et eau"
+

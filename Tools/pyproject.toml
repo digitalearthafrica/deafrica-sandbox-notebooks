@@ -1,0 +1,106 @@
+# pyproject.toml
+[build-system]
+requires = ["setuptools>=61.0", "wheel", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+
+[project]
+name = "deafrica-tools"
+version = "2.4.0"
+# reflect version changes in deafrica_tools/__init__.py
+
+description = "Functions and algorithms for analysing Digital Earth Africa data."
+authors = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
+maintainers = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
+readme = {file = "README.md", content-type = "text/markdown"}
+# If you change the License, remember to change the Trove Classifier!
+license = {file = "LICENSE"}
+classifiers=[
+    # Trove classifiers
+    # Full list: https://pypi.python.org/pypi?%3Aaction=list_classifiers
+    'License :: OSI Approved :: Apache Software License',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Intended Audience :: Science/Research',
+    'Topic :: Scientific/Engineering :: GIS',
+]
+requires-python = ">=3.9,<3.12"
+dependencies= [
+    # Version constraints should match those in 
+    # https://github.com/digitalearthafrica/deafrica-sandbox/blob/main/docker/requirements.in
+    "aiohttp",
+    "aiobotocore[boto3]", # for boto3
+    "branca",
+    "dask[complete]",
+    "dask-ml",
+    "dask-gateway",
+    "datacube[performance,s3]",
+    "fiona",
+    "folium",
+    "fsspec",
+    "gdal",
+    "geojson",
+    "geopandas",
+    "geopy",
+    "hdstats",
+    "ipyleaflet",
+    "ipython",
+    "ipywidgets",
+    "joblib",
+    "matplotlib",
+    "numexpr",
+    "numpy",
+    "odc-algo",
+    "odc-geo",
+    "odc-ui",
+    "owslib",
+    "packaging",
+    "pandas",
+    "pyproj",
+    "pystac-client",  # for pystac
+    "python-dateutil",
+    "pyTMD > 2",
+    "pytz",
+    "rasterio",
+    "rasterstats",
+    "requests",
+    "scikit-image",
+    "scikit-learn",
+    "scipy",
+    "seaborn",
+    "shapely",
+    "tqdm",
+    "xarray",
+    "gcsfs",
+    # Code style
+    "black",
+    "flake8==6.0.0", # remove constraint in the next sandbox image upgrade
+    "isort",
+    # Testing
+    "pytest",
+]
+[project.urls]
+Homepage = "https://github.com/digitalearthafrica/deafrica-sandbox-notebooks"
+Repository = "https://github.com/digitalearthafrica/deafrica-sandbox-notebooks"
+Documentation = "https://docs.digitalearthafrica.org/en/latest/sandbox/notebooks/Tools/index.html"
+"Bug Tracker" = "https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues"
+
+[tool.setuptools]
+packages = ["deafrica_tools"]
+
+[tool.black]
+line-length = 100
+
+[tool.isort]
+skip_gitignore = true
+# Configure isort to be compatible with black.
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+line_length = 100

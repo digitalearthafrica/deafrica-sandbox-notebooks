@@ -1,0 +1,9 @@
+name: deafrica-tools-env
+channels:
+  - conda-forge
+dependencies:
+  - python = 3.10.6 
+  - gdal = 3.6.3 
+  - pip-tools
+  - pip:
+    - -r requirements.txt
