@@ -6,7 +6,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "deafrica-tools"
-version = "2.3.3"
+version = "2.4.0"
+# reflect version changes in deafrica_tools/__init__.py
+
 description = "Functions and algorithms for analysing Digital Earth Africa data."
 authors = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
 maintainers = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
@@ -73,6 +75,7 @@ dependencies= [
     "shapely",
     "tqdm",
     "xarray",
+    "gcsfs",
     # Code style
     "black",
     "flake8==6.0.0", # remove constraint in the next sandbox image upgrade
