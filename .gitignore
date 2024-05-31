@@ -5,3 +5,7 @@
 __pycache__
 dask-worker-space
 /.idea/
+
+# Vscode
+**/.vscode/**
+**/core
