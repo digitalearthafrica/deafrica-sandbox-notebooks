@@ -115,8 +115,11 @@ def load_wapor_ds(filename: str, variable: str) -> xr.Dataset:
         .rename(variable)
         for band in bands
     ]
+    # Sort by time value.
+    sorted_da_list = sorted(da_list, key=lambda ds: ds.time)
+
     # Merge the DataArrays
-    da = xr.concat(da_list, dim="time")
+    da = xr.concat(sorted_da_list, dim="time")
 
     # Edit the attributes
     if len(da.time) > 1:
