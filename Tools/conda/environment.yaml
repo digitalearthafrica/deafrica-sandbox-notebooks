@@ -6,4 +6,5 @@ dependencies:
   - gdal = 3.6.3 
   - pip-tools
   - pip:
-    - -r requirements.txt
+    - -r https://raw.githubusercontent.com/digitalearthafrica/deafrica-sandbox/main/docker/requirements.txt
+    - -e ../../Tools/
