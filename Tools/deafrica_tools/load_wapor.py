@@ -98,10 +98,13 @@ def load_wapor_ds(filename: str, variable: str) -> xr.Dataset:
         ds = rioxarray.open_rasterio(filename).squeeze(dim="band").drop_vars("band")
 
     # Store the crs in the spatial_ref coordinate
-    try:
+    if "spatial_ref" in ds.coords:
+        crs_attrs = ds["spatial_ref"].attrs
+        ds = add_geobox(ds.drop_vars("spatial_ref"), crs=ds.rio.crs)
+    elif "crs" in ds.coords:
         crs_attrs = ds["crs"].attrs
         ds = add_geobox(ds.drop_vars("crs"), crs=ds.rio.crs)
-    except KeyError:
+    elif "transverse_mercator" in ds.coords:
         crs_attrs = ds["transverse_mercator"].attrs
         ds = add_geobox(ds.drop_vars("transverse_mercator"), crs=ds.rio.crs)
 
