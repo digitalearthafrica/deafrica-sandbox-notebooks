@@ -39,9 +39,12 @@ def get_last_calendar_month():
     
     # Calculate the first day of the current month
     first_day_of_current_month = today.replace(day=1)
-    
     # Subtract one day to get the last day of the previous month
-    last_day_of_last_month = first_day_of_current_month - timedelta(days=90)
+    if today.day > 4:
+        pre_month = 1
+    else:
+        pre_month = 45
+    last_day_of_last_month = first_day_of_current_month - timedelta(days=pre_month)
     
     # Extract the year and month from the last day of the previous month
     year = last_day_of_last_month.year
@@ -91,9 +94,9 @@ def loadplanet():
     ds_bui = ds.where(ds.BUI>=0, np.nan).NDVI
 
     write_cog(ds_bui, fname="bui.tif", overwrite=True)
-
-    planet_ = 'https://api.digitalearth.africa/planet/tiles/basemaps/v1/planet-tiles/planet_medres_visual_2024-04_mosaic/gmap/{z}/{x}/{y}.png'
-    provider = TileLayer(url=planet_, name="Planet NICFI",  show_loading=True, attribution="Planet NICFI")
+    year, month = get_last_calendar_month()
+    planet_ = f"https://api.digitalearth.africa/planet/tiles/basemaps/v1/planet-tiles/planet_medres_visual_{year:04d}-{month:02d}_mosaic/gmap/"+"{z}/{x}/{y}.png"
+    provider = TileLayer(url=planet_, name=f"Planet NICFI-{year:04d}-{month:02d}",  show_loading=True, attribution="Planet NICFI")
     provider.base = True
 
     geo_data = GeoData(geo_dataframe = polygons,
