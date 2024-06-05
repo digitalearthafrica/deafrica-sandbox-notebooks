@@ -91,8 +91,11 @@ def load_wapor_ds(filename: str, variable: str) -> xr.Dataset:
     xr.Dataset
         Dataset containing the WAPOR version 3 mapset data downloaded.
     """
-    # Load the netcdf.
-    ds = rioxarray.open_rasterio(filename).squeeze(dim="band").drop_vars("band")
+    # Load the file.
+    if filename.endswith(".tif"):
+        ds = rioxarray.open_rasterio(filename).to_dataset(dim="band")
+    elif filename.endswith(".nc"):
+        ds = rioxarray.open_rasterio(filename).squeeze(dim="band").drop_vars("band")
 
     # Store the crs in the spatial_ref coordinate
     try:
