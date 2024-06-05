@@ -76,13 +76,15 @@ def get_all_WaPORv3_mapsets() -> pd.DataFrame:
 
 def load_wapor_ds(filename: str, variable: str) -> xr.Dataset:
     """
-    Load the netCDF or GeoTIFF downloaded using `wapordl.wapor_map` as a
-    xarray Dataset.
+    Load the netCDF downloaded using `wapordl.wapor_map` as a
+    xarray Dataset. 
+    Note: Only works for netcdf files, this is because when loading the WAPOR TIFF 
+    files, the start_date and end_date attributes are only loaded for the first band.
 
     Parameters
     ----------
     filename : str
-        File path of the netCDF or GeoTIFF downloaded using `wapordl.wapor_map`
+        File path of the netCDF downloaded using `wapordl.wapor_map`
     variable : str
         Name of the WAPOR version 3 mapset downloaded
 
@@ -93,7 +95,7 @@ def load_wapor_ds(filename: str, variable: str) -> xr.Dataset:
     """
     # Load the file.
     if filename.endswith(".tif"):
-        ds = rioxarray.open_rasterio(filename).to_dataset(dim="band")
+        raise ValueError("Please set extension='.nc' when downloading data using `wapor_map`")
     elif filename.endswith(".nc"):
         ds = rioxarray.open_rasterio(filename).squeeze(dim="band").drop_vars("band")
 
