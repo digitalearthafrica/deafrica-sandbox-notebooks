@@ -56,7 +56,7 @@ def get_last_calendar_month():
     return year, month
 
 ## Load map to display
-def loadplanet(lon_range, lat_range):
+def loadplanet(lon_range, lat_range, min_gooddata):
     #Connect to the datacube
     dc = datacube.Datacube(app='planet')
 
@@ -79,7 +79,7 @@ def loadplanet(lon_range, lat_range):
                   resolution=(-10, 10),
                   output_crs='EPSG:6933',
                   group_by="solar_day",
-                  min_gooddata=1,
+                  min_gooddata=min_gooddata,
                   verbose=False,
                  )
     
@@ -126,7 +126,7 @@ def loadplanet(lon_range, lat_range):
     openstreet.base = True
     
     # Create ipyleaflet map, add tile layer, and display
-    map_con = Map(center=bui_client.center(), zoom=bui_client.default_zoom+2, layout=Layout(width='80%', height='500px'))
+    map_con = Map(center=bui_client.center(), zoom=bui_client.default_zoom+2)
     
     control = LayersControl(position='topright')
     
