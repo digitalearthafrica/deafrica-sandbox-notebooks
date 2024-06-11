@@ -15,9 +15,7 @@ import pyTMD.time
 import pyTMD.utilities
 import requests
 import xarray as xr
-from datacube.utils.geometry import CRS
 from odc.geo.geobox import GeoBox
-from otps import TimePoint, predict_tide
 from owslib.wfs import WebFeatureService
 from pandas.plotting import register_matplotlib_converters
 from scipy import stats
@@ -1006,7 +1004,10 @@ def transect_distances(
 
 
 def get_coastlines(
-    bbox: tuple | gpd.GeoDataFrame, crs: str = "EPSG:4326", layer: str = "shorelines", drop_wms: bool = True
+    bbox: tuple | gpd.GeoDataFrame,
+    crs: str = "EPSG:4326",
+    layer: str = "shorelines",
+    drop_wms: bool = True,
 ) -> gpd.GeoDataFrame:
     """
     Get DE Africa Coastlines data for a provided bounding box using WFS.
