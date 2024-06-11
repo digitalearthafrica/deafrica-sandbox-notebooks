@@ -10,9 +10,11 @@ import time
 import warnings
 from abc import ABCMeta, abstractmethod
 from copy import deepcopy
+from typing import Callable
 
 import dask.array as da
 import dask.distributed as dd
+import geopandas as gpd
 import joblib
 import numpy as np
 import pandas as pd
@@ -20,7 +22,7 @@ import xarray as xr
 from dask_ml.wrappers import ParallelPostFit
 from datacube.utils import geometry
 from datacube.utils.geometry import assign_crs
-from sklearn.base import ClusterMixin
+from sklearn.base import BaseEstimator, ClusterMixin
 from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.mixture import GaussianMixture
 from sklearn.model_selection import BaseCrossValidator, KFold, ShuffleSplit
@@ -30,7 +32,7 @@ from tqdm.auto import tqdm
 from deafrica_tools.spatial import xr_rasterize
 
 
-def sklearn_flatten(input_xr):
+def sklearn_flatten(input_xr: xr.DataArray | xr.Dataset) -> np.array:
     """
     Reshape a DataArray or Dataset with spatial (and optionally
     temporal) structure into an np.array with the spatial and temporal
@@ -92,7 +94,7 @@ def sklearn_flatten(input_xr):
     return input_np
 
 
-def sklearn_unflatten(output_np, input_xr):
+def sklearn_unflatten(output_np: np.array, input_xr: xr.DataArray | xr.Dataset) -> xr.DataArray:
     """
     Reshape a numpy array with no 'missing' elements (NaNs) and
     'flattened' spatiotemporal structure into a DataArray matching the
@@ -166,7 +168,7 @@ def sklearn_unflatten(output_np, input_xr):
     return output_xr
 
 
-def fit_xr(model, input_xr):
+def fit_xr(model: BaseEstimator, input_xr: xr.DataArray | xr.Dataset) -> BaseEstimator:
     """
     Utilise our wrappers to fit a vanilla sklearn model.
 
@@ -191,14 +193,14 @@ def fit_xr(model, input_xr):
 
 
 def predict_xr(
-    model,
-    input_xr,
-    chunk_size=None,
-    persist=False,
-    proba=False,
-    clean=True,
-    return_input=False,
-):
+    model: BaseEstimator,
+    input_xr: xr.DataArray | xr.Dataset,
+    chunk_size: int | None = None,
+    persist: bool = False,
+    proba: bool = False,
+    clean: bool = True,
+    return_input: bool = False,
+) -> xr.Dataset:
     """
     Using dask-ml ParallelPostfit(), runs  the parallel
     predict and predict_proba methods of sklearn
@@ -213,7 +215,7 @@ def predict_xr(
         Must have a .predict() method that takes numpy arrays.
     input_xr : xarray.DataArray or xarray.Dataset.
         Must have dimensions 'x' and 'y'
-    chunk_size : int
+    chunk_size : int | None
         The dask chunk size to use on the flattened array. If this
         is left as None, then the chunks size is inferred from the
         .chunks method on the `input_xr`
@@ -531,17 +533,17 @@ def _get_training_data_parallel(
 
 
 def collect_training_data(
-    gdf,
-    dc_query,
-    ncpus=1,
-    return_coords=False,
-    feature_func=None,
-    field=None,
-    zonal_stats=None,
-    clean=True,
-    fail_threshold=0.02,
-    fail_ratio=0.5,
-    max_retries=3,
+    gdf: gpd.GeoDataFrame,
+    dc_query: dict,
+    ncpus: int = 1,
+    return_coords: bool = False,
+    feature_func: Callable[dict] | None = None,
+    field: str | None = None,
+    zonal_stats: str | None = None,
+    clean: bool = True,
+    fail_threshold: float = 0.02,
+    fail_ratio: float = 0.5,
+    max_retries: int = 3,
 ):
     """
     This function provides methods for gathering training data from the ODC over
