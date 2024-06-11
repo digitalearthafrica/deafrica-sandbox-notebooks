@@ -1,10 +1,40 @@
+"""
+Functions to retrieve Global Root-zone moisture Analysis & Forecasting System (GRAFS)
+data.
+"""
 import numpy as np
 import xarray as xr
 
-# function to load soil moisture data
 
+def load_soil_moisture(
+    lat: tuple[float | int] | list[float | int],
+    lon: tuple[float | int] | list[float | int],
+    time: tuple[str, str],
+    product: str = "surface",
+    grid: str = "nearest",
+) -> xr.Dataset:
+    """
+    Load the Global Root-zone moisture Analysis & Forecasting System (GRAFS)
+    data.
 
-def load_soil_moisture(lat, lon, time, product="surface", grid="nearest"):
+    Parameters
+    ----------
+    lat : tuple[float  |  int] | list[float  |  int]
+        Latitude range for query.
+    lon : tuple[float  |  int] | list[float  |  int]
+        Longitude range for query.
+    time : tuple[str, str]
+        Time range to load data for.
+    product : str, optional
+        Band to load, must be "surface" or "root-zone", by default "surface"
+    grid : str, optional
+        Defines how the area of interest is defined from the lon and lat , by default "nearest"
+
+    Returns
+    -------
+    xr.Dataset
+        GRAFs surface or root-zone data found matching the query.
+    """
     product_baseurl = "https://dapds00.nci.org.au/thredds/dodsC/ub8/global/GRAFS/"
     assert product in ["surface", "rootzone"], "product parameter must be surface or root-zone"
     # lat, lon grid
