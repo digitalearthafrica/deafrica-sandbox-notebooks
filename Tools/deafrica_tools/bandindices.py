@@ -6,34 +6,32 @@ data.
 import warnings
 
 import numpy as np
+import xarray as xr
 
 
 # Define custom functions
 def calculate_indices(
-    ds,
-    index=None,
-    collection=None,
-    satellite_mission=None,
-    custom_varname=None,
-    normalise=True,
-    drop=False,
-    deep_copy=True,
-):
+    ds: xr.Dataset,
+    index: str | list[str] | None = None,
+    satellite_mission: str | None = None,
+    custom_varname: str | None = None,
+    normalise: bool = True,
+    drop: bool = False,
+    deep_copy: bool = True,
+) -> xr.Dataset:
     """
     Takes an xarray dataset containing spectral bands, calculates one of
     a set of remote sensing indices, and adds the resulting array as a
     new variable in the original dataset.
 
-    Last modified: July 2022
-
     Parameters
     ----------
-    ds : xarray Dataset
+    ds : xr.Dataset
         A two-dimensional or multi-dimensional array with containing the
         spectral bands required to calculate the index. These bands are
         used as inputs to calculate the selected water index.
 
-    index : str or list of strs
+    index : str | list[str] | None, optional
         A string giving the name of the index to calculate or a list of
         strings giving the names of the indices to calculate:
 
@@ -68,16 +66,7 @@ def calculate_indices(
         * ``'TCW'`` (Tasseled Cap Wetness, Crist 1985)
         * ``'WI'`` (Water Index, Fisher 2016)
 
-    collection : str
-        Deprecated in version 0.1.7. Use `satellite_mission` instead.
-
-        Valid options are:
-        * ``'c2'`` (for USGS Landsat Collection 2)
-            If 'c2', then `satellite_mission='ls'`.
-        * ``'s2'`` (for Sentinel-2)
-            If 's2', then `satellite_mission='s2'`.
-
-    satellite_mission : str
+    satellite_mission : str | None, optional
         An string that tells the function which satellite mission's data is
         being used to calculate the index. This is necessary because
         different satellite missions use different names for bands covering
@@ -88,7 +77,7 @@ def calculate_indices(
          * ``'ls'`` (for USGS Landsat)
          * ``'s2'`` (for Copernicus Sentinel-2)
 
-    custom_varname : str, optional
+    custom_varname : str | None, optional
         By default, the original dataset will be returned with
         a new index variable named after `index` (e.g. 'NDVI'). To
         specify a custom name instead, you can supply e.g.
@@ -106,10 +95,10 @@ def calculate_indices(
 
     drop : bool, optional
         Provides the option to drop the original input data, thus saving
-        space. If `drop=True`, returns only the index and its values.
+        space. If `drop=True`, returns only the index and its values, by default False.
 
-    deep_copy: bool, optional
-        If `deep_copy=False`, calculate_indices will modify the original
+    deep_copy : bool, optional
+       If `deep_copy=False`, calculate_indices will modify the original
         array, adding bands to the input dataset and not removing them.
         If the calculate_indices function is run more than once, variables
         may be dropped incorrectly producing unexpected behaviour. This is
@@ -118,13 +107,12 @@ def calculate_indices(
 
     Returns
     -------
-    ds : xarray Dataset
+    ds : xr.Dataset
         The original xarray Dataset inputted into the function, with a
         new varible containing the remote sensing index as a DataArray.
         If drop = True, the new variable/s as DataArrays in the
         original Dataset.
     """
-
     # Set ds equal to a copy of itself in order to prevent the function
     # from editing the input dataset. This is to prevent unexpected
     # behaviour though it uses twice as much memory.
@@ -350,26 +338,6 @@ def calculate_indices(
                 "refer to the function documentation for a full "
                 "list of valid options for `index`"
             )
-
-        # Deprecation warning if `collection` is specified instead of `satellite_mission`.
-        if collection is not None:
-            warnings.warn(
-                "`collection` was deprecated in version 0.1.7. Use `satelite_mission` instead.",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            # Map the collection values to the valid satellite_mission values.
-            if collection == "c2":
-                satellite_mission = "ls"
-            elif collection == "s2":
-                satellite_mission = "s2"
-            # Raise error if no valid collection name is provided:
-            else:
-                raise ValueError(
-                    f"'{collection}' is not a valid option for "
-                    "`collection`. Please specify either \n"
-                    "'c2' or 's2'."
-                )
 
         # Rename bands to a consistent format if depending on what satellite mission
         # is specified in `satellite_mission`. This allows the same index calculations
