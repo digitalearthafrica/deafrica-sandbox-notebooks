@@ -16,29 +16,35 @@ from shapely.geometry import box
 
 
 def define_area(
-    lat=None, lon=None, buffer=None, lat_buffer=None, lon_buffer=None, vector_path=None
-):
+    lat: int | float | None = None,
+    lon: int | float | None = None,
+    buffer: int | float | None = None,
+    lat_buffer: int | float | None = None,
+    lon_buffer: int | float | None = None,
+    vector_path: str | None = None
+) -> FeatureCollection:
+
     """
     Define an area of interest using either a point and buffer or separate latitude and longitude buffers, or a vector.
 
     Parameters:
     -----------
-    lat : float, optional
-        The latitude of the center point of the area of interest.
-    lon : float, optional
-        The longitude of the center point of the area of interest.
-    buffer : float, optional
-        The buffer around the center point, in degrees. This is used if separate latitude and longitude buffers are not provided.
-    lat_buffer : float, optional
-        The buffer around the center point, extending along the latitude, in degrees.
-    lon_buffer : float, optional
-        The buffer around the center point, extending along the longitude, in degrees.
-    vector_path : str, optional
-        The path to a vector defining the area of interest.
+    lat : int | float | None, optional
+        The latitude of the center point of the area of interest, by default None.
+    lon : int | float | None, optional
+        The longitude of the center point of the area of interest, by default None
+    buffer : int | float | None, optional
+        The buffer around the center point, in degrees. This is used if separate latitude and longitude buffers are not provided, by default None.
+    lat_buffer : int | float | None, optional
+        The buffer around the center point, extending along the latitude, in degrees, by default None
+    lon_buffer : int | float | None, optional
+        The buffer around the center point, extending along the longitude, in degrees, by default None.
+    vector_path : str | None, optional
+        The path to a vector defining the area of interest, by default None.
 
     Returns:
     --------
-    feature_collection : dict
+    feature_collection : FeatureCollection
         A GeoJSON feature collection representing the area of interest.
     """
     # Check if both buffer and separate lat/lon buffers are specified
