@@ -7,7 +7,7 @@ Previous code for downloading and loading netcdf adpated from scripts by Andrew 
 """
 
 import datetime
-import os
+from typing import Callable
 
 import fsspec
 import numpy as np
@@ -35,13 +35,18 @@ ERA5_VARS = [
 
 
 def load_era5(
-    var,
-    lat,
-    lon,
-    time,
-    reduce_func=None,
-    resample="1D",
-):
+    var: str,
+    lat: tuple | list,
+    lon: tuple | list,
+    time: str
+    | list[str]
+    | tuple[str]
+    | datetime.datetime
+    | list[datetime.datetime]
+    | tuple[datetime.datetime],
+    reduce_func: Callable | None = None,
+    resample: str = "1D",
+) -> xr.Dataset:
     """
     Download and return an ERA5 variable for a defined time window.
 
@@ -139,7 +144,7 @@ def load_era5(
             month += np.timedelta64(1, "M")
             return assign_crs(xr.combine_by_coords(datasets), "EPSG:4326")
 
-        except:
+        except Exception:
             ERA5_dict = {
                 "air_pressure_at_mean_sea_level": "mean_sea_level_pressure",
                 "air_temperature_at_2_metres": "2m_temperature",
