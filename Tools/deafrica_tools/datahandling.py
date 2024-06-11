@@ -1,21 +1,24 @@
 """
 Functions for loading and handling Digital Earth Africa data.
 """
-
-import datetime
 import os
 import warnings
 import zipfile
 from collections import Counter
+from concurrent.futures import ProcessPoolExecutor
 from copy import deepcopy
 from datetime import datetime
+from itertools import repeat
+from typing import Callable
 
+import numexpr
 import numpy as np
 import odc.algo
 import pandas as pd
 import pytz
 import requests
 import xarray as xr
+from datacube import Datacube
 from datacube.utils import masking
 from dateutil import parser
 from odc.algo import mask_cleanup
@@ -23,7 +26,8 @@ from osgeo import gdal
 from scipy.ndimage import binary_dilation
 from scipy.ndimage.filters import uniform_filter
 from scipy.ndimage.measurements import variance
-from skimage.morphology import binary_dilation, binary_erosion, disk
+from skimage.morphology import disk
+from tqdm import tqdm
 
 from deafrica_tools.bandindices import calculate_indices
 
@@ -80,26 +84,26 @@ def _common_bands(dc, products):
 
 
 def load_ard(
-    dc,
-    products=None,
-    min_gooddata=0.0,
-    categories_to_mask_ls=dict(cloud="high_confidence", cloud_shadow="high_confidence"),
-    categories_to_mask_s2=[
+    dc: Datacube,
+    products: list[str] = None,
+    min_gooddata: float = 0.0,
+    categories_to_mask_ls: dict = dict(cloud="high_confidence", cloud_shadow="high_confidence"),
+    categories_to_mask_s2: list[str] = [
         "cloud high probability",
         "cloud medium probability",
         "thin cirrus",
         "cloud shadows",
         "saturated or defective",
     ],
-    categories_to_mask_s1=["invalid data"],
-    mask_filters=None,
-    mask_pixel_quality=True,
-    ls7_slc_off=True,
-    predicate=None,
-    dtype="auto",
-    verbose=True,
+    categories_to_mask_s1: list[str] = ["invalid data"],
+    mask_filters: list[tuple[str, int | float]] | None = None,
+    mask_pixel_quality: bool = True,
+    ls7_slc_off: bool = True,
+    predicate: Callable | None = None,
+    dtype: str = "auto",
+    verbose: bool = True,
     **kwargs,
-):
+) -> xr.Dataset:
     """
     Loads analysis ready data.
 
@@ -259,7 +263,7 @@ def load_ard(
         )
 
     # convert products to list if user passed as a string
-    if type(products) == str:
+    if isinstance(products, str):
         products = [products]
 
     if all(["ls" in product for product in products]):
@@ -419,7 +423,7 @@ def load_ard(
     # a predicate filter)
     if predicate:
         if verbose:
-            print(f"Filtering datasets using filter function")
+            print("Filtering datasets using filter function")
         dataset_list = [ds for ds in dataset_list if predicate(ds)]
 
     # Raise exception if filtering removes all datasets
@@ -457,7 +461,7 @@ def load_ard(
         # only run if data bands are present
         if len(data_bands) > 0:
             # identify pixels that will become negative after rescaling (but not 0 values)
-            invalid = (
+            invalid = (  # noqa F841
                 ((ds[data_bands] < (-1.0 * -0.2 / 0.0000275)) & (ds[data_bands] > 0))
                 .to_array(dim="band")
                 .any(dim="band")
@@ -569,7 +573,7 @@ def load_ard(
         trans_emiss = ["atmospheric_transmittance", "emissivity", "emissivity_stddev"]
         qa = ["pixel_quality", "radiometric_saturation"]
 
-        if mask_pixel_quality == False:
+        if mask_pixel_quality is False:
             # set nodata to NaNs before rescaling
             # in the case where masking hasn't already done this
             for band in ds.data_vars:
@@ -611,7 +615,14 @@ def load_ard(
         return ds.compute()
 
 
-def array_to_geotiff(fname, data, geo_transform, projection, nodata_val=0, dtype=gdal.GDT_Float32):
+def array_to_geotiff(
+    fname: str,
+    data: np.ndarray,
+    geo_transform: tuple,
+    projection: str,
+    nodata_val: int = 0,
+    dtype=gdal.GDT_Float32,
+):
     """
     Create a single band GeoTIFF file with data from an array.
 
@@ -670,7 +681,7 @@ def array_to_geotiff(fname, data, geo_transform, projection, nodata_val=0, dtype
     dataset = None
 
 
-def mostcommon_crs(dc, product, query):
+def mostcommon_crs(dc: Datacube, product: str, query: dict) -> str:
     """
     Takes a given query and returns the most common CRS for observations
     returned for that spatial extent. This can be useful when your study
@@ -727,7 +738,7 @@ def mostcommon_crs(dc, product, query):
     return crs_mostcommon
 
 
-def download_unzip(url, output_dir=None, remove_zip=True):
+def download_unzip(url: str, output_dir: str | None = None, remove_zip: bool = True):
     """
     Downloads and unzips a .zip file from an external URL to a local
     directory.
@@ -775,7 +786,7 @@ def download_unzip(url, output_dir=None, remove_zip=True):
         os.remove(zip_name)
 
 
-def wofs_fuser(dest, src):
+def wofs_fuser(dest: np.ndarray, src: np.ndarray):
     """
     Fuse two WOfS water measurements represented as `ndarray` objects.
 
@@ -788,7 +799,7 @@ def wofs_fuser(dest, src):
     dest[both] |= src[both]
 
 
-def dilate(array, dilation=10, invert=True):
+def dilate(array: np.ndarray, dilation: int = 10, invert: bool = True) -> np.ndarray:
     """
     Dilate a binary array by a specified nummber of pixels using a
     disk-like radial dilation.
@@ -959,7 +970,7 @@ def nearest(array: xr.DataArray, dim: str, target, index_name: str = None) -> xr
     return nearest_array
 
 
-def parallel_apply(ds, dim, func, *args):
+def parallel_apply(ds: xr.Dataset | xr.DataArray, dim: str, func: Callable, *args) -> xr.Dataset:
     """
     Applies a custom function in parallel along the dimension of an
     xarray.Dataset or xarray.DataArray.
@@ -992,12 +1003,6 @@ def parallel_apply(ds, dim, func, *args):
         A concatenated dataset containing an output for each array
         along the input `dim` dimension.
     """
-
-    from concurrent.futures import ProcessPoolExecutor
-    from itertools import repeat
-
-    from tqdm import tqdm
-
     with ProcessPoolExecutor() as executor:
         # Apply func in parallel
         groups = [group for (i, group) in ds.groupby(dim)]
@@ -1008,7 +1013,12 @@ def parallel_apply(ds, dim, func, *args):
     return xr.concat(out_list, dim=ds[dim])
 
 
-def pan_sharpen_brovey(band_1, band_2, band_3, pan_band):
+def pan_sharpen_brovey(
+    band_1: xr.DataArray | np.ndarray,
+    band_2: xr.DataArray | np.ndarray,
+    band_3: xr.DataArray | np.ndarray,
+    pan_band: xr.DataArray | np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """
     Brovey pan sharpening on surface reflectance input using numexpr
     and return three xarrays.
@@ -1023,7 +1033,7 @@ def pan_sharpen_brovey(band_1, band_2, band_3, pan_band):
         bands that will be used to pan-sharpen the data.
     Returns
     -------
-    band_1_sharpen, band_2_sharpen, band_3_sharpen : numpy.arrays
+    band_1_sharpen, band_2_sharpen, band_3_sharpen : numpy.ndarrays
         Three numpy arrays equivelent to `band_1`, `band_2` and `band_3`
         pan-sharpened to the spatial resolution of `pan_band`.
     """
@@ -1040,7 +1050,7 @@ def pan_sharpen_brovey(band_1, band_2, band_3, pan_band):
     return band_1_sharpen, band_2_sharpen, band_3_sharpen
 
 
-def load_s1_by_orbits(dc, query):
+def load_s1_by_orbits(dc: Datacube, query: dict) -> xr.Dataset:
     """
     Function to query and load ascending and descending Sentinel-1 data
     and add a variable to denote acquisition orbits
@@ -1089,7 +1099,7 @@ def load_s1_by_orbits(dc, query):
     return ds_s1
 
 
-def filter_obs_by_orbit(ds_s1):
+def filter_obs_by_orbit(ds_s1: xr.Dataset) -> xr.Dataset:
     """
     Function to impliment per-pixel filtering of Sentinel-1 observations
     to keep only observations from the orbit (ascending/descending) with higher frequency over time.
@@ -1124,7 +1134,7 @@ def filter_obs_by_orbit(ds_s1):
     return ds_s1_filtered
 
 
-def lee_filter(da, size):
+def lee_filter(da: xr.DataArray, size: int) -> np.ndarray:
     """
     Function to apply lee filter of specified window size.
     Adapted from https://stackoverflow.com/questions/39785970/speckle-lee-filter-in-python
@@ -1150,7 +1160,9 @@ def lee_filter(da, size):
     return img_output
 
 
-def preprocess_s1(ds_s1, filter_size=None, s1_orbit_filtering=True):
+def preprocess_s1(
+    ds_s1: xr.Dataset, filter_size: int | None = None, s1_orbit_filtering: bool = True
+) -> xr.Dataset:
     """
     Function to implement preprocessing on Sentinel-1 data,
     including speckle filtering (optional), filtering observations by orbit (optional) and conversion to dB
@@ -1160,7 +1172,7 @@ def preprocess_s1(ds_s1, filter_size=None, s1_orbit_filtering=True):
         Time-series of Sentinel-1 data, with variable 'vh' required
     filter_size: integer or None
         Speckle filtering size
-    s1_orbit_filtering: Boolean
+    s1_orbit_filtering: bool
         Whether to filter Sentinel-1 observations by orbit
 
     Returns:
@@ -1170,7 +1182,7 @@ def preprocess_s1(ds_s1, filter_size=None, s1_orbit_filtering=True):
     ds_s1_filtered = ds_s1
 
     # apply Lee filtering if required
-    if not filter_size is None:
+    if filter_size is not None:
         print("Applying Lee filtering using filtering size of {} pixels...".format(filter_size))
         # The lee filter above doesn't handle null values
         # We therefore set null values to 0 before applying the filter
@@ -1189,7 +1201,9 @@ def preprocess_s1(ds_s1, filter_size=None, s1_orbit_filtering=True):
     return ds_s1_filtered
 
 
-def get_mean_number_freq_valid_obs(da, mask, time_step):
+def get_mean_number_freq_valid_obs(
+    da: xr.DataArray, mask: xr.DataArray | None, time_step: str
+) -> tuple[xr.DataArray, xr.DataArray]:
     """
     Calculate mean number of clear observations within each year/timestep in a masked zone
 
@@ -1219,7 +1233,7 @@ def get_mean_number_freq_valid_obs(da, mask, time_step):
     return n_valid_obs, freq_valid
 
 
-def create_coastal_mask(da, buffer_pixels):
+def create_coastal_mask(da: xr.DataArray, buffer_pixels: int) -> xr.DataArray:
     """
     Create a simplified coastal zone mask based on time series of Sentinel-2 MNDWI data
 
@@ -1252,7 +1266,14 @@ def create_coastal_mask(da, buffer_pixels):
     return coastal_mask
 
 
-def choose_product(ds_ls, ds_s2, ds_s1, ds_ls_s2, time_step, **kwargs):
+def choose_product(
+    ds_ls: xr.Dataset,
+    ds_s2: xr.Dataset,
+    ds_s1: xr.Dataset,
+    ds_ls_s2: xr.Dataset,
+    time_step: str,
+    **kwargs,
+) -> tuple[xr.Dataset, str]:
     """
     Rule-based guide on choosing the best availabel dataset in a given time step and optionally within a coastal zone mask
 
@@ -1298,7 +1319,7 @@ def choose_product(ds_ls, ds_s2, ds_s1, ds_ls_s2, time_step, **kwargs):
 
     # create mask if requested
     coastal_masking = False if "coastal_masking" not in kwargs else kwargs["coastal_masking"]
-    if coastal_masking == True:
+    if coastal_masking is True:
         # calculate index
         ds_s2 = calculate_indices(ds_s2, index="MNDWI", satellite_mission="s2")
         mask = create_coastal_mask(ds_s2["MNDWI"], buffer_pixels)
@@ -1324,7 +1345,7 @@ def choose_product(ds_ls, ds_s2, ds_s1, ds_ls_s2, time_step, **kwargs):
     )
 
     #     n_valid_obs_s1,freq_valid_s1=get_mean_number_freq_valid_obs(ds_s1['vh'],mask,time_step) # dont need this as sentinel-1 will only be chosen when optical datasets are not sufficient
-    if not ds_ls_s2 is None:
+    if ds_ls_s2 is not None:
         n_valid_obs_ls_s2, freq_valid_ls_s2 = get_mean_number_freq_valid_obs(
             ds_ls_s2["green"], mask, time_step
         )
@@ -1343,7 +1364,7 @@ def choose_product(ds_ls, ds_s2, ds_s1, ds_ls_s2, time_step, **kwargs):
             "\nSentinel-2 product has met the minimum required average number and frequency of valid observations within all time periods"
         )
         # if combined product is available, choose combined product if it has both higher number and frequency
-        if not ds_ls_s2 is None:
+        if ds_ls_s2 is not None:
             if ((n_valid_obs_ls_s2 > n_valid_obs_s2).all()) and (
                 (freq_valid_ls_s2 > freq_valid_s2).all()
             ):
@@ -1375,7 +1396,7 @@ def choose_product(ds_ls, ds_s2, ds_s1, ds_ls_s2, time_step, **kwargs):
         print(
             "\nSentinel-2 does not meet the minimum required average number and frequency of valid observations within all time periods, but Landsat does"
         )
-        if not ds_ls_s2 is None:
+        if ds_ls_s2 is not None:
             ds_selected, product_name = ds_ls_s2, "ls_s2"
             print(
                 "\nChoosing combined Landsat and Sentinel-2 product as it has both higher number and frequency of valid observations within all time periods"
@@ -1384,7 +1405,7 @@ def choose_product(ds_ls, ds_s2, ds_s1, ds_ls_s2, time_step, **kwargs):
             ds_selected, product_name = ds_ls, "ls"
             print("\nChoosing Landsat product")
     # if neither Sentinel-2 or Landsat meet both requirements, choose combined product if it meets requirements
-    elif not ds_ls_s2 is None:
+    elif ds_ls_s2 is not None:
         print(
             "\nNeither Sentinel-2 or Landsat meets the minimum required average number and frequency of valid observations within all time periods"
         )
@@ -1413,7 +1434,7 @@ def choose_product(ds_ls, ds_s2, ds_s1, ds_ls_s2, time_step, **kwargs):
     return ds_selected, product_name
 
 
-def load_combined_ls_s2(dc, query):
+def load_combined_ls_s2(dc: Datacube, query: dict) -> xr.Dataset:
     """function to query and load combined Landsat and Sentinel-2 data
 
     Parameters:
@@ -1452,7 +1473,14 @@ def load_combined_ls_s2(dc, query):
     return ds_combined
 
 
-def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kwargs):
+def load_best_available_ds(
+    dc: Datacube,
+    lat_range: list | tuple,
+    lon_range: list | tuple,
+    time_range: list | tuple,
+    time_step: str,
+    **kwargs,
+) -> tuple[xr.Dataset, str]:
     """
     Function to query, load and compare different products, select and return the best available product
 
@@ -1518,12 +1546,12 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
     query.update({"output_crs": output_crs, "min_gooddata": 0.2})
 
     # check if product is pre-set by user
-    set_product = None if not "set_product" in kwargs else kwargs["set_product"]
-    if not set_product is None:
+    set_product = None if "set_product" not in kwargs else kwargs["set_product"]
+    if set_product is not None:
         product_name = set_product
 
     # check if allowing combining Landsat and Sentinel-2 as an option
-    combine_ls_s2 = False if not "combine_ls_s2" in kwargs else kwargs["combine_ls_s2"]
+    combine_ls_s2 = False if "combine_ls_s2" not in kwargs else kwargs["combine_ls_s2"]
 
     # query and load specified products as user provided as possible
     if set_product == "ls":
@@ -1553,7 +1581,7 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
         ds_selected = load_s1_by_orbits(dc, query)
     elif set_product == "ls_s2":
         print("\nPre-selected product: combined Landsat and Sentinel-2 products")
-        if ("combine_ls_s2" in kwargs) and (combine_ls_s2 == False):
+        if ("combine_ls_s2" in kwargs) and (combine_ls_s2 is False):
             raise ValueError(
                 "Conflicting: requesting querying combination of Landsat and Sentinel-2 products while parameter combine_ls_s2 is disabled. Please change parameter and try to run the function again."
             )
@@ -1571,7 +1599,7 @@ def load_best_available_ds(dc, lat_range, lon_range, time_range, time_step, **kw
             ds_selected = ds_ls
             product_name = "ls"
         else:
-            if combine_ls_s2 == True:
+            if combine_ls_s2 is True:
                 query.update({"resolution": resolution_s2})
                 ds_ls_s2 = load_combined_ls_s2(dc, query)
             else:
