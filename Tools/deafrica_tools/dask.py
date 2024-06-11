@@ -9,26 +9,29 @@ import dask
 from aiohttp import ClientConnectionError
 from datacube.utils.dask import start_local_dask
 from datacube.utils.rio import configure_s3_access
+from IPython.display import display
 
 _HAVE_PROXY = bool(find_spec("jupyter_server_proxy"))
 _IS_AWS = "AWS_ACCESS_KEY_ID" in os.environ or "AWS_DEFAULT_REGION" in os.environ
 
 
-def create_local_dask_cluster(spare_mem="3Gb", display_client=True, return_client=False):
+def create_local_dask_cluster(
+    spare_mem: str = "3Gb", display_client: bool = True, return_client: bool = False
+):
     """
     Using the datacube utils function `start_local_dask`, generate
     a local dask cluster. Automatically detects if on AWS or NCI.
 
     Parameters
     ----------
-    spare_mem : String, optional
+    spare_mem : string, optional
         The amount of memory, in Gb, to leave for the notebook to run.
         This memory will not be used by the cluster. e.g '3Gb'
-    display_client : Bool, optional
+    display_client : bool, optional
         An optional boolean indicating whether to display a summary of
         the dask client, including a link to monitor progress of the
         analysis. Set to False to hide this display.
-    return_client : Bool, optional
+    return_client : bool , optional
         An optional boolean indicating whether to return the dask client
         object.
 
@@ -48,8 +51,6 @@ def create_local_dask_cluster(spare_mem="3Gb", display_client=True, return_clien
 
     # Show the dask cluster settings
     if display_client:
-        from IPython.display import display
-
         display(client)
 
     # return the client as an object
