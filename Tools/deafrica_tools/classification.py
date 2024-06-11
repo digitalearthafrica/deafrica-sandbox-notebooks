@@ -32,10 +32,10 @@ from tqdm.auto import tqdm
 from deafrica_tools.spatial import xr_rasterize
 
 
-def sklearn_flatten(input_xr: xr.DataArray | xr.Dataset) -> np.array:
+def sklearn_flatten(input_xr: xr.DataArray | xr.Dataset) -> np.ndarray:
     """
     Reshape a DataArray or Dataset with spatial (and optionally
-    temporal) structure into an np.array with the spatial and temporal
+    temporal) structure into an np.ndarray with the spatial and temporal
     dimensions flattened into one dimension.
 
     This flattening procedure enables DataArrays and Datasets to be used
@@ -52,7 +52,7 @@ def sklearn_flatten(input_xr: xr.DataArray | xr.Dataset) -> np.array:
 
     Returns
     ----------
-    input_np : numpy.array
+    input_np : numpy.ndarray
         A numpy array corresponding to input_xr.data (or
         input_xr.to_array().data), with dimensions 'x','y' and 'time'
         flattened into a single dimension, which is the first axis of
@@ -94,7 +94,7 @@ def sklearn_flatten(input_xr: xr.DataArray | xr.Dataset) -> np.array:
     return input_np
 
 
-def sklearn_unflatten(output_np: np.array, input_xr: xr.DataArray | xr.Dataset) -> xr.DataArray:
+def sklearn_unflatten(output_np: np.ndarray, input_xr: xr.DataArray | xr.Dataset) -> xr.DataArray:
     """
     Reshape a numpy array with no 'missing' elements (NaNs) and
     'flattened' spatiotemporal structure into a DataArray matching the
@@ -107,7 +107,7 @@ def sklearn_unflatten(output_np: np.array, input_xr: xr.DataArray | xr.Dataset) 
 
     Parameters
     ----------
-    output_np : numpy.array
+    output_np : numpy.ndarray
         The first dimension's length should correspond to the number of
         valid (non-NaN) pixels in input_xr.
     input_xr : xarray.DataArray or xarray.Dataset
@@ -544,7 +544,7 @@ def collect_training_data(
     fail_threshold: float = 0.02,
     fail_ratio: float = 0.5,
     max_retries: int = 3,
-):
+) -> tuple[list[str], np.ndarray]:
     """
     This function provides methods for gathering training data from the ODC over
     geometries stored within a geopandas geodataframe. The function will return a
@@ -885,7 +885,7 @@ def spatial_clusters(
         The number of groups to create. This is passed as ``n_clusters=n_groups``
         for the KMeans algo, and ``n_components=n_groups`` for the GMM. If using
         method=``'Hierarchical'`` then this parameter is ignored.
-    coordinates : np.array
+    coordinates : np.ndarray
         A numpy array of coordinate values e.g.::
 
             np.array([[3337270.,  262400.],
@@ -961,7 +961,7 @@ def SKCV(
 
     Parameters
     ----------
-    coordinates : np.array
+    coordinates : np.ndarray
         A numpy array of coordinate values e.g.::
 
             np.array([[3337270.,  262400.],
@@ -1077,11 +1077,11 @@ def spatial_train_test_split(
 
     Parameters
     ----------
-    X : np.array
+    X : np.ndarray
         Training data features
-    y : np.array
+    y : np.ndarray
         Training data labels
-    coordinates : np.array
+    coordinates : np.ndarray
         A numpy array of coordinate values e.g.::
 
             np.array([[3337270.,  262400.],
@@ -1244,7 +1244,7 @@ class _BaseSpatialCrossValidator(BaseCrossValidator, metaclass=ABCMeta):
     n_groups : int
         The number of groups to create. This is passed as 'n_clusters=n_groups'
         for the KMeans algo, and 'n_components=n_groups' for the GMM.
-    coordinates : np.array
+    coordinates : np.ndarray
         A numpy array of coordinate values e.g.
         np.array([[3337270.,  262400.],
                   [3441390., -273060.], ...,
@@ -1519,7 +1519,7 @@ class _SpatialKFold(_BaseSpatialCrossValidator):
         The number of groups to create. This is passed as 'n_clusters=n_groups'
         for the KMeans algo, and 'n_components=n_groups' for the GMM. If using
         cluster_method='Hierarchical' then this parameter is ignored.
-    coordinates : np.array
+    coordinates : np.ndarray
         A numpy array of coordinate values e.g.
         np.array([[3337270.,  262400.],
                   [3441390., -273060.], ...])
