@@ -6,11 +6,12 @@ Updated Apr 2020 to directly access Zarr format data in PDS
 Previous code for downloading and loading netcdf adpated from scripts by Andrew Cherry and Brian Killough.
 """
 
-import os
 import datetime
+import os
+
+import fsspec
 import numpy as np
 import xarray as xr
-import fsspec
 from datacube.utils.geometry import assign_crs
 
 # # only used for netcdf access
@@ -20,19 +21,24 @@ from datacube.utils.geometry import assign_crs
 # import warnings
 
 
-ERA5_VARS = ['air_pressure_at_mean_sea_level',
-                 'air_temperature_at_2_metres',
-                 'eastward_wind_at_10_metres',
-                 'northward_wind_at_10_metres',
-                 'total_precipitation_6hr',
-                 'total_precipitation_12hr',
-                 'total_precipitation_24hr',
-                 'sea_surface_temperature',
-                 'surface_pressure']
+ERA5_VARS = [
+    "air_pressure_at_mean_sea_level",
+    "air_temperature_at_2_metres",
+    "eastward_wind_at_10_metres",
+    "northward_wind_at_10_metres",
+    "total_precipitation_6hr",
+    "total_precipitation_12hr",
+    "total_precipitation_24hr",
+    "sea_surface_temperature",
+    "surface_pressure",
+]
 
 
 def load_era5(
-    var, lat, lon, time,
+    var,
+    lat,
+    lon,
+    time,
     reduce_func=None,
     resample="1D",
 ):
@@ -69,40 +75,37 @@ def load_era5(
     """
 
     # constrain query to available variables
-    assert var in ERA5_VARS, "var must be one of [{}] (got {})".format(
-        ",".join(ERA5_VARS), var
-    )
-    
+    assert var in ERA5_VARS, "var must be one of [{}] (got {})".format(",".join(ERA5_VARS), var)
+
     # set default reduction function
     if reduce_func is None:
         reduce_func = np.mean
-        
+
     # process date range
     if type(time) in [list, tuple]:
-        date_from = np.datetime64(min(time)).astype('datetime64[D]')
-        date_to = (np.datetime64(max(time))+1).astype('datetime64[D]')-np.timedelta64(1,'D')
+        date_from = np.datetime64(min(time)).astype("datetime64[D]")
+        date_to = (np.datetime64(max(time)) + 1).astype("datetime64[D]") - np.timedelta64(1, "D")
     elif type(time) in [str, np.datetime64]:
-        date_from = np.datetime64(time).astype('datetime64[D]')
-        date_to = (np.datetime64(time)+1).astype('datetime64[D]')-np.timedelta64(1,'D')
+        date_from = np.datetime64(time).astype("datetime64[D]")
+        date_to = (np.datetime64(time) + 1).astype("datetime64[D]") - np.timedelta64(1, "D")
     else:
-        raise(ValueError)
+        raise (ValueError)
 
     # actual lat lon ranges will be infered from nearest match to data
     lat_range = None
     lon_range = None
-    
+
     datasets = []
     # Loop through month and year to access ERA5 zarr
-    month = date_from.astype('datetime64[M]')
-    while month <= date_to.astype('datetime64[M]'):
-        
+    month = date_from.astype("datetime64[M]")
+    while month <= date_to.astype("datetime64[M]"):
         try:
-        
             url = f"s3://era5-pds/zarr/{month.astype(object).year:04}/{month.astype(object).month:02}/data/{var}.zarr"
-            ds = xr.open_zarr(fsspec.get_mapper(url, anon=True, 
-                                            client_kwargs={'region_name':'us-east-1'}),
-                          consolidated=True)    
-    
+            ds = xr.open_zarr(
+                fsspec.get_mapper(url, anon=True, client_kwargs={"region_name": "us-east-1"}),
+                consolidated=True,
+            )
+
             # re-order along longitude to go from -180 to 180 if needed
             if min(lon) < 0:
                 ds = ds.assign_coords({"lon": (((ds.lon + 180) % 360) - 180)})
@@ -122,48 +125,60 @@ def load_era5(
                     {"time1": "time"}
                 )  # This should INTENTIONALLY error if both times are defined
 
-            output = ds[[var]].sel(lat=lat_range, lon=lon_range, time=slice(date_from, date_to)).resample(time=resample).reduce(reduce_func)
+            output = (
+                ds[[var]]
+                .sel(lat=lat_range, lon=lon_range, time=slice(date_from, date_to))
+                .resample(time=resample)
+                .reduce(reduce_func)
+            )
             output.attrs = ds.attrs
             for v in output.data_vars:
                 output[v].attrs = ds[v].attrs
 
             datasets.append(output)
-            month += np.timedelta64(1,'M')
-            return assign_crs(xr.combine_by_coords(datasets), 'EPSG:4326')
-    
-        except:
-            ERA5_dict = {'air_pressure_at_mean_sea_level':'mean_sea_level_pressure',
-                 'air_temperature_at_2_metres':'2m_temperature',
-                 'eastward_wind_at_10_metres':'10m_u_component_of_wind',
-                 'northward_wind_at_10_metres':'10m_v_component_of_wind',
-                 'total_precipitation_6hr': 'total_precipitation_6hr',
-                 'total_precipitation_12hr': 'total_precipitation_12hr',
-                 'total_precipitation_24hr':'total_precipitation_24hr',
-                 'sea_surface_temperature':'sea_surface_temperature',
-                 'surface_pressure':'surface_pressure'}
-    
-            ds = xr.open_zarr(
-                    'gs://gcp-public-data-arco-era5/ar/1959-2022-wb13-6h-0p25deg-chunk-1.zarr-v2', 
-                    chunks={'time': 48},
-                    consolidated=True)[ERA5_dict[var]].sel(time=slice(date_from, date_to))
+            month += np.timedelta64(1, "M")
+            return assign_crs(xr.combine_by_coords(datasets), "EPSG:4326")
 
-            ds = ds.assign_coords(
-                    longitude=(((ds.longitude + 180) % 360) - 180)).sortby('longitude')
-            
+        except:
+            ERA5_dict = {
+                "air_pressure_at_mean_sea_level": "mean_sea_level_pressure",
+                "air_temperature_at_2_metres": "2m_temperature",
+                "eastward_wind_at_10_metres": "10m_u_component_of_wind",
+                "northward_wind_at_10_metres": "10m_v_component_of_wind",
+                "total_precipitation_6hr": "total_precipitation_6hr",
+                "total_precipitation_12hr": "total_precipitation_12hr",
+                "total_precipitation_24hr": "total_precipitation_24hr",
+                "sea_surface_temperature": "sea_surface_temperature",
+                "surface_pressure": "surface_pressure",
+            }
+
+            ds = xr.open_zarr(
+                "gs://gcp-public-data-arco-era5/ar/1959-2022-wb13-6h-0p25deg-chunk-1.zarr-v2",
+                chunks={"time": 48},
+                consolidated=True,
+            )[ERA5_dict[var]].sel(time=slice(date_from, date_to))
+
+            ds = ds.assign_coords(longitude=(((ds.longitude + 180) % 360) - 180)).sortby(
+                "longitude"
+            )
+
             if lat_range is None:
                 # find the nearest lat lon boundary points
                 test = ds.sel(latitude=list(lat), longitude=list(lon), method="nearest")
                 # define the lat/lon grid
                 lat_range = slice(test.latitude.max().values, test.latitude.min().values)
                 lon_range = slice(test.longitude.min().values, test.longitude.max().values)
-                  
-            ds = ds.sel(latitude=lat_range, longitude = lon_range)
+
+            ds = ds.sel(latitude=lat_range, longitude=lon_range)
 
             ds = ds.resample(time=resample).reduce(reduce_func)
 
-            return assign_crs(ds.to_dataset().rename({ERA5_dict[var]: var,
-                                                     'longitude':'lon',
-                                                     'latitude':'lat'}), 'EPSG:4326')
+            return assign_crs(
+                ds.to_dataset().rename(
+                    {ERA5_dict[var]: var, "longitude": "lon", "latitude": "lat"}
+                ),
+                "EPSG:4326",
+            )
 
 
 # # older version of scripts to download and use netcdf
