@@ -44,7 +44,11 @@ for root, catalogs, items in catalog.walk():
 # define load_isda() function
 
 
-def load_isda(var, lat, lon):
+def load_isda(
+    var: str,
+    lat: tuple[float | int] | list[float | int],
+    lon: tuple[float | int] | list[float | int],
+) -> xr.Dataset:
     """
     Download and return iSDA variable with number of bands corresponding to number of iSDA layers.
     Parameters
