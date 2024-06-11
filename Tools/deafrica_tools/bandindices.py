@@ -421,36 +421,34 @@ def calculate_indices(
 
 
 def dualpol_indices(
-    ds,
-    co_pol="vv",
-    cross_pol="vh",
-    index=None,
-    custom_varname=None,
-    drop=False,
-    deep_copy=True,
-):
+    ds: xr.Dataset,
+    co_pol: str = "vv",
+    cross_pol: str = "vh",
+    index: str | list[str] | None = None,
+    custom_varname: str | None = None,
+    drop: bool = False,
+    deep_copy: bool = True,
+) -> xr.Dataset:
     """
     Takes an xarray dataset containing dual-polarization radar backscatter,
     calculates one or a set of indices, and adds the resulting array as a
     new variable in the original dataset.
 
-    Last modified: July 2021
-
     Parameters
     ----------
-    ds : xarray Dataset
+    ds : xr.Dataset
         A two-dimensional or multi-dimensional array containing the
         two polarization bands.
 
-    co_pol: str
+    co_pol : str, optional
         Measurement name for the co-polarization band.
         Default is 'vv' for Sentinel-1.
 
-    cross_pol: str
+    cross_pol : str, optional
         Measurement name for the cross-polarization band.
         Default is 'vh' for Sentinel-1.
 
-    index : str or list of strs
+    index : str | list[str] | None, optional
         A string giving the name of the index to calculate or a list of
         strings giving the names of the indices to calculate:
 
@@ -461,7 +459,7 @@ def dualpol_indices(
         * ``'purity'`` (co-pol purity, Bhogapurapu et al. 2021)
         * ``'ratio'`` (cross-pol/co-pol ratio)
 
-    custom_varname : str, optional
+    custom_varname : str | None, optional
         By default, the original dataset will be returned with
         a new index variable named after `index` (e.g. 'RVI'). To
         specify a custom name instead, you can supply e.g.
@@ -472,7 +470,7 @@ def dualpol_indices(
         Provides the option to drop the original input data, thus saving
         space. If `drop=True`, returns only the index and its values.
 
-    deep_copy: bool, optional
+    deep_copy : bool, optional
         If `deep_copy=False`, calculate_indices will modify the original
         array, adding bands to the input dataset and not removing them.
         If the calculate_indices function is run more than once, variables
@@ -482,7 +480,7 @@ def dualpol_indices(
 
     Returns
     -------
-    ds : xarray Dataset
+    ds : xr.Dataset
         The original xarray Dataset inputted into the function, with a
         new varible containing the remote sensing index as a DataArray.
         If drop = True, the new variable/s as DataArrays in the
