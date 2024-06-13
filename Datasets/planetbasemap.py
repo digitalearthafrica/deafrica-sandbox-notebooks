@@ -96,11 +96,11 @@ def loadplanet(lon_range, lat_range):
                  y=lat_range,
                  x=lon_range,
              resolution=(-10, 10),
-             time=("2023-05"),
+             time=("2023", f"{year:04d}"),
              )
     
     #select the last best image
-    ds = ds.isel(time=1)
+    ds = ds.isel(time=-1)
     
     #calculate NDVI and BUI
     ds = calculate_indices(ds, index=['NDVI','BUI'], satellite_mission='s2')
@@ -147,8 +147,8 @@ def loadplanet(lon_range, lat_range):
     
     control = LayersControl(position='topright', collapsed=False)
     
-    legend = LegendControl({"Built-up Area":"#ff8533", "\n":"#fff", "Vegetation":"#34a832", " ":"#fff", "Water body":"#1d18c4"}, title = "Legend",
-                          position = "bottomleft")
+    legend = LegendControl({"Built-up Area":"#ff8533", "\n":"#fff", "Vegetation":"#34a832", " ":"#fff", "Water body":"#1d18c4"},
+                           title = "Legend", position = "bottomleft")
     
     #add the created layer and control to the map
     map_con.add(bui)
