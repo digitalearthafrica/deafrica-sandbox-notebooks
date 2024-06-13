@@ -145,7 +145,7 @@ def loadplanet(lon_range, lat_range):
     # Create ipyleaflet map, add tile layer, and display
     map_con = Map(center=bui_client.center(), zoom=bui_client.default_zoom+2)
     
-    control = LayersControl(position='topright')
+    control = LayersControl(position='topright', collapsed=False)
     
     legend = LegendControl({"Built-up Area":"#ff8533", "\n":"#fff", "Vegetation":"#34a832", " ":"#fff", "Water body":"#1d18c4"}, title = "Legend",
                           position = "bottomleft")
