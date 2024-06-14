@@ -81,22 +81,22 @@ def loadplanet(lon_range, lat_range):
     year, month = get_last_calendar_month()
 
     # load data
-    ds = dc.load(product="gm_s2_rolling",
+    ds = dc.load(product="gm_s2_annual",
              measurements=['red', 'green', 'blue', 'nir','swir_1'],
                  y=lat_range,
                  x=lon_range,
              resolution=(-10, 10),
-             time=(f"{year:04d}-{month:02d}"),
+             time=(f"{year:04d}"),
              )
     #Check if there was any curent data in the previous load
     if len(ds) == 0:
         #if  not then load with the manual date provider
-        ds = dc.load(product="gm_s2_rolling",
+        ds = dc.load(product="gm_s2_annual",
              measurements=['red', 'green', 'blue', 'nir','swir_1'],
-                 y=lat_range,
-                 x=lon_range,
+            y=lat_range,
+                x=lon_range,
              resolution=(-10, 10),
-             time=("2023", f"{year:04d}"),
+             time=("2022", f"{year:04d}"),
              )
     
     #select the last best image
@@ -112,7 +112,7 @@ def loadplanet(lon_range, lat_range):
     write_cog(ds_ndvi, fname="ndvi.tif", overwrite=True)
     
     #Select BUI greater than 0
-    ds_bui = ds.where(ds.BUI>=0, np.nan).NDVI
+    ds_bui = ds.where(ds.BUI>=0, np.nan).BUI
     
     #Save the bui raster file
     write_cog(ds_bui, fname="bui.tif", overwrite=True)
@@ -134,7 +134,7 @@ def loadplanet(lon_range, lat_range):
     ndvi_client = TileClient('ndvi.tif')
 
     # Create ipyleaflet tile layer from that server
-    tile_info = f'<a href=https://explorer.digitalearth.africa/products/gm_s2_rolling> DE Africa Rolling GeoMAD {ds.time.dt.year.values}-{ds.time.dt.month.values} </a>'
+    tile_info = f'<a href=https://explorer.digitalearth.africa/products/gm_s2_annual> DE Africa Sentinel-2 Annual GeoMAD {ds.time.dt.year.values} </a>'
     bui = get_leaflet_tile_layer(bui_client, nodata=np.nan, name='Built up area', colormap='Reds', vmin=-1, vmax=1, attribution=tile_info)
     ndvi = get_leaflet_tile_layer(ndvi_client, nodata=np.nan, name='Vegetation', colormap='Greens', vmin=0, vmax=1)
     
