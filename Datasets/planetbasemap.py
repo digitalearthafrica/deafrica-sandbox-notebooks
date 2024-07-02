@@ -64,7 +64,7 @@ def get_last_calendar_month():
     return year, month
 
 ## Load map to display
-def loadplanet(lon_range, lat_range):
+def loadplanet(lon_range, lat_range, threshold_nvdi, threshold_bui):
     """
     Loading of planet imagery and rolling geomad
     """
@@ -105,14 +105,14 @@ def loadplanet(lon_range, lat_range):
     #calculate NDVI and BUI
     ds = calculate_indices(ds, index=['NDVI','BUI'], satellite_mission='s2')
     
-    #Select NDVI value greater than 0.7
-    ds_ndvi = ds.where(ds.NDVI>=0.7, np.nan).NDVI
+    #Select NDVI value greater than threshold_nvdi value
+    ds_ndvi = ds.where(ds.NDVI>=threshold_nvdi, np.nan).NDVI
      
     #Save the ndvi raster file
     write_cog(ds_ndvi, fname="ndvi.tif", overwrite=True)
     
     #Select BUI greater than 0
-    ds_bui = ds.where(ds.BUI>=0, np.nan).BUI
+    ds_bui = ds.where(ds.BUI>= threshold_bui, np.nan).BUI
     
     #Save the bui raster file
     write_cog(ds_bui, fname="bui.tif", overwrite=True)
