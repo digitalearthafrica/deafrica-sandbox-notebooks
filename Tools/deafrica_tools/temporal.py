@@ -19,12 +19,13 @@ The key functions are:
 """
 
 import sys
+
 import dask
+import hdstats
 import numpy as np
 import xarray as xr
-import hdstats
-from packaging import version
 from datacube.utils.geometry import assign_crs
+from packaging import version
 
 
 def allNaN_arg(da, dim, stat):
@@ -50,7 +51,7 @@ def allNaN_arg(da, dim, stat):
     mask = da.isnull().all(dim)
 
     if stat == "max":
-        # Generate the fill value for the all-NaN pixels. 
+        # Generate the fill value for the all-NaN pixels.
         fill_value = float(da.min() - 1)
         # Fill the all-NaN pixels.
         y = xr.where(mask, fill_value, da)
@@ -58,7 +59,7 @@ def allNaN_arg(da, dim, stat):
         return mask, y
 
     if stat == "min":
-        # Generate the fill value for the all-NaN pixels. 
+        # Generate the fill value for the all-NaN pixels.
         fill_value = float(da.max() + 1)
         # Fill the all-NaN pixels.
         y = xr.where(mask, fill_value, da)
@@ -130,8 +131,8 @@ def _vsos(da, pos, method_sos="first"):
         # Find the time index (argmin) where the distance of values from median is the smallest absolute value.
         mask, idx = allNaN_arg(np.fabs(distance), "time", "min")
         idx = idx.astype("int16")
-                         
-    return pos_greenup.isel(time=idx).where(~mask) # mask the all-NaN pixels 
+
+    return pos_greenup.isel(time=idx).where(~mask)  # mask the all-NaN pixels
 
 
 def _sos(vsos):
@@ -177,7 +178,7 @@ def _veos(da, pos, method_eos="last"):
         mask, idx = allNaN_arg(np.fabs(distance), "time", "min")
         idx = idx.astype("int16")
 
-    return neg_senesce.isel(time=idx).where(~mask) # mask the all-NaN pixels 
+    return neg_senesce.isel(time=idx).where(~mask)  # mask the all-NaN pixels
 
 
 def _eos(veos):
@@ -192,11 +193,11 @@ def _los(da, eos, sos):
     LOS = Length of season (Days)
     """
     los = (eos - sos).dt.days
-    #handle negative values
+    # handle negative values
     los = xr.where(
         los >= 0,
         los,
-        (da.time.dt.dayofyear.values[-1] + (eos.where(los < 0) - sos.where(los < 0))).dt.days
+        (da.time.dt.dayofyear.values[-1] + (eos.where(los < 0) - sos.where(los < 0))).dt.days,
     )
     return los
 
@@ -232,7 +233,7 @@ def xr_phenology(
     ],
     method_sos="first",
     method_eos="last",
-    verbose=True
+    verbose=True,
 ):
     """
     Obtain land surface phenology metrics from an
@@ -290,9 +291,9 @@ def xr_phenology(
                 + "run da.compute() before passing dataArray."
             )
         stats_dtype = {
-            "SOS": np.dtype('<M8[ns]'),
-            "POS": np.dtype('<M8[ns]'),
-            "EOS": np.dtype('<M8[ns]'),
+            "SOS": np.dtype("<M8[ns]"),
+            "POS": np.dtype("<M8[ns]"),
+            "EOS": np.dtype("<M8[ns]"),
             "Trough": np.float32,
             "vSOS": np.float32,
             "vPOS": np.float32,
@@ -348,13 +349,15 @@ def xr_phenology(
     # Deal with any all-NaN pixels by filling with 0's.
     da_all_nan_mask = da.isnull().all("time")
     da = da.where(~da_all_nan_mask, other=0)
-    
+
     # Create a template to use when handling errors calculating statistics.
     xr_template = xr.full_like(da.isel(time=0).drop("time"), fill_value=np.nan, dtype=np.float32)
-    # Create time coordinates for the template. 
-    time_coords = xr.full_like(da.isel(time=0).drop("time"), fill_value=np.nan, dtype="datetime64[ns]")
-    time_coords.attrs = {'units': 'seconds since 1970-01-01 00:00:00'}
-    
+    # Create time coordinates for the template.
+    time_coords = xr.full_like(
+        da.isel(time=0).drop("time"), fill_value=np.nan, dtype="datetime64[ns]"
+    )
+    time_coords.attrs = {"units": "seconds since 1970-01-01 00:00:00"}
+
     # calculate the statistics
     if verbose:
         print("      Phenology...")
@@ -378,12 +381,12 @@ def xr_phenology(
 
     # Dictionary containing the statistics
     stats_dict = {
-        "SOS": sos.astype(np.dtype('<M8[ns]')),
-        "EOS": eos.astype(np.dtype('<M8[ns]')),
+        "SOS": sos.astype(np.dtype("<M8[ns]")),
+        "EOS": eos.astype(np.dtype("<M8[ns]")),
         "vSOS": vsos.astype(np.float32),
         "vPOS": vpos.astype(np.float32),
         "Trough": trough.astype(np.float32),
-        "POS": pos.astype(np.dtype('<M8[ns]')),
+        "POS": pos.astype(np.dtype("<M8[ns]")),
         "vEOS": veos.astype(np.float32),
         "LOS": los.astype(np.int16),
         "AOS": aos.astype(np.float32),
@@ -400,10 +403,10 @@ def xr_phenology(
             print("         " + stat)
         stats_keep = stats_dict.get(stat)
         ds[stat] = stats_dict[stat]
-    
+
     # Set original all-NaN pixels back to NaN.
     ds = ds.where(~da_all_nan_mask)
-    
+
     # Try add back the crs.
     try:
         ds = assign_crs(ds, str(crs))
@@ -546,9 +549,9 @@ def temporal_statistics(da, stats):
         n3 = zz[:, :, 2]
 
         # intialise dataset with first statistic
-        ds = xr.DataArray(
-            n1, attrs=attrs, coords={"x": x, "y": y}, dims=["y", "x"]
-        ).to_dataset(name=stats[0] + "_n1")
+        ds = xr.DataArray(n1, attrs=attrs, coords={"x": x, "y": y}, dims=["y", "x"]).to_dataset(
+            name=stats[0] + "_n1"
+        )
 
         # add other datasets
         for i, j in zip([n2, n3], ["n2", "n3"]):
@@ -562,9 +565,9 @@ def temporal_statistics(da, stats):
         ds = first_func(da)
 
         # convert back to xarray dataset
-        ds = xr.DataArray(
-            ds, attrs=attrs, coords={"x": x, "y": y}, dims=["y", "x"]
-        ).to_dataset(name=stats[0])
+        ds = xr.DataArray(ds, attrs=attrs, coords={"x": x, "y": y}, dims=["y", "x"]).to_dataset(
+            name=stats[0]
+        )
 
     # loop through the other functions
     for stat in stats[1:]:
@@ -590,7 +593,7 @@ def temporal_statistics(da, stats):
             ds[stat] = xr.DataArray(
                 stat_func(da), attrs=attrs, coords={"x": x, "y": y}, dims=["y", "x"]
             )
-    
+
     # Set original all-NaN pixels back to NaN.
     ds = ds.where(~da_all_nan_mask)
 
