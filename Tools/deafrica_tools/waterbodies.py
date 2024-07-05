@@ -5,31 +5,32 @@ Last modified: November 2023
 
 # Import required packages
 import geopandas as gpd
-from owslib.wfs import WebFeatureService
-from owslib.fes import PropertyIsEqualTo
-from owslib.etree import etree
 import pandas as pd
 import plotly.graph_objects as go
+from owslib.etree import etree
+from owslib.fes import PropertyIsEqualTo
+from owslib.wfs import WebFeatureService
 
 # URL for the DE Africa Water Bodies data on PROD Geoserver.
 WFS_ADDRESS = "https://geoserver.digitalearth.africa/geoserver/wfs"
 WFS_LAYER = "waterbodies:DEAfrica_Waterbodies"
 API_ADDRESS = "https://api.digitalearth.africa/waterbodies/"
 
+
 def get_waterbody(geohash: str) -> gpd.GeoDataFrame:
     """Gets a waterbody polygon and metadata by geohash.
-    
+
     Parameters
     ----------
     geohash : str
         The geohash/uid for a waterbody in DE Africa Water Bodies.
-    
+
     Returns
     -------
     gpd.GeoDataFrame
         A GeoDataFrame with the polygon.
     """
-    
+
     wfs = WebFeatureService(url=WFS_ADDRESS, version="1.1.0")
     filter_ = PropertyIsEqualTo(propertyname="uid", literal=geohash)
     filterxml = etree.tostring(filter_.toXML()).decode("utf-8")
@@ -42,22 +43,22 @@ def get_waterbody(geohash: str) -> gpd.GeoDataFrame:
     return wb_gpd
 
 
-def get_waterbodies(bbox: tuple, crs="EPSG:4326") -> gpd.GeoDataFrame:
+def get_waterbodies(bbox: tuple, crs: str = "EPSG:4326") -> gpd.GeoDataFrame:
     """Gets the polygons and metadata for multiple water bodies by bbox.
-    
+
     Parameters
     ----------
     bbox : (xmin, ymin, xmax, ymax)
         Bounding box.
     crs : str
         Optional CRS for the bounding box.
-    
+
     Returns
     -------
     gpd.GeoDataFrame
         A GeoDataFrame with the polygons and metadata.
     """
-    
+
     wfs = WebFeatureService(url=WFS_ADDRESS, version="1.1.0")
     response = wfs.getfeature(
         typename=WFS_LAYER,
@@ -68,22 +69,22 @@ def get_waterbodies(bbox: tuple, crs="EPSG:4326") -> gpd.GeoDataFrame:
     return wb_gpd
 
 
-def get_geohashes(bbox: tuple = None, crs: str = "EPSG:4326") -> [str]:
+def get_geohashes(bbox: tuple = None, crs: str = "EPSG:4326") -> list[str]:
     """Gets all waterbody geohashes.
-    
+
     Parameters
     ----------
     bbox : (xmin, ymin, xmax, ymax)
         Optional bounding box.
     crs : str
         Optional CRS for the bounding box.
-    
+
     Returns
     -------
     [str]
         A list of geohashes.
     """
-    
+
     wfs = WebFeatureService(url=WFS_ADDRESS, version="1.1.0")
     if bbox is not None:
         bbox = bbox + (crs,)
@@ -99,14 +100,14 @@ def get_geohashes(bbox: tuple = None, crs: str = "EPSG:4326") -> [str]:
 
 def get_time_series(geohash: str = None, waterbody: pd.Series = None) -> pd.DataFrame:
     """Gets the time series for a waterbody. Specify either a GeoDataFrame row or a geohash.
-    
+
     Parameters
     ----------
     geohash : str
         The geohash/uid for a waterbody in DE Africa Water Bodies.
     waterbody : pd.Series
         One row of a GeoDataFrame representing a waterbody.
-    
+
     Returns
     -------
     pd.DataFrame
@@ -128,65 +129,71 @@ def get_time_series(geohash: str = None, waterbody: pd.Series = None) -> pd.Data
     wb_timeseries = wb_timeseries.set_index("date")
     wb_timeseries.index = pd.to_datetime(wb_timeseries.index)
     # Create a rolling median for the wet time series
-    wb_timeseries["percent_wet_rolling_median"] = wb_timeseries['percent_wet'].rolling(3).median()
-    
+    wb_timeseries["percent_wet_rolling_median"] = wb_timeseries["percent_wet"].rolling(3).median()
+
     return wb_timeseries
 
+
 def display_time_series(wb_timeseries: pd.DataFrame = None) -> None:
-    """Displays the timeseries as an interactive plot 
-    
+    """Displays the timeseries as an interactive plot
+
     Parameters
     ----------
     wb_timeseries : pd.DataFrame
         A time series for the waterbody.
-    
+
     Returns
     -------
     None
     """
-    
+
     fig = go.Figure()
-    
+
     # Add a scatter plot of invalid percentage measruements
     fig.add_trace(
         go.Scatter(
             x=wb_timeseries.index,
-            y=wb_timeseries['percent_invalid'],
-            mode='markers',
-            marker=dict(color='red'), 
-            name='Invalid Percentage',
-            hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Invalid: %{y:.2f}%<extra></extra>', 
-            opacity=0.7
+            y=wb_timeseries["percent_invalid"],
+            mode="markers",
+            marker=dict(color="red"),
+            name="Invalid Percentage",
+            hovertemplate="<b>%{x|%Y-%m-%d}</b><br>Invalid: %{y:.2f}%<extra></extra>",
+            opacity=0.7,
         )
     )
-    
+
     # Add a line for the median wet percentage
     fig.add_trace(
         go.Scatter(
-            x=wb_timeseries.index, 
-            y=wb_timeseries['percent_wet_rolling_median'],
-            mode='lines',
+            x=wb_timeseries.index,
+            y=wb_timeseries["percent_wet_rolling_median"],
+            mode="lines",
             line=dict(color="blue"),
-            opacity=0.3, 
-            name='Wet Percentage - Rolling Median'
+            opacity=0.3,
+            name="Wet Percentage - Rolling Median",
         )
     )
-    
+
     # Add a scatter plot of the wet percentage measurements
     fig.add_trace(
         go.Scatter(
             x=wb_timeseries.index,
-            y=wb_timeseries['percent_wet'],
-            mode='markers',
-            marker=dict(color='blue'), 
-            name='Wet Percentage',
-            hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Wet: %{y:.2f}%<extra></extra>', 
-            opacity=0.7
+            y=wb_timeseries["percent_wet"],
+            mode="markers",
+            marker=dict(color="blue"),
+            name="Wet Percentage",
+            hovertemplate="<b>%{x|%Y-%m-%d}</b><br>Wet: %{y:.2f}%<extra></extra>",
+            opacity=0.7,
         )
-    )   
-    
+    )
+
     # Customize layout
-    fig.update_layout(title=f"Wet surface area time series", xaxis_title='Date', yaxis_title='Percentage', yaxis_range=[-5,105])
-    
+    fig.update_layout(
+        title="Wet surface area time series",
+        xaxis_title="Date",
+        yaxis_title="Percentage",
+        yaxis_range=[-5, 105],
+    )
+
     # Display the plot
     fig.show()
