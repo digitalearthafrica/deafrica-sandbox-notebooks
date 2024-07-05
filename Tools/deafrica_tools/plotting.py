@@ -19,6 +19,8 @@ import matplotlib.patheffects as PathEffects
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import xarray as xr
+import xyzservices
 from ipyleaflet import Choropleth, GeoJSON, Map, basemaps
 from IPython.display import display
 from matplotlib import colors as mcolours
@@ -32,17 +34,17 @@ from tqdm.auto import tqdm
 
 
 def rgb(
-    ds,
-    bands=["red", "green", "blue"],
-    index=None,
-    index_dim="time",
-    robust=True,
-    percentile_stretch=None,
-    col_wrap=4,
-    size=6,
-    aspect=None,
-    savefig_path=None,
-    savefig_kwargs={},
+    ds: xr.Dataset,
+    bands: list[str] = ["red", "green", "blue"],
+    index: int | list[int] | None = None,
+    index_dim: str = "time",
+    robust: bool = True,
+    percentile_stretch: tuple[float] | None = None,
+    col_wrap: int = 4,
+    size: int = 6,
+    aspect: int | None = None,
+    savefig_path: str | None = None,
+    savefig_kwargs: dict = {},
     **kwargs,
 ):
     """
@@ -222,7 +224,13 @@ def rgb(
             img.figure.savefig(savefig_path, **savefig_kwargs)
 
 
-def display_map(x, y, crs="EPSG:4326", margin=-0.5, zoom_bias=0):
+def display_map(
+    x: tuple[float, float],
+    y: tuple[float, float],
+    crs: str = "EPSG:4326",
+    margin: float = -0.5,
+    zoom_bias: int | float = 0,
+) -> folium.Map:
     """
     Given a set of x and y coordinates, this function generates an
     interactive map with a bounded rectangle overlayed on Google Maps
@@ -307,13 +315,13 @@ def display_map(x, y, crs="EPSG:4326", margin=-0.5, zoom_bias=0):
 
 
 def map_shapefile(
-    gdf,
-    attribute,
-    continuous=False,
-    cmap="viridis",
-    basemap=basemaps.Esri.WorldImagery,
-    default_zoom=None,
-    hover_col=True,
+    gdf: gpd.GeoDataFrame,
+    attribute: str,
+    continuous: bool = False,
+    cmap: str = "viridis",
+    basemap: xyzservices.lib.TileProvider = basemaps.Esri.WorldImagery,
+    default_zoom: int | None = None,
+    hover_col: bool | str = True,
     **style_kwargs,
 ):
     """
@@ -491,22 +499,22 @@ def map_shapefile(
 
 
 def xr_animation(
-    ds,
-    bands=None,
-    output_path="animation.mp4",
-    width_pixels=500,
-    interval=100,
-    percentile_stretch=(0.02, 0.98),
-    image_proc_funcs=None,
-    show_gdf=None,
-    show_date="%d %b %Y",
-    show_text=None,
-    show_colorbar=True,
-    gdf_kwargs={},
-    annotation_kwargs={},
-    imshow_kwargs={},
-    colorbar_kwargs={},
-    limit=None,
+    ds: xr.Dataset,
+    bands: list[str] | None = None,
+    output_path: str = "animation.mp4",
+    width_pixels: int = 500,
+    interval: int = 100,
+    percentile_stretch: tuple[float, float] = (0.02, 0.98),
+    image_proc_funcs: list[callable] | None = None,
+    show_gdf: gpd.GeoDataFrame | None = None,
+    show_date: str | bool = "%d %b %Y",
+    show_text: str | list[str] | None = None,
+    show_colorbar: bool = True,
+    gdf_kwargs: dict = {},
+    annotation_kwargs: dict = {},
+    imshow_kwargs: dict = {},
+    colorbar_kwargs: dict = {},
+    limit: int | None = None,
 ):
     """
     Takes an `xarray` timeseries and animates the data as either a
@@ -911,7 +919,7 @@ def _degree_to_zoom_level(l1, l2, margin=0.0):
     return zoom_level_int
 
 
-def plot_wofs(wofs, legend=True, **plot_kwargs):
+def plot_wofs(wofs: xr.DataArray, legend: bool = True, **plot_kwargs):
     """Plot a water observation bit flag image.
 
     Parameters
@@ -980,7 +988,7 @@ def plot_wofs(wofs, legend=True, **plot_kwargs):
     return im
 
 
-def plot_lulc(lulc, product=None, legend=True, **plot_kwargs):
+def plot_lulc(lulc: xr.DataArray, product: str = None, legend: bool = True, **plot_kwargs):
     """Plot a LULC image.
 
     Parameters
