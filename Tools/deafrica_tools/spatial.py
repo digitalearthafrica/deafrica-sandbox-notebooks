@@ -25,6 +25,7 @@ from datacube.model.utils import xr_apply
 from datacube.utils.cog import write_cog
 from datacube.utils.geometry import CRS, Geometry
 from geopy.geocoders import Nominatim
+from matplotlib.colors import LightSource
 from rasterstats import zonal_stats
 from shapely.geometry import LineString, MultiLineString, mapping, shape
 from skimage.measure import find_contours, label
@@ -713,7 +714,7 @@ def transform_geojson_wgs_to_epsg(geojson: dict, EPSG: int) -> dict:
 
 
 def zonal_stats_parallel(
-    shp: str, raster: str, statistics: list[str], out_shp: strs, ncpus: int, **kwargs
+    shp: str, raster: str, statistics: list[str], out_shp: str, ncpus: int, **kwargs
 ):
     """
     Summarizing raster datasets based on vector geometries in parallel.
@@ -936,3 +937,51 @@ def sun_angles(dc: Datacube, query: dict) -> xr.Dataset:
     )
 
     return sun_angles_ds
+
+
+def hillshade(
+    dem: np.ndarray,
+    elevation: int | float,
+    azimuth: int | float,
+    vert_exag: int | float = 1,
+    dx: int | float = 30,
+    dy: int | float = 30,
+) -> np.ndarray:
+    """
+    Calculate hillshade from an input Digital Elevation Model
+    (DEM) array and a sun elevation and azimith.
+
+    Parameters:
+    -----------
+    dem : numpy.array
+        A 2D Digital Elevation Model array.
+    elevation : int or float
+        Sun elevation (0-90, degrees up from horizontal).
+    azimith : int or float
+        Sun azimuth (0-360, degrees clockwise from north).
+    vert_exag : int or float, optional
+        The amount to exaggerate the elevation values by
+        when calculating illumination. This can be used either
+        to correct for differences in units between the x-y coordinate
+        system and the elevation coordinate system (e.g. decimal
+        degrees vs. meters) or to exaggerate or de-emphasize
+        topographic effects.
+    dx : int or float, optional
+        The x-spacing (columns) of the input DEM. This
+        is typically the spatial resolution of the DEM.
+    dy : int or float, optional
+        The y-spacing (rows) of the input input DEM. This
+        is typically the spatial resolution of the DEM.
+
+    Returns:
+    --------
+    hs : numpy.array
+        A 2D hillshade array with values between 0-1, where
+        0 is completely in shadow and 1 is completely
+        illuminated.
+    """
+
+    hs = LightSource(azdeg=azimuth, altdeg=elevation).hillshade(
+        dem, vert_exag=vert_exag, dx=dx, dy=dy
+    )
+    return hs
