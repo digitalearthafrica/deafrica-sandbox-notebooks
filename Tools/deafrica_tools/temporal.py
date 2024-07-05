@@ -18,8 +18,6 @@ The key functions are:
 
 """
 
-import sys
-
 import dask
 import hdstats
 import numpy as np
@@ -28,7 +26,7 @@ from datacube.utils.geometry import assign_crs
 from packaging import version
 
 
-def allNaN_arg(da, dim, stat):
+def allNaN_arg(da: xr.DataArray, dim: str, stat: str) -> tuple[xr.DataArray]:
     """
     Calculate da.argmax() or da.argmin() while handling
     all-NaN slices. Fills all-NaN locations with an
@@ -217,8 +215,8 @@ def _ros(veos, vpos, eos, pos):
 
 
 def xr_phenology(
-    da,
-    stats=[
+    da: xr.DataArray,
+    stats: list[str] = [
         "SOS",
         "POS",
         "EOS",
@@ -231,10 +229,10 @@ def xr_phenology(
         "ROG",
         "ROS",
     ],
-    method_sos="first",
-    method_eos="last",
-    verbose=True,
-):
+    method_sos: str = "first",
+    method_eos: str = "last",
+    verbose: bool = True,
+) -> xr.Dataset:
     """
     Obtain land surface phenology metrics from an
     xarray.DataArray containing a timeseries of a
@@ -326,7 +324,7 @@ def xr_phenology(
         try:
             crs = da.geobox.crs
             lazy_phenology = assign_crs(lazy_phenology, str(crs))
-        except:
+        except Exception:
             pass
 
         return lazy_phenology
@@ -343,7 +341,7 @@ def xr_phenology(
     # try to grab the crs info
     try:
         crs = da.geobox.crs
-    except:
+    except Exception:
         pass
 
     # Deal with any all-NaN pixels by filling with 0's.
@@ -367,12 +365,12 @@ def xr_phenology(
     aos = _aos(vpos, trough)
     try:
         vsos = _vsos(da, pos, method_sos=method_sos)
-    except:
+    except Exception:
         vsos = xr_template.assign_coords(time=time_coords)
     sos = _sos(vsos)
     try:
         veos = _veos(da, pos, method_eos=method_eos)
-    except:
+    except Exception:
         veos = xr_template.assign_coords(time=time_coords)
     eos = _eos(veos)
     los = _los(da, eos, sos)
@@ -401,7 +399,7 @@ def xr_phenology(
     for stat in stats[1:]:
         if verbose:
             print("         " + stat)
-        stats_keep = stats_dict.get(stat)
+        stats_keep = stats_dict.get(stat)  # noqa F841
         ds[stat] = stats_dict[stat]
 
     # Set original all-NaN pixels back to NaN.
@@ -410,7 +408,7 @@ def xr_phenology(
     # Try add back the crs.
     try:
         ds = assign_crs(ds, str(crs))
-    except:
+    except Exception:
         pass
 
     return ds.drop("time")
@@ -492,7 +490,7 @@ def temporal_statistics(da, stats):
                     template[stat] = xr.zeros_like(arr)
         try:
             template = template.drop("spatial_ref")
-        except:
+        except Exception:
             pass
 
         # ensure the time chunk is set to -1
@@ -506,7 +504,7 @@ def temporal_statistics(da, stats):
         try:
             crs = da.geobox.crs
             lazy_ds = assign_crs(lazy_ds, str(crs))
-        except:
+        except Exception:
             pass
 
         return lazy_ds
@@ -515,7 +513,7 @@ def temporal_statistics(da, stats):
     stats = stats if isinstance(stats, list) else [stats]
 
     # grab all the attributes of the xarray
-    x, y, time, attrs = da.x, da.y, da.time, da.attrs
+    x, y, time, attrs = da.x, da.y, da.time, da.attrs  # noqa F841
 
     # Deal with any all-NaN pixels by filling with 0's.
     da_all_nan_mask = da.isnull().all("time")
@@ -601,7 +599,7 @@ def temporal_statistics(da, stats):
     try:
         crs = da.geobox.crs
         ds = assign_crs(ds, str(crs))
-    except:
+    except Exception:
         pass
 
     return ds
