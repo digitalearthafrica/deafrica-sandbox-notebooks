@@ -797,7 +797,7 @@ def zonal_stats_parallel(
 
 
 def reverse_geocode(
-    coords: tuple[float.float],
+    coords: tuple[float],
     site_classes: list[str] | None = None,
     state_classes: list[str] | None = None,
 ):
