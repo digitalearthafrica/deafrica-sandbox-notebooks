@@ -44,6 +44,7 @@ Apps and widgets
    deafrica_tools.app.imageexport
    deafrica_tools.app.wetlandsinsighttool
    deafrica_tools.app.widgetconstructors
+   deafrica_tools.app.planetbasemap
 
 License
 -------
