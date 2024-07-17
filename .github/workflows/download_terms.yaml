@@ -6,12 +6,12 @@ on:
   # 1) A push is made to the main branch that includes changes to any file in the `Tools/` directory,
   # or 
   # 2) by clicking the 'Run workflow' button on the Actions tab.
-  push:
-    branches:
-      - main
-    paths:
-      - 'Tools/**'
-  workflow_dispatch:
+  #push:
+  #  branches:
+  #    - main
+  #  paths:
+  #    - 'Tools/**'
+  #workflow_dispatch:
             
 # Groups together all the jobs that run in the workflow. 
 jobs:
