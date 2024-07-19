@@ -1,32 +1,22 @@
 import os.path
 import google.auth
 
-from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
+from google.oauth2 import service_account
 
-# If modifying these scopes, delete the file token.json.
+# If modifying these scopes, delete the file credentials.
 SCOPES = ["https://www.googleapis.com/auth/drive"]
+credential_path = '../Supplementary_data/DriveCredentials/credentials.json'
 
 def create_token():
     ''''
-        Create the token json to connect the google drive.
         credential: provide the json creditials you would get from google service.
     '''
     creds = None
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow= InstalledAppFlow.from_client_secrets_file(credential, SCOPES)
-            creds = flow.run_local_server(port=0)
-        with open("token.json", "w") as token:
-            token.write(creds.to_json())
+    creds = service_account.Credentials.from_service_account_file(credential_path, scopes=SCOPES)
     return creds
 
 def list_gdrive():
@@ -37,7 +27,7 @@ def list_gdrive():
     try:
         service = build("drive", "v3", credentials=creds)
       
-        results = (service.files().list(pageSize=10, fields="nextPageToken, files(id, name)").execute())
+        results = (service.files().list(pageSize=20, fields="nextPageToken, files(id, name)").execute())
         items = results.get("files", [])
 
         if not items:
@@ -50,7 +40,7 @@ def list_gdrive():
         print(f"An error occurred: {error}")
 
 
-def upload_to_gdrive(file=None):
+def upload_to_gdrive(file_path=None, folder_id=None):
     '''
         Uploading files to google drive
     '''
@@ -59,8 +49,8 @@ def upload_to_gdrive(file=None):
         # create drive api client
         service = build("drive", "v3", credentials=creds)
 
-        file_metadata = {"name": file}
-        media = MediaFileUpload(file)
+        file_metadata = {"name": file_path, "parents": [folder_id]}
+        media = MediaFileUpload(file_path, resumable=True)
         # pylint: disable=maybe-no-member
         file = (service.files().create(body=file_metadata, media_body=media).execute())
         print('File Uploaded successful')
@@ -69,3 +59,20 @@ def upload_to_gdrive(file=None):
         file = None
     return
 
+
+def delete_to_gdrive(file_id=None):
+    '''
+        deleting file from google drive
+    '''
+    creds = create_token()
+    try:
+        # create drive api client
+        service = build("drive", "v3", credentials=creds)
+
+        # pylint: disable=maybe-no-member
+        response = service.files().delete(fileId=file_id).execute()
+        print('File deleted successful')
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+        file = None
+    return
