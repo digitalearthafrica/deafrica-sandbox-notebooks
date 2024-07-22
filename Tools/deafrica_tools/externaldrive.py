@@ -11,6 +11,7 @@ from google.oauth2 import service_account
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 credential_path = '../Supplementary_data/DriveCredentials/credentials.json'
 
+
 def create_token():
     ''''
         credential: provide the json creditials you would get from google service.
@@ -40,7 +41,7 @@ def list_gdrive():
         print(f"An error occurred: {error}")
 
 
-def upload_to_gdrive(file_path=None, folder_id=None):
+def upload_to_gdrive(file_path=None):
     '''
         Uploading files to google drive
     '''
@@ -48,6 +49,9 @@ def upload_to_gdrive(file_path=None, folder_id=None):
     try:
         # create drive api client
         service = build("drive", "v3", credentials=creds)
+        folder_path = '../Supplementary_data/DriveCredentials/googledrive_id.txt'
+        #read the first line of the file
+        folder_id = open(folder_path, "r").readline()
 
         file_metadata = {"name": file_path, "parents": [folder_id]}
         media = MediaFileUpload(file_path, resumable=True)
