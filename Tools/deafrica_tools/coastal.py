@@ -16,6 +16,7 @@ import pyTMD.time
 import pyTMD.utilities
 import requests
 import xarray as xr
+import timescale
 from datacube.utils.geometry import CRS
 from odc.geo.geobox import GeoBox
 from otps import TimePoint, predict_tide
@@ -160,7 +161,8 @@ def model_tides(
 
     # Assert delta time is an array and convert datetime
     time = np.atleast_1d(time)
-    t = pyTMD.time.convert_datetime(time, epoch=(1992, 1, 1, 0, 0, 0)) / 86400.0
+    # t = pyTMD.time.convert_datetime(time, epoch=(1992, 1, 1, 0, 0, 0)) / 86400.0
+    t = timescale.time.convert_datetime(time, epoch=(1992, 1, 1, 0, 0, 0)) / 86400.0
 
     # Delta time (TT - UT1) file
     delta_file = pyTMD.utilities.get_data_path(["data", "merged_deltat.data"])
