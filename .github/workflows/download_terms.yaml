@@ -6,12 +6,12 @@ on:
   # 1) A push is made to the main branch that includes changes to any file in the `Tools/` directory,
   # or 
   # 2) by clicking the 'Run workflow' button on the Actions tab.
-  #push:
-  #  branches:
-  #    - main
-  #  paths:
-  #    - 'Tools/**'
-  #workflow_dispatch:
+  push:
+   branches:
+     - main
+   paths:
+     - 'Tools/**'
+  workflow_dispatch:
             
 # Groups together all the jobs that run in the workflow. 
 jobs:
@@ -47,8 +47,8 @@ jobs:
         # Download the deafrica-tools terms from POEDITOR
         - name: Download Terms 
           env:
-            POEDITOR_API_TOKEN: ${{ secrets.POEDITOR_API_TOKEN }}
-            POEDITOR_PROJECT_ID: "489085"
+            POEDITOR_API_TOKEN: "8141b5afb696e463944f55ce80232b87" #${{ secrets.POEDITOR_API_TOKEN }}
+            POEDITOR_PROJECT_ID: "715168"
           run: |
             # Configure the git credentials
             git config user.name github-actions
