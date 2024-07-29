@@ -24,7 +24,7 @@ jobs:
       run: pybabel extract -o deafrica_tools.pot Tools/deafrica_tools/*
     - name: Upload terms
       env:
-        POEDITOR_API_TOKEN: 8141b5afb696e463944f55ce80232b87 #${{ secrets.POEDITOR_API_TOKEN }}
+        POEDITOR_API_TOKEN: "8141b5afb696e463944f55ce80232b87" #${{ secrets.POEDITOR_API_TOKEN }}
         POEDITOR_PROJECT_ID: "715168"
       run: |
         python .github/workflows/scripts/upload_terms.py deafrica_tools.pot
