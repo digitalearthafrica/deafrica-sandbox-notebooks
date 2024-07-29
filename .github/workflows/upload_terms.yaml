@@ -3,12 +3,12 @@ name: Upload Terms to POEditor
 # Controls when the action will run. 
 on:
   # Triggers the workflow on push or pull request events but only for the main branch
-  #push:
-  #  branches:
-  #    - main
-  #pull_request:
-  #  branches:
-  #    - main
+  push:
+   branches:
+     - main
+  pull_request:
+   branches:
+     - main
 
 jobs:
   upload:
@@ -24,7 +24,7 @@ jobs:
       run: pybabel extract -o deafrica_tools.pot Tools/deafrica_tools/*
     - name: Upload terms
       env:
-        POEDITOR_API_TOKEN: ${{ secrets.POEDITOR_API_TOKEN }}
-        POEDITOR_PROJECT_ID: "489085"
+        POEDITOR_API_TOKEN: 8141b5afb696e463944f55ce80232b87 #${{ secrets.POEDITOR_API_TOKEN }}
+        POEDITOR_PROJECT_ID: "715168"
       run: |
         python .github/workflows/scripts/upload_terms.py deafrica_tools.pot
