@@ -98,7 +98,7 @@ def load_wapor_ds(filename: str, variable: str) -> xr.Dataset:
         raise ValueError("Please set extension='.nc' when downloading data using `wapor_map`")
     elif filename.endswith(".nc"):
         ds = rioxarray.open_rasterio(filename).squeeze(dim="band").drop_vars("band")
-
+        
     # Store the crs in the spatial_ref coordinate
     if "spatial_ref" in ds.coords:
         crs_attrs = ds["spatial_ref"].attrs
@@ -126,6 +126,11 @@ def load_wapor_ds(filename: str, variable: str) -> xr.Dataset:
 
     # Merge the DataArrays
     da = xr.concat(da_list, dim="time")
+    
+    # Rescale data
+    xr.set_options(keep_attrs=True)
+    if "scale_factor" in da.attrs:
+        da = da * da.attrs['scale_factor'] + da.attrs['add_offset']
 
     # Edit the attributes
     if len(da.time) > 1:
