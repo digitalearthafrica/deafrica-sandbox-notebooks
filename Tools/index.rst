@@ -24,6 +24,7 @@ Core modules
    deafrica_tools.plotting
    deafrica_tools.spatial
    deafrica_tools.temporal
+   deafrica_tools.waterbodies
    deafrica_tools.wetlands
 
 Apps and widgets
@@ -43,6 +44,7 @@ Apps and widgets
    deafrica_tools.app.imageexport
    deafrica_tools.app.wetlandsinsighttool
    deafrica_tools.app.widgetconstructors
+   deafrica_tools.app.planetbasemap
 
 License
 -------

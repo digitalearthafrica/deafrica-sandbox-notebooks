@@ -1,109 +1,107 @@
-# pyproject.toml tells “frontend” build tools like pip and build what “backend” tool to use to create distribution packages for your project.
+# pyproject.toml
+[build-system]
+requires = ["setuptools>=61.0", "wheel", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
 
-# Using poetry for dependency management and packaging.
 
-# Package metadata.
-[tool.poetry]
+[project]
 name = "deafrica-tools"
-version = "2.1.0"
-description = "Functions and algorithms for analysing Digital Earth Africa data."
-license = "Apache-2.0"
-authors = ["Digital Earth Africa <systems@digitalearthafrica.org>"]
-readme = "README.md"
-homepage = "https://github.com/digitalearthafrica/deafrica-sandbox-notebooks"
-repository = "https://github.com/digitalearthafrica/deafrica-sandbox-notebooks"
-documentation = "https://docs.digitalearthafrica.org/en/latest/sandbox/notebooks/Tools/index.html"
-packages = [{include = "deafrica_tools"}]
+version = "2.4.4"
+# reflect version changes in deafrica_tools/__init__.py
 
-[tool.poetry.urls]
+description = "Functions and algorithms for analysing Digital Earth Africa data."
+authors = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
+maintainers = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
+readme = {file = "README.md", content-type = "text/markdown"}
+# If you change the License, remember to change the Trove Classifier!
+license = {file = "LICENSE"}
+classifiers=[
+    # Trove classifiers
+    # Full list: https://pypi.python.org/pypi?%3Aaction=list_classifiers
+    'License :: OSI Approved :: Apache Software License',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Intended Audience :: Science/Research',
+    'Topic :: Scientific/Engineering :: GIS',
+]
+requires-python = ">=3.9,<3.12"
+dependencies= [
+    # Version constraints should match those in 
+    # https://github.com/digitalearthafrica/deafrica-sandbox/blob/main/docker/requirements.in
+    "aiohttp",
+    "aiobotocore[boto3]", # for boto3
+    "branca",
+    "dask[complete]",
+    "dask-ml",
+    "dask-gateway",
+    "datacube[performance,s3]",
+    "fiona",
+    "folium",
+    "fsspec",
+    "gdal",
+    "geojson",
+    "geopandas",
+    "geopy",
+    "hdstats",
+    "ipyleaflet",
+    "ipython",
+    "ipywidgets",
+    "joblib",
+    "localtileserver",
+    "matplotlib",
+    "numexpr",
+    "numpy",
+    "odc-algo",
+    "odc-geo",
+    "odc-ui",
+    "owslib",
+    "packaging",
+    "pandas",
+    "pyproj",
+    "pystac-client",  # for pystac
+    "python-dateutil",
+    "pyTMD > 2",
+    "pytz",
+    "rasterio",
+    "rasterstats",
+    "requests",
+    "scikit-image",
+    "scikit-learn",
+    "scipy",
+    "seaborn",
+    "shapely",
+    "tqdm",
+    "xarray",
+    "gcsfs",
+    # Code style
+    "black",
+    "flake8==6.0.0", # remove constraint in the next sandbox image upgrade
+    "isort",
+    # Testing
+    "pytest",
+]
+[project.urls]
+Homepage = "https://github.com/digitalearthafrica/deafrica-sandbox-notebooks"
+Repository = "https://github.com/digitalearthafrica/deafrica-sandbox-notebooks"
+Documentation = "https://docs.digitalearthafrica.org/en/latest/sandbox/notebooks/Tools/index.html"
 "Bug Tracker" = "https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues"
 
-# Dependencies and dependency groups
-[tool.poetry.dependencies]
-# declaring the python version for which your package is compatible is mandatory
-python = ">=3.9,<3.12"
-geopandas = ">=0.13.2"
-shapely = ">=2.0.1"
-geojson = ">=3.0.1"
-#numpy = "1.23.5"
-dask = {version = ">=2023.3.1", extras = ["array", "complete", "dataframe"]}
-joblib = ">=1.2.0"
-pandas = ">=2.0.2"
-xarray = ">=2023.5.0"
-dask-ml = ">=2023.3.24"
-botocore = ">=1.27.59"
-datacube = {version = ">=1.8.13", extras = ["celery", "performance", "s3"]}
-scikit-learn = ">=1.2.2"
-tqdm = ">=4.65.0"
-requests = ">=2.31.0"
-matplotlib = ">=3.7.1"
-otps = {version = ">=0.3.2", source = "packages.dea.ga.gov.au"}
-owslib = ">=0.29.2"
-aiohttp = ">=3.8.4"
-gdal = "3.6.3"
-pytz = ">=2023.3"
-odc-algo = {version = ">=0.2.3", source = "packages.dea.ga.gov.au"}
-fsspec = ">=2023.3.0"
-rasterio = ">=1.3.7"
-pyproj = ">=3.5.0"
-boto3 = ">=1.24.59"
-pystac = ">=1.7.3"
-folium = ">=0.12.1"
-ipywidgets = ">=8.0.6"
-branca = ">=0.6.0"
-ipython = ">=8.13.1"
-ipyleaflet = ">=0.17.2"
-scikit-image = ">=0.21.0"
-odc-ui = {version = ">=0.2.1.dev3673", source = "packages.dea.ga.gov.au"}
-fiona = ">=1.9.4.post1"
-rasterstats = ">=0.19.0"
-geopy = ">=2.3.0"
-hdstats = ">=0.2.1"
-packaging = ">=23.1"
-seaborn = ">=0.12.2"
-traitlets = ">=5.9.0"
-rioxarray = ">=0.14.1"
-numexpr = ">=2.8.4"
-datetime = ">=5.1"
-scipy = ">=1.10.1"
-# Package sources for discovery and installation of dependencies.
+[tool.setuptools]
+packages = ["deafrica_tools"]
 
-[[tool.poetry.source]]
-name = "PyPI"
-priority = "default"
+[tool.black]
+line-length = 100
 
-
-[[tool.poetry.source]]
-name = "packages.dea.ga.gov.au"
-url = "https://packages.dea.ga.gov.au"
-priority = "explicit"
-
-
-[[tool.poetry.source]]
-name = "google-coral"
-url = "https://google-coral.github.io/py-repo/"
-priority = "explicit"
-
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.3.1"
-
-[build-system]
-# List of packages that are needed to build deafrica-tools.
-# Build frontends like pip will install them automatically 
-# in a temporary, isolated virtual environment for use 
-# during the build process.
-requires = ["poetry-core>=1.0.0"]
-# Python object that build frontends will use to perform the build.
-build-backend = "poetry.core.masonry.api"
-
-# using setuptools for dependency management and packaging
-
-#[build-system]
-# List of packages that are needed to build deafrica-tools.
-# Build frontends like pip will install them automatically 
-# in a temporary, isolated virtual environment for use 
-# during the build process.
-#requires = ["setuptools>=61.0","wheel"]
-# Python object that build frontends will use to perform the build.
-#build-backend = "setuptools.build_meta"
+[tool.isort]
+skip_gitignore = true
+# Configure isort to be compatible with black.
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+line_length = 100
