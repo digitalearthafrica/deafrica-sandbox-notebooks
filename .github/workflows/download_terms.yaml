@@ -48,7 +48,7 @@ jobs:
         - name: Download Terms 
           env:
             POEDITOR_API_TOKEN: ${{ secrets.POEDITOR_API_TOKEN }}
-            POEDITOR_PROJECT_ID: "715168"
+            #POEDITOR_PROJECT_ID: "715168"
           run: |
             # Configure the git credentials
             git config user.name github-actions
