@@ -53,9 +53,10 @@ dependencies= [
     "odc-algo",
     "odc-geo",
     "odc-ui",
-    "owslib",
+    "OWSLib",
     "packaging",
     "pandas",
+    "plotly",
     "pyproj",
     "pystac-client",  # for pystac
     "python-dateutil",
@@ -103,3 +104,4 @@ line-length = 100
 
 [tool.isort]
 profile = "black"
+
