@@ -25,8 +25,6 @@ let
       # Create the required environment:
       if ! test -d $MAMBA_ROOT_PREFIX/envs/deafrica-tools-env; then
           micromamba create --yes -f environment.yml
-          # Install the git-hook scripts
-          pre-commit install
       fi
 
       # Activate the environment.
