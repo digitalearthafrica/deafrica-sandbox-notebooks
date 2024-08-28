@@ -20,14 +20,20 @@ import datacube
 import deafrica_tools.app.widgetconstructors as deawidgets
 import geopandas as gpd
 import ipywidgets as widgets
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from datacube.utils.geometry import Geometry
 from datacube.utils.masking import mask_invalid_data
+from deafrica_tools.coastal import get_coastlines
 from deafrica_tools.dask import create_local_dask_cluster
+from deafrica_tools.datahandling import load_ard
+from deafrica_tools.plotting import xr_animation
 from deafrica_tools.spatial import reverse_geocode
 from ipyleaflet import LayerGroup, basemap_to_tiles, basemaps
 from ipywidgets import HTML, Button, GridspecLayout, HBox, Layout, Output, VBox
+from skimage.exposure import rescale_intensity
 from skimage.filters import unsharp_mask
 
 warnings.filterwarnings("ignore")
@@ -136,7 +142,6 @@ def extract_data(self):
         }
 
         # Load data
-        from deafrica_tools.datahandling import load_ard
 
         timeseries_ds = load_ard(
             dc=dc,
@@ -195,7 +200,6 @@ def plot_data(self, fname):
                 f"\nApplying unsharp masking with {self.unsharp_mask_radius} "
                 f"radius and {self.unsharp_mask_amount} amount"
             )
-        from skimage.exposure import rescale_intensity
 
         funcs_list = [
             rescale_intensity,
@@ -205,8 +209,6 @@ def plot_data(self, fname):
         ]
     else:
         funcs_list = None
-
-    from deafrica_tools.plotting import xr_animation
 
     xr_animation(
         output_path=fname,
@@ -230,15 +232,9 @@ def plot_data(self, fname):
 
 
 def deacoastlines_overlay(ds):
-
-    import geopandas as gpd
-    import matplotlib
-    import pandas as pd
-    from deafrica_tools.coastal import get_coastlines
-
     # Get bounding box of data
     xmin, ymin, xmax, ymax = ds.geobox.geographic_extent.boundingbox
-    bounds = [xmin, ymin, xmax, ymax]
+    bounds = (xmin, ymin, xmax, ymax)
 
     # Load data
     deacl_gdf = get_coastlines(bbox=bounds)
