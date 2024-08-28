@@ -17,7 +17,6 @@ import warnings
 from io import BytesIO
 
 import datacube
-import deafrica_tools.app.widgetconstructors as deawidgets
 import geopandas as gpd
 import ipywidgets as widgets
 import matplotlib
@@ -26,15 +25,17 @@ import numpy as np
 import pandas as pd
 from datacube.utils.geometry import Geometry
 from datacube.utils.masking import mask_invalid_data
+from ipyleaflet import LayerGroup, basemap_to_tiles, basemaps
+from ipywidgets import HTML, Button, GridspecLayout, HBox, Layout, Output, VBox
+from skimage.exposure import rescale_intensity
+from skimage.filters import unsharp_mask
+
+import deafrica_tools.app.widgetconstructors as deawidgets
 from deafrica_tools.coastal import get_coastlines
 from deafrica_tools.dask import create_local_dask_cluster
 from deafrica_tools.datahandling import load_ard
 from deafrica_tools.plotting import xr_animation
 from deafrica_tools.spatial import reverse_geocode
-from ipyleaflet import LayerGroup, basemap_to_tiles, basemaps
-from ipywidgets import HTML, Button, GridspecLayout, HBox, Layout, Output, VBox
-from skimage.exposure import rescale_intensity
-from skimage.filters import unsharp_mask
 
 warnings.filterwarnings("ignore")
 
