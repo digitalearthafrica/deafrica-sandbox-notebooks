@@ -9,7 +9,7 @@ os.environ["LOCALTILESERVER_CLIENT_PREFIX"] = (
 )
 
 import warnings
-from datetime import datetime, timedelta
+from datetime import datetime
 
 import datacube
 import numpy as np
@@ -34,34 +34,31 @@ warnings.filterwarnings("ignore")
 warnings.simplefilter("ignore")
 
 
-# Getting
 def get_last_calendar_month() -> tuple[int, int]:
     """
-    Get the last month and year
+    Get the year and month of the previous calendar month.
     """
     # Get the current date
     today = datetime.today()
 
-    # Calculate the first day of the current month
-    first_day_of_current_month = today.replace(day=1)
-    # Subtract one day to get the last day of the previous month
-    if today.day > 4:
-        pre_month = 1
-    else:
-        pre_month = 45
-    last_day_of_last_month = first_day_of_current_month - timedelta(days=pre_month)
+    current_year = today.year
+    current_month = today.month
 
-    # Extract the year and month from the last day of the previous month
-    year = last_day_of_last_month.year
-    month = last_day_of_last_month.month
+    # Extract the year and month of the previous month
+    if current_month == 1:
+        year = current_year - 1
+        month = 12
+    else:
+        year = current_year
+        month = current_month - 1
 
     return year, month
 
 
-## Load map to display
-def loadplanet(lon_range, lat_range, threshold_nvdi, threshold_bui):
+# Load map to display
+def loadplanet(lon_range: tuple, lat_range: tuple, threshold_nvdi: float, threshold_bui: float):
     """
-    Loading of planet imagery and rolling geomad
+    Loading of planet imagery and S2 R
     """
     # Connect to the datacube
     dc = datacube.Datacube(app="planet")
@@ -72,10 +69,10 @@ def loadplanet(lon_range, lat_range, threshold_nvdi, threshold_bui):
     # Select all water bodies located within the bounding box
     polygons = get_waterbodies(bbox, crs="EPSG:4326")
 
-    # get previous month and year
+    # Get the year and month of the previous calendar month.
     year, month = get_last_calendar_month()
 
-    # load data
+    # Load the S2 Annual GeoMAD
     ds = dc.load(
         product="gm_s2_annual",
         measurements=["red", "green", "blue", "nir", "swir_1"],
@@ -84,7 +81,7 @@ def loadplanet(lon_range, lat_range, threshold_nvdi, threshold_bui):
         resolution=(-10, 10),
         time=(f"{year:04d}"),
     )
-    # Check if there was any curent data in the previous load
+    # Check if there was any current data in the previous load
     if len(ds) == 0:
         # if  not then load with the manual date provider
         ds = dc.load(
