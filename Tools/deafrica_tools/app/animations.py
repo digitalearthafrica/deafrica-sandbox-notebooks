@@ -470,13 +470,13 @@ class animation_app(HBox):
 
         checkbox_rolling_median = deawidgets.create_checkbox(
             self.rolling_median,
-            "Apply rolling median<br>to produce smooth, <br> cloud-free animations",
+            "Apply rolling median to produce smooth, cloud-free animations",
             layout={"width": "90%", "height": "4em"},
         )
         text_rolling_median_window = widgets.IntText(
             value=20,
             step=1,
-            description="</br>Rolling window (timesteps)",
+            description="Rolling window (timesteps)",
             layout={
                 "width": "85%",
                 "margin": "0px",
@@ -501,7 +501,7 @@ class animation_app(HBox):
         )
         checkbox_cloud_mask = deawidgets.create_checkbox(
             self.cloud_mask,
-            "Mask out cloudy <br> pixels",
+            "Mask out cloudy pixels",
             layout={"width": "95%", "height": "auto"},
         )
         slider_power = widgets.FloatSlider(
