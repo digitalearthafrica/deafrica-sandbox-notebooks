@@ -243,19 +243,19 @@ def deacoastlines_overlay(ds):
     # Clip to extent of satellite data
     bbox = gpd.GeoDataFrame(geometry=[ds.geobox.extent.geom], crs=ds.geobox.crs)
     deacl_gdf = gpd.overlay(deacl_gdf, bbox.to_crs(deacl_gdf.crs))
-    deacl_gdf = deacl_gdf.dissolve("year")  # values("year", ascending=True)
-
-    # Apply colours
-    norm = matplotlib.colors.Normalize(vmin=0, vmax=len(deacl_gdf.index))
-    cmap = matplotlib.cm.get_cmap("inferno")
-    rgba = cmap(norm(deacl_gdf.reset_index().index))
-    deacl_gdf["color"] = list(rgba)
-    deacl_gdf["start_time"] = pd.to_datetime(deacl_gdf.index) + pd.DateOffset(months=0)
-    deacl_gdf = deacl_gdf.sort_index()
 
     if len(deacl_gdf.index) > 0:
+        deacl_gdf = deacl_gdf.dissolve("year")  # values("year", ascending=True)
+        # Apply colours
+        norm = matplotlib.colors.Normalize(vmin=0, vmax=len(deacl_gdf.index))
+        cmap = matplotlib.cm.get_cmap("inferno")
+        rgba = cmap(norm(deacl_gdf.reset_index().index))
+        deacl_gdf["color"] = list(rgba)
+        deacl_gdf["start_time"] = pd.to_datetime(deacl_gdf.index) + pd.DateOffset(months=0)
+        deacl_gdf = deacl_gdf.sort_index()
         return deacl_gdf
     else:
+        print(f"No annual shorelines data available for bounding box {bounds}")
         return None
 
 
