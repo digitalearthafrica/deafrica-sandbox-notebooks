@@ -5,7 +5,6 @@ Last modified: November 2023
 
 from datetime import datetime
 
-# Import required packages
 import geopandas as gpd
 import pandas as pd
 import plotly.graph_objects as go
