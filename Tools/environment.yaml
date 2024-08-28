@@ -4,6 +4,5 @@ channels:
 dependencies:
   - python = 3.10.6 
   - gdal = 3.6.3 
-  - pip-tools
   - pip:
-    - -r requirements.txt
+    - -e .[dev]
