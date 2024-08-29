@@ -47,7 +47,7 @@ jobs:
         # Download the deafrica-tools terms from POEDITOR
         - name: Download Terms 
           env:
-            POEDITOR_API_TOKEN: ${{ secrets.POEDITOR_API_TOKEN }}
+            POEDITOR_API_TOKEN: "17a7337c0def1d5df25624819906e85c" #${{ secrets.POEDITOR_API_TOKEN }}
             POEDITOR_PROJECT_ID: "715168"
           run: |
             # Configure the git credentials
