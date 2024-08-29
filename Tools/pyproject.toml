@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "deafrica-tools"
-version = "2.4.4"
+version = "2.4.5"
 # reflect version changes in deafrica_tools/__init__.py
 
 description = "Functions and algorithms for analysing Digital Earth Africa data."
