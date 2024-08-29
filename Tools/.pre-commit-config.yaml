@@ -1,43 +1,39 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+default_language_version:
+    python: python3.10.6
+
+default_stages: [pre-commit, pre-push]
+
 repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.4.0
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
     hooks:
-      - id: check-yaml
-      - id: end-of-file-fixer
-      - id: trailing-whitespace
-
-  - repo: https://github.com/psf/black
-    rev: 20.8b1
+    -   id: check-merge-conflict
+    -   id: check-yaml
+    -   id: check-toml
+    -   id: check-added-large-files
+    # Using this mirror lets us use mypyc-compiled black, which is about 2x faster
+-   repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 24.3.0
     hooks:
-      - id: black
-
-#  - repo: local
-#    hooks:
-#      - id: pylint-dags
-#        name: pylint-dags
-#        entry: env PYTHONPATH=plugins pylint
-#        language: system
-#        files: dags/
-#        types: [ python ]
-#        args: [ "--load-plugins=pylint_airflow", "--disable=C,W", "--disable=similarities" ]
-#
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: 'v0.800'  # Use the sha / tag you want to point at
+      - id: black-jupyter
+        args:
+            - "--config"
+            - "Tools/pyproject.toml"
+-   repo: https://github.com/pycqa/isort
+    rev: 5.13.2
     hooks:
-      - id: mypy
-        entry: mypy
-        args: [ --no-strict-optional, --ignore-missing-imports ]
-
-#  - repo: https://github.com/PyCQA/prospector
-#    rev: 1.1.7 # The version of Prospector to use, at least 1.1.7
-#    hooks:
-#      - id: prospector
-#
-#  - repo: local
-#    hooks:
-#      - id: wily
-#        name: wily
-#        entry: wily diff
-#        verbose: true
-#        language: python
-#        additional_dependencies: [ wily ]
+      - id: isort
+        name: isort (python)
+        args:
+            - "--config"
+            - "Tools/"
+            - "--resolve-all-configs"
+-   repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+        - id: flake8
+          args:
+              - "--config"
+              - "Tools/.flake8"
