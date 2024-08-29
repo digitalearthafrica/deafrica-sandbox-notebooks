@@ -7,10 +7,10 @@ on:
   # or 
   # 2) by clicking the 'Run workflow' button on the Actions tab.
   push:
-    branches:
-      - main
-    paths:
-      - 'Tools/**'
+   branches:
+     - main
+   paths:
+     - 'Tools/**'
   workflow_dispatch:
             
 # Groups together all the jobs that run in the workflow. 
@@ -48,7 +48,7 @@ jobs:
         - name: Download Terms 
           env:
             POEDITOR_API_TOKEN: ${{ secrets.POEDITOR_API_TOKEN }}
-            POEDITOR_PROJECT_ID: "489085"
+            POEDITOR_PROJECT_ID: "715168"
           run: |
             # Configure the git credentials
             git config user.name github-actions
