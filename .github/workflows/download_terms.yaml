@@ -57,8 +57,6 @@ jobs:
             # Run the download_terms.py script
             python .github/workflows/scripts/download_terms.py
 
-            git pull
- 
             # Stage the downloaded translation files 
             git add Tools/deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.mo Tools/deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.po
 
