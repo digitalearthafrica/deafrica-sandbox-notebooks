@@ -8,7 +8,7 @@ on:
   # 2) by clicking the 'Run workflow' button on the Actions tab.
   push:
    branches:
-     - main
+     - poeditor_po
    paths:
      - 'Tools/**'
   workflow_dispatch:
