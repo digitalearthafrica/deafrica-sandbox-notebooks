@@ -32,7 +32,7 @@ jobs:
           uses: actions/checkout@v3
           with:
             # Checkout the current pull request branch
-            ref: ${{ github.head_ref }}
+            ref: ${{ github.ref }}
         # This action sets up a Python environment for use in the workflow by installing and activating Python 3.10.6
         - name: Set up Python 3.10.6
           uses: actions/setup-python@v4
@@ -55,7 +55,7 @@ jobs:
             git config user.email github-actions@github.com
 
             # Run the download_terms.py script
-            python .github/workflows/scripts/download_terms.py 
+            python .github/workflows/scripts/download_terms.py
 
             # Stage the downloaded translation files 
             git add Tools/deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.mo Tools/deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.po
