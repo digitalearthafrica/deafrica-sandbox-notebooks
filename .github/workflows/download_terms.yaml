@@ -8,7 +8,7 @@ on:
   # 2) by clicking the 'Run workflow' button on the Actions tab.
   push:
    branches:
-     - main
+     - poeditor_po
    paths:
      - 'Tools/**'
   workflow_dispatch:
@@ -55,8 +55,8 @@ jobs:
             git config user.email github-actions@github.com
 
             # Run the download_terms.py script
-            python .github/workflows/scripts/download_terms.py 
- 
+            python .github/workflows/scripts/download_terms.py
+
             # Stage the downloaded translation files 
             git add Tools/deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.mo Tools/deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.po
 

@@ -1,0 +1,12 @@
+name: deafrica-tools-env
+channels:
+  - conda-forge
+dependencies:
+  - python = 3.10.6 
+  - gdal = 3.6.3 
+  - pip:
+<<<<<<< HEAD:Tools/conda/environment.yaml
+    - -e ../../Tools/
+=======
+    - -e .[dev]
+>>>>>>> main:Tools/environment.yml
