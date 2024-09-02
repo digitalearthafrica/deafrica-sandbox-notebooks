@@ -130,5 +130,10 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-# jupyter ntoebook checkpoints
+# jupyter notebook checkpoints
 */.ipynb_checkpoints
+
+# Vscode config
+**/.vscode/
+
+**/core

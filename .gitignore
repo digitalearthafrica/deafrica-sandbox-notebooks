@@ -1,11 +1,21 @@
 .idea
-.ipynb_checkpoints
 *.tif
 *.xml
 __pycache__
 dask-worker-space
 /.idea/
+<<<<<<< HEAD
 
 # Vscode
 **/.vscode/**
 **/core
+=======
+**/core
+
+# jupyter notebook checkpoints
+**/.ipynb_checkpoints
+
+# Vscode config
+**/.vscode/
+
+>>>>>>> main
