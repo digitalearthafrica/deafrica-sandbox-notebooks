@@ -27,9 +27,8 @@ repos:
       - id: isort
         name: isort (python)
         args:
-            - "--config"
-            - "Tools/"
-            - "--resolve-all-configs"
+            - "--settings-path"
+            - "Tools/pyproject.toml"
 -   repo: https://github.com/pycqa/flake8
     rev: 7.0.0
     hooks:
