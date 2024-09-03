@@ -11,7 +11,7 @@
 
 **Citing DE Africa Notebooks:** If you use any of the notebooks, code or tools in this repository in your work, please reference them using the following citation:
 
-    Krause, C., Dunn, B., Bishop-Taylor, R., Adams, C., Burton, C., Alger, M., Chua, S., Phillips, C., Newey, V., Kouzoubov, K., Leith, A., Ayers, D., Hicks, A., DEA Notebooks contributors 2021. Digital Earth Australia notebooks and tools repository. Geoscience Australia, Canberra. https://doi.org/10.26186/145234
+    Burton, C., Neema, V., Boamah, E., Chong, E., Adams, C., Wellington, M., Sadiki, M., Moghaddam, N., Liu, L., Bishop-Taylor, R., Yuan, F., Leith, A., Jorand, C., Halabisky, M., Rebelo, L-M, DE Africa Notebooks contributors 2024. Digital Earth Africa notebooks and tools repository. Geoscience Australia, Canberra. https://dx.doi.org/10.26186/148997
 
 ---
 
