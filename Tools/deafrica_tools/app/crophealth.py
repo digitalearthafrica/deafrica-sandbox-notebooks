@@ -33,7 +33,7 @@ from deafrica_tools.datahandling import load_ard
 from deafrica_tools.spatial import xr_rasterize
 
 
-def load_crophealth_data(lat, lon, buffer, date):
+def load_crophealth_data(lat: float, lon: float, buffer: float, date: str) -> xr.Dataset:
     """
     Loads Sentinel-2 analysis-ready data (ARD) product for the crop health
     case-study area over the last two years.
@@ -101,7 +101,7 @@ def load_crophealth_data(lat, lon, buffer, date):
     return ds
 
 
-def run_crophealth_app(ds, lat, lon, buffer):
+def run_crophealth_app(ds: xr.Dataset, lat: float, lon: float, buffer: float):
     """
     Plots an interactive map of the crop health case-study area and allows
     the user to draw polygons. This returns a plot of the average NDVI value
