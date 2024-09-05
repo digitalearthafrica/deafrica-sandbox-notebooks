@@ -13,6 +13,7 @@ os.environ["USE_PYGEOS"] = "0"
 
 import json
 import warnings
+from datetime import datetime
 from io import BytesIO
 
 import fiona
@@ -152,7 +153,7 @@ class transect_app(HBox):
             layers=deacl_layer,
             format="image/png",
             transparent=True,
-            attribution="DE Africa Coastlines © 2022 Digital Earth Africa",
+            attribution=f"DE Africa Coastlines © {datetime.now().year} Digital Earth Africa",
         )
 
         # Begin by displaying an empty layer group, and update the group with desired WMS on interaction.
@@ -370,7 +371,7 @@ class transect_app(HBox):
             layers=deacl_layer,
             format="image/png",
             transparent=True,
-            attribution="DE Africa Coastlines © 2022 Digital Earth Africa",
+            attribution="DE Africa Coastlines © 2024 Digital Earth Africa",
         )
 
         if self.product == "none":
