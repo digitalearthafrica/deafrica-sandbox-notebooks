@@ -13,7 +13,6 @@ import odc.geo.xr
 import pandas as pd
 import pyproj
 import pyTMD.io
-import pyTMD.time
 import pyTMD.utilities
 import requests
 import timescale
