@@ -166,7 +166,11 @@ def model_tides(
     delta_file = pyTMD.utilities.get_data_path(["data", "merged_deltat.data"])
 
     # Read tidal constants and interpolate to grid points
-    if model.format in ("OTIS", "ATLAS"):
+    if model.format in ("OTIS", "ATLAS-compact"):
+        if model.format.startswith("ATLAS"):
+            grid = "ATLAS"
+        else:
+            grid = model.format
         amp, ph, D, c = pyTMD.io.OTIS.extract_constants(
             lon,
             lat,
@@ -177,11 +181,11 @@ def model_tides(
             method=method,
             extrapolate=extrapolate,
             cutoff=cutoff,
-            grid=model.format,
+            grid=grid,
         )
         deltat = np.zeros_like(t)
 
-    elif model.format == "netcdf":
+    elif model.format == "ATLAS-netcdf":
         amp, ph, D, c = pyTMD.io.ATLAS.extract_constants(
             lon,
             lat,
@@ -196,7 +200,7 @@ def model_tides(
         )
         deltat = np.zeros_like(t)
 
-    elif model.format == "GOT":
+    elif model.format in ("GOT-ascii", "GOT-netcdf"):
         amp, ph, c = pyTMD.io.GOT.extract_constants(
             lon,
             lat,
@@ -211,7 +215,7 @@ def model_tides(
         # Interpolate delta times from calendar dates to tide time
         deltat = timescale.time.interpolate_delta_time(delta_file, t)
 
-    elif model.format == "FES":
+    elif model.format in ("FES-netcdf", "FES-ascii"):
         amp, ph = pyTMD.io.FES.extract_constants(
             lon,
             lat,
