@@ -2,25 +2,24 @@
 Create an interactive map for selecting satellite imagery and exporting image files.
 """
 
+import itertools
+
 # Load modules
 import datacube
-import itertools
-import numpy as np
 import matplotlib.pyplot as plt
-from odc.ui import select_on_a_map
-from datacube.utils.geometry import CRS
+import numpy as np
 from datacube.utils import masking
+from datacube.utils.geometry import CRS
+from ipyleaflet import WMSLayer, basemap_to_tiles, basemaps
+from odc.ui import select_on_a_map
 from skimage import exposure
-from ipyleaflet import (WMSLayer, basemaps, basemap_to_tiles)
 from traitlets import Unicode
 
-from deafrica_tools.spatial import reverse_geocode
 from deafrica_tools.dask import create_local_dask_cluster
+from deafrica_tools.spatial import reverse_geocode
 
 
-def select_region_app(date,
-                      satellites,
-                      size_limit=10000):
+def select_region_app(date, satellites, size_limit=10000):
     """
     An interactive app that allows the user to select a region from a
     map using imagery from Sentinel-2 and Landsat. The output of this
@@ -35,7 +34,7 @@ def select_region_app(date,
         The exact date used to plot imagery on the interactive map
         (e.g. ``date='1988-01-01'``).
     satellites : str
-        The satellite data to plot on the interactive map. The 
+        The satellite data to plot on the interactive map. The
         following options are supported:
 
             ``'Landsat-9'``: data from the Landsat 9 satellite
@@ -66,61 +65,67 @@ def select_region_app(date,
 
     # Load DEA WMS
     class TimeWMSLayer(WMSLayer):
-        time = Unicode('').tag(sync=True, o=True)
+        time = Unicode("").tag(sync=True, o=True)
 
     # WMS layers
     wms_params = {
-        'Landsat-9': 'ls9_sr',
-        'Landsat-8': 'ls8_sr',
-        'Landsat-7': 'ls7_sr',
-        'Landsat-5': 'ls5_sr',
-        'Sentinel-2': 's2_l2a',
-        'Sentinel-2 geomedian': 'gm_s2_annual'
+        "Landsat-9": "ls9_sr",
+        "Landsat-8": "ls8_sr",
+        "Landsat-7": "ls7_sr",
+        "Landsat-5": "ls5_sr",
+        "Sentinel-2": "s2_l2a",
+        "Sentinel-2 geomedian": "gm_s2_annual",
     }
 
-    time_wms = TimeWMSLayer(url='https://ows.digitalearth.africa/',
-                            layers=wms_params[satellites],
-                            time=date,
-                            format='image/png',
-                            transparent=True,
-                            attribution='Digital Earth Africa')
+    time_wms = TimeWMSLayer(
+        url="https://ows.digitalearth.africa/",
+        layers=wms_params[satellites],
+        time=date,
+        format="image/png",
+        transparent=True,
+        attribution="Digital Earth Africa",
+    )
 
     # Plot interactive map to select area
     basemap = basemap_to_tiles(basemaps.OpenStreetMap.Mapnik)
-    geopolygon = select_on_a_map(height='1000px',
-                                 layers=(
-                                     basemap,
-                                     time_wms,
-                                 ),
-                                 center=(4, 20),
-                                 zoom=4)
+    geopolygon = select_on_a_map(
+        height="1000px",
+        layers=(
+            basemap,
+            time_wms,
+        ),
+        center=(4, 20),
+        zoom=4,
+    )
 
     # Test size of selected area
-    area = geopolygon.to_crs(crs=CRS('epsg:6933')).area / 1000000
+    area = geopolygon.to_crs(crs=CRS("epsg:6933")).area / 1000000
     if area > size_limit:
-        print(f'Warning: Your selected area is {area:.00f} sq km. '
-              f'Please select an area of less than {size_limit} sq km.'
-              f'\nTo select a smaller area, re-run the cell '
-              f'above and draw a new polygon.')
+        print(
+            f"Warning: Your selected area is {area:.00f} sq km. "
+            f"Please select an area of less than {size_limit} sq km."
+            f"\nTo select a smaller area, re-run the cell "
+            f"above and draw a new polygon."
+        )
 
     else:
-        return {'geopolygon': geopolygon,
-                'date': date,
-                'satellites': satellites}
+        return {"geopolygon": geopolygon, "date": date, "satellites": satellites}
 
 
-def export_image_app(geopolygon,
-                     date,
-                     satellites,
-                     style='True colour',
-                     resolution=None,
-                     vmin=0,
-                     vmax=2000,
-                     percentile_stretch=None,
-                     power=None,
-                     image_proc_funcs=None,
-                     output_format="jpg",
-                     standardise_name=False):
+def export_image_app(
+    geopolygon,
+    date,
+    satellites,
+    style="True colour",
+    resolution=None,
+    vmin=0,
+    vmax=2000,
+    percentile_stretch=None,
+    power=None,
+    image_proc_funcs=None,
+    output_format="jpg",
+    standardise_name=False,
+):
     """
     Exports Digital Earth Africa satellite data as an image file
     based on the extent and time period selected using
@@ -146,7 +151,7 @@ def export_image_app(geopolygon,
         The exact date used to extract imagery
         (e.g. `date='1988-01-01'`).
     satellites : str
-        The satellite data to be used to extract imagery. The 
+        The satellite data to be used to extract imagery. The
         following options are supported:
 
             ``'Landsat-9'``: data from the Landsat 9 satellite
@@ -206,53 +211,53 @@ def export_image_app(geopolygon,
     ###########################
 
     sat_params = {
-        'Landsat-9': {
-            'products': ['ls9_sr'],
-            'resolution': [-30, 30],
-            'styles': {
-                'True colour': ['red', 'green', 'blue'],
-                'False colour': ['swir_1', 'nir', 'green']
-            }
+        "Landsat-9": {
+            "products": ["ls9_sr"],
+            "resolution": [-30, 30],
+            "styles": {
+                "True colour": ["red", "green", "blue"],
+                "False colour": ["swir_1", "nir", "green"],
+            },
         },
-        'Landsat-8': {
-            'products': ['ls8_sr'],
-            'resolution': [-30, 30],
-            'styles': {
-                'True colour': ['red', 'green', 'blue'],
-                'False colour': ['swir_1', 'nir', 'green']
-            }
+        "Landsat-8": {
+            "products": ["ls8_sr"],
+            "resolution": [-30, 30],
+            "styles": {
+                "True colour": ["red", "green", "blue"],
+                "False colour": ["swir_1", "nir", "green"],
+            },
         },
-        'Landsat-7': {
-            'products': ['ls7_sr'],
-            'resolution': [-30, 30],
-            'styles': {
-                'True colour': ['red', 'green', 'blue'],
-                'False colour': ['swir_1', 'nir', 'green']
-            }
+        "Landsat-7": {
+            "products": ["ls7_sr"],
+            "resolution": [-30, 30],
+            "styles": {
+                "True colour": ["red", "green", "blue"],
+                "False colour": ["swir_1", "nir", "green"],
+            },
         },
-        'Landsat-5': {
-            'products': ['ls5_sr'],
-            'resolution': [-30, 30],
-            'styles': {
-                'True colour': ['red', 'green', 'blue'],
-                'False colour': ['swir_1', 'nir', 'green']
-            }
+        "Landsat-5": {
+            "products": ["ls5_sr"],
+            "resolution": [-30, 30],
+            "styles": {
+                "True colour": ["red", "green", "blue"],
+                "False colour": ["swir_1", "nir", "green"],
+            },
         },
-        'Sentinel-2': {
-            'products': ['s2_l2a'],
-            'resolution': [-10, 10],
-            'styles': {
-                'True colour': ['red', 'green', 'blue'],
-                'False colour': ['swir_2', 'nir_1', 'green']
-            }
+        "Sentinel-2": {
+            "products": ["s2_l2a"],
+            "resolution": [-10, 10],
+            "styles": {
+                "True colour": ["red", "green", "blue"],
+                "False colour": ["swir_2", "nir_1", "green"],
+            },
         },
-        'Sentinel-2 geomedian': {
-            'products': ['gm_s2_annual'],
-            'resolution': [-10, 10],
-            'styles': {
-                'True colour': ['red', 'green', 'blue'],
-                'False colour': ['swir_2', 'nir_1', 'green']
-            }
+        "Sentinel-2 geomedian": {
+            "products": ["gm_s2_annual"],
+            "resolution": [-10, 10],
+            "styles": {
+                "True colour": ["red", "green", "blue"],
+                "False colour": ["swir_2", "nir_1", "green"],
+            },
         },
     }
 
@@ -261,7 +266,7 @@ def export_image_app(geopolygon,
     #############
 
     # Connect to datacube database
-    dc = datacube.Datacube(app='Exporting_satellite_images')
+    dc = datacube.Datacube(app="Exporting_satellite_images")
 
     # Configure local dask cluster
     client = create_local_dask_cluster(return_client=True)
@@ -269,48 +274,40 @@ def export_image_app(geopolygon,
     # Create query after adjusting interval time to UTC by
     # adding a UTC offset of -10 hours.
     start_date = np.datetime64(date)
-    query_params = {
-        'time': (str(start_date)),
-        'geopolygon': geopolygon
-    }
+    query_params = {"time": (str(start_date)), "geopolygon": geopolygon}
 
     # Find matching datasets
-    dss = [
-        dc.find_datasets(product=i, **query_params)
-        for i in sat_params[satellites]['products']
-    ]
+    dss = [dc.find_datasets(product=i, **query_params) for i in sat_params[satellites]["products"]]
     dss = list(itertools.chain.from_iterable(dss))
 
     # Get CRS and sensor
     crs = str(dss[0].crs)
 
-    if satellites == 'Sentinel-2 geomedian':
+    if satellites == "Sentinel-2 geomedian":
         sensor = satellites
     else:
-        sensor = dss[0].metadata_doc['properties']['eo:platform'].capitalize()
-        sensor = sensor[0:-1].replace('_', '-') + sensor[-1].capitalize()
+        sensor = dss[0].metadata_doc["properties"]["eo:platform"].capitalize()
+        sensor = sensor[0:-1].replace("_", "-") + sensor[-1].capitalize()
 
     # Use resolution if provided, otherwise use default
     if resolution:
-        sat_params[satellites]['resolution'] = resolution
+        sat_params[satellites]["resolution"] = resolution
 
     load_params = {
-        'output_crs': crs,
-        'resolution': sat_params[satellites]['resolution'],
-        'resampling': 'bilinear'
+        "output_crs": crs,
+        "resolution": sat_params[satellites]["resolution"],
+        "resampling": "bilinear",
     }
 
     # Load data from datasets
-    ds = dc.load(datasets=dss,
-                 measurements=sat_params[satellites]['styles'][style],
-                 group_by='solar_day',
-                 dask_chunks={
-                     'time': 1,
-                     'x': 3000,
-                     'y': 3000
-                 },
-                 **load_params,
-                 **query_params)
+    ds = dc.load(
+        datasets=dss,
+        measurements=sat_params[satellites]["styles"][style],
+        group_by="solar_day",
+        dask_chunks={"time": 1, "x": 3000, "y": 3000},
+        **load_params,
+        **query_params,
+    )
     ds = masking.mask_invalid_data(ds)
 
     rgb_array = ds.isel(time=0).to_array().values
@@ -322,18 +319,16 @@ def export_image_app(geopolygon,
     # Create unique file name
     centre_coords = geopolygon.centroid.coords[0][::-1]
     site = reverse_geocode(coords=centre_coords)
-    fname = (f"{sensor} - {date} - {site} - {style}, "
-             f"{load_params['resolution'][1]} m resolution.{output_format}")
+    fname = (
+        f"{sensor} - {date} - {site} - {style}, "
+        f"{load_params['resolution'][1]} m resolution.{output_format}"
+    )
 
     # Remove spaces and commas if requested
     if standardise_name:
-        fname = fname.replace(' - ', '_').replace(', ',
-                                                  '-').replace(' ',
-                                                               '-').lower()
+        fname = fname.replace(" - ", "_").replace(", ", "-").replace(" ", "-").lower()
 
-    print(
-        f'\nExporting image to {fname}.\nThis may take several minutes to complete...'
-    )
+    print(f"\nExporting image to {fname}.\nThis may take several minutes to complete...")
 
     # Convert to numpy array
     rgb_array = np.transpose(rgb_array, axes=[1, 2, 0])
@@ -350,14 +345,14 @@ def export_image_app(geopolygon,
         vmin, vmax = vmin**power, vmax**power
 
     # Rescale/stretch imagery between vmin and vmax
-    rgb_rescaled = exposure.rescale_intensity(rgb_array.astype(float),
-                                              in_range=(vmin, vmax),
-                                              out_range=(0.0, 1.0))
+    rgb_rescaled = exposure.rescale_intensity(
+        rgb_array.astype(float), in_range=(vmin, vmax), out_range=(0.0, 1.0)
+    )
 
     # Apply image processing funcs
     if image_proc_funcs:
         for i, func in enumerate(image_proc_funcs):
-            print(f'Applying custom function {i + 1}')
+            print(f"Applying custom function {i + 1}")
             rgb_rescaled = func(rgb_rescaled)
 
     # Plot RGB
@@ -369,4 +364,4 @@ def export_image_app(geopolygon,
     # Close dask client
     client.shutdown()
 
-    print('Finished exporting image.')
+    print("Finished exporting image.")
