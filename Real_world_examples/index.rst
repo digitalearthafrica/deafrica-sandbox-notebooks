@@ -8,7 +8,7 @@ real-world problems.
    :glob:
 
    *
-   Scalable_machine_learning/index.ipynb
+   Scalable_machine_learning/index.rst
 
 These notebooks can also be found in your home folder on the sandbox, or
 accessed from GitHub at:
