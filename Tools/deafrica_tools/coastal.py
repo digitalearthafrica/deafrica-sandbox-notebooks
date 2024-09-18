@@ -163,10 +163,10 @@ def model_tides(
     t = timescale.time.convert_datetime(time, epoch=(1992, 1, 1, 0, 0, 0)) / 86400.0
 
     # Delta time (TT - UT1) file
-    delta_file = pyTMD.utilities.get_data_path(["data", "merged_deltat.data"])
+    delta_file = timescale.utilities.get_data_path(["data", "merged_deltat.data"])
 
     # Read tidal constants and interpolate to grid points
-    if model.format in ("OTIS", "ATLAS-compact"):
+    if model.format in ("OTIS", "ATLAS-compact", "TMD3"):
         if model.format.startswith("ATLAS"):
             grid = "ATLAS"
         else:
