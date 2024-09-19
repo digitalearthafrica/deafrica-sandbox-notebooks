@@ -40,6 +40,7 @@ def model_tides(
     model: str = "FES2014",
     directory: str = "/var/share/tide_models",
     epsg: int = 4326,
+    crop: bool = True,
     method: str = "bilinear",
     extrapolate: bool = True,
     cutoff: int | float = 10.0,
@@ -105,6 +106,10 @@ def model_tides(
     epsg : int
         Input coordinate system for 'x' and 'y' coordinates.
         Defaults to 4326 (WGS84).
+    crop : bool optional
+        Whether to crop tide model constituent files on-the-fly to
+        improve performance. Cropping will be performed based on a
+        1 degree buffer around all input points. Defaults to True.
     method : string
         Method used to interpolate tidal contsituents
         from model files. Options include:
@@ -178,6 +183,7 @@ def model_tides(
             model.model_file,
             model.projection,
             type=model.type,
+            crop=crop,
             method=method,
             extrapolate=extrapolate,
             cutoff=cutoff,
@@ -192,6 +198,7 @@ def model_tides(
             model.grid_file,
             model.model_file,
             type=model.type,
+            crop=crop,
             method=method,
             extrapolate=extrapolate,
             cutoff=cutoff,
@@ -206,6 +213,7 @@ def model_tides(
             lat,
             model.model_file,
             method=method,
+            crop=crop,
             extrapolate=extrapolate,
             cutoff=cutoff,
             scale=model.scale,
@@ -221,6 +229,7 @@ def model_tides(
             lat,
             model.model_file,
             type=model.type,
+            crop=crop,
             version=model.version,
             method=method,
             extrapolate=extrapolate,
