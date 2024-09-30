@@ -83,8 +83,7 @@ tests = [
 ]
 lint = [
     "black[jupyter]",
-    # TODO remove constraint after the next sandbox image upgrade
-    "flake8==6.0.0",
+    "flake8",
     "isort>=5.0.0",
     "pre-commit",
 ]
