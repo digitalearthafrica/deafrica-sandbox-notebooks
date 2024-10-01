@@ -40,7 +40,7 @@ def model_tides(
     model: str = "FES2014",
     directory: str = "/var/share/tide_models",
     epsg: int = 4326,
-    crop: bool = True,
+    crop: bool = False,
     method: str = "bilinear",
     extrapolate: bool = True,
     cutoff: int | float = 10.0,
@@ -109,7 +109,7 @@ def model_tides(
     crop : bool optional
         Whether to crop tide model constituent files on-the-fly to
         improve performance. Cropping will be performed based on a
-        1 degree buffer around all input points. Defaults to True.
+        1 degree buffer around all input points. Defaults to False.
     method : string
         Method used to interpolate tidal contsituents
         from model files. Options include:
