@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "deafrica-tools"
 # reflect version changes in deafrica_tools/__init__.py
-version = "2.5.1"
+version = "2.5.3"
 description = "Functions and algorithms for analysing Digital Earth Africa data."
 authors = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
 maintainers = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
