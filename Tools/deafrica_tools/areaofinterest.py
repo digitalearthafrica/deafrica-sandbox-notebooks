@@ -2,12 +2,6 @@
 Function for defining an area of interest using either a point and buffer or a vector file.
 """
 
-# Force GeoPandas to use Shapely instead of PyGEOS
-# In a future release, GeoPandas will switch to using Shapely by default.
-import os
-
-os.environ["USE_PYGEOS"] = "0"
-
 import geopandas as gpd
 from geojson import Feature, FeatureCollection, Point
 from shapely.geometry import box
