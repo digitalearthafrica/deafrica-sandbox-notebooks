@@ -277,16 +277,16 @@ def plot_last_valid_obs(waterbodies: gpd.GeoDataFrame):
 
     # Create the legend manually
     legend_elements = [
-        Patch(color="#fde725", label="0 - 10"),
-        Patch(color="#b5de2b", label="10 - 20"),
-        Patch(color="#6ece58", label="20 - 30"),
-        Patch(color="#35b779", label="30 - 40"),
-        Patch(color="#1f9e89", label="40 - 50"),
-        Patch(color="#26828e", label="50 - 60"),
-        Patch(color="#31688e", label="60 - 70"),
-        Patch(color="#3e4989", label="70 - 80"),
-        Patch(color="#482878", label="80 - 90"),
-        Patch(color="#440154", label="90 - 100"),
+        Patch(color="#fde725", label="0 <= wet percentage <= 10"),
+        Patch(color="#b5de2b", label="10 < wet percentage <= 20"),
+        Patch(color="#6ece58", label="20 < wet percentage <= 30"),
+        Patch(color="#35b779", label="30 < wet percentage <= 40"),
+        Patch(color="#1f9e89", label="40 < wet percentage <= 50"),
+        Patch(color="#26828e", label="50 < wet percentage <= 60"),
+        Patch(color="#31688e", label="60 < wet percentage <= 70"),
+        Patch(color="#3e4989", label="70 < wet percentage <= 80"),
+        Patch(color="#482878", label="80 < wet percentage <= 90"),
+        Patch(color="#440154", label="90 < wet percentage <= 100"),
         Patch(
             facecolor="none", hatch="xx", edgecolor="#23d9f1", label="No valid observation"
         ),  # Add hatch legend
