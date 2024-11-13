@@ -1,62 +1,34 @@
 # -*- coding: utf-8 -*-
 """
-Satellite imagery animation widget, which can be used to interactively 
+Satellite imagery animation widget, which can be used to interactively
 produce animations for multiple DE Africa products.
 """
-
-# Import required packages
-
-# Force GeoPandas to use Shapely instead of PyGEOS
-# In a future release, GeoPandas will switch to using Shapely by default.
-import os
-os.environ['USE_PYGEOS'] = '0'
-
-import fiona
-import sys
-import datacube
-import warnings
-import matplotlib.pyplot as plt
-from datacube.utils.geometry import CRS
-from ipyleaflet import (
-    WMSLayer,
-    basemaps,
-    basemap_to_tiles,
-    Map,
-    DrawControl,
-    WidgetControl,
-    LayerGroup,
-    LayersControl,
-    GeoData,
-)
-from traitlets import Unicode
-from ipywidgets import (
-    GridspecLayout,
-    Button,
-    Layout,
-    HBox,
-    VBox,
-    HTML,
-    Output,
-)
-import json
-import itertools
-import numpy as np
-import geopandas as gpd
-from io import BytesIO
-import ipywidgets as widgets
 import datetime
-from skimage import exposure
-from skimage.filters import unsharp_mask
+import itertools
+import json
+import warnings
+from io import BytesIO
 
-from datacube.utils import masking
+import datacube
+import geopandas as gpd
+import ipywidgets as widgets
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from datacube.utils.geometry import Geometry
 from datacube.utils.masking import mask_invalid_data
-import deafrica_tools.app.widgetconstructors as deawidgets
-from deafrica_tools.dask import create_local_dask_cluster
-from deafrica_tools.spatial import reverse_geocode
-from deafrica_tools.datahandling import pan_sharpen_brovey
+from ipyleaflet import LayerGroup, basemap_to_tiles, basemaps
+from ipywidgets import HTML, Button, GridspecLayout, HBox, Layout, Output, VBox
+from skimage.exposure import rescale_intensity
+from skimage.filters import unsharp_mask
 
-import warnings
+import deafrica_tools.app.widgetconstructors as deawidgets
+from deafrica_tools.coastal import get_coastlines
+from deafrica_tools.dask import create_local_dask_cluster
+from deafrica_tools.datahandling import load_ard
+from deafrica_tools.plotting import xr_animation
+from deafrica_tools.spatial import reverse_geocode
 
 warnings.filterwarnings("ignore")
 
@@ -119,7 +91,7 @@ def update_map_layers(self):
     # Clear all layers and add basemap
     self.map_layers.clear_layers()
     self.map_layers.add_layer(self.basemap)
-    
+
 
 def extract_data(self):
 
@@ -135,7 +107,7 @@ def extract_data(self):
     # Create query.
     start_date = np.datetime64(self.start_date)
     end_date = np.datetime64(self.end_date)
-    
+
     self.query_params = {
         "time": (str(start_date), str(end_date)),
         "geopolygon": geopolygon,
@@ -164,7 +136,6 @@ def extract_data(self):
         }
 
         # Load data
-        from deafrica_tools.datahandling import load_ard
 
         timeseries_ds = load_ard(
             dc=dc,
@@ -197,9 +168,7 @@ def plot_data(self, fname):
     # If rolling median specified
     if self.rolling_median:
         with self.status_info:
-            print(
-                f"\nApplying rolling median ({self.rolling_median_window} timesteps window)"
-            )
+            print(f"\nApplying rolling median ({self.rolling_median_window} timesteps window)")
         to_plot = to_plot.rolling(
             time=int(self.rolling_median_window), center=True, min_periods=1
         ).median()
@@ -215,7 +184,7 @@ def plot_data(self, fname):
     if self.power < 1.0:
         with self.status_info:
             print(f"\nApplying power transformation ({self.power})")
-        to_plot = to_plot ** self.power
+        to_plot = to_plot**self.power
 
     # Apply unsharp masking to enhance overall dynamic range,
     # and improve fine scale detail
@@ -225,7 +194,6 @@ def plot_data(self, fname):
                 f"\nApplying unsharp masking with {self.unsharp_mask_radius} "
                 f"radius and {self.unsharp_mask_amount} amount"
             )
-        from skimage.exposure import rescale_intensity
 
         funcs_list = [
             rescale_intensity,
@@ -235,8 +203,6 @@ def plot_data(self, fname):
         ]
     else:
         funcs_list = None
-
-    from deafrica_tools.plotting import xr_animation
 
     xr_animation(
         output_path=fname,
@@ -260,16 +226,9 @@ def plot_data(self, fname):
 
 
 def deacoastlines_overlay(ds):
-
-    import geopandas as gpd
-    import pandas as pd
-    import matplotlib
-    from shapely.geometry import box, Point
-    from deafrica_tools.coastal import get_coastlines
-
     # Get bounding box of data
     xmin, ymin, xmax, ymax = ds.geobox.geographic_extent.boundingbox
-    bounds = [xmin, ymin, xmax, ymax]
+    bounds = (xmin, ymin, xmax, ymax)
 
     # Load data
     deacl_gdf = get_coastlines(bbox=bounds)
@@ -277,22 +236,22 @@ def deacoastlines_overlay(ds):
     # Clip to extent of satellite data
     bbox = gpd.GeoDataFrame(geometry=[ds.geobox.extent.geom], crs=ds.geobox.crs)
     deacl_gdf = gpd.overlay(deacl_gdf, bbox.to_crs(deacl_gdf.crs))
-    deacl_gdf = deacl_gdf.dissolve("year")  # values("year", ascending=True)
-
-    # Apply colours
-    norm = matplotlib.colors.Normalize(vmin=0, vmax=len(deacl_gdf.index))
-    cmap = matplotlib.cm.get_cmap("inferno")
-    rgba = cmap(norm(deacl_gdf.reset_index().index))
-    deacl_gdf["color"] = list(rgba)
-    deacl_gdf["start_time"] = pd.to_datetime(deacl_gdf.index) + pd.DateOffset(months=0)
-    deacl_gdf = deacl_gdf.sort_index()
 
     if len(deacl_gdf.index) > 0:
+        deacl_gdf = deacl_gdf.dissolve("year")  # values("year", ascending=True)
+        # Apply colours
+        norm = matplotlib.colors.Normalize(vmin=0, vmax=len(deacl_gdf.index))
+        cmap = matplotlib.cm.get_cmap("inferno")
+        rgba = cmap(norm(deacl_gdf.reset_index().index))
+        deacl_gdf["color"] = list(rgba)
+        deacl_gdf["start_time"] = pd.to_datetime(deacl_gdf.index) + pd.DateOffset(months=0)
+        deacl_gdf = deacl_gdf.sort_index()
         return deacl_gdf
     else:
+        print(f"No annual shorelines data available for bounding box {bounds}")
         return None
 
-        
+
 class animation_app(HBox):
     def __init__(self):
         super().__init__()
@@ -366,9 +325,7 @@ class animation_app(HBox):
         ##################
 
         # Create the Header widget
-        header_title_text = (
-            "<h3>Digital Earth Africa satellite imagery animations</h3>"
-        )
+        header_title_text = "<h3>Digital Earth Africa satellite imagery animations</h3>"
         instruction_text = (
             "<p>Select the desired satellite data, imagery date range "
             "and image style, then zoom in and draw a rectangle to "
@@ -415,10 +372,7 @@ class animation_app(HBox):
                     "<b>(Overriding maximum size limit; use with caution as may lead to memory issues)</b></span>"
                 )
                 self.header.value = (
-                    header_title_text
-                    + instruction_text
-                    + polyarea_text
-                    + confirmation_text
+                    header_title_text + instruction_text + polyarea_text + confirmation_text
                 )
                 self.gdf_drawn = gdf
             elif area <= 50000:
@@ -428,10 +382,7 @@ class animation_app(HBox):
                     "recommended 50000 ha limit)</b></span>"
                 )
                 self.header.value = (
-                    header_title_text
-                    + instruction_text
-                    + polyarea_text
-                    + confirmation_text
+                    header_title_text + instruction_text + polyarea_text + confirmation_text
                 )
                 self.gdf_drawn = gdf
             else:
@@ -466,7 +417,7 @@ class animation_app(HBox):
         self.map_layers.name = "Map Overlays"
 
         # Create map widget
-        self.m = deawidgets.create_map(map_center=(5.65,  26.17), zoom_level=13)
+        self.m = deawidgets.create_map(map_center=(5.65, 26.17), zoom_level=13)
         self.m.layout = make_box_layout()
 
         # Add tools to map widget
@@ -481,24 +432,16 @@ class animation_app(HBox):
         ############################
 
         # Create parameter widgets
-        dropdown_basemap = deawidgets.create_dropdown(
-            self.basemap_list, self.basemap_list[0][1]
-        )
-        dropdown_dealayer = deawidgets.create_dropdown(
-            self.dealayer_list, self.dealayer_list[0][1]
-        )
-        dropdown_output = deawidgets.create_dropdown(
-            self.output_list, self.output_list[0][1]
-        )
+        dropdown_basemap = deawidgets.create_dropdown(self.basemap_list, self.basemap_list[0][1])
+        dropdown_dealayer = deawidgets.create_dropdown(self.dealayer_list, self.dealayer_list[0][1])
+        dropdown_output = deawidgets.create_dropdown(self.output_list, self.output_list[0][1])
         date_picker_start = deawidgets.create_datepicker(
             value=start_date,
         )
         date_picker_end = deawidgets.create_datepicker(
             value=end_date,
         )
-        dropdown_styles = deawidgets.create_dropdown(
-            self.styles_list, self.styles_list[0]
-        )
+        dropdown_styles = deawidgets.create_dropdown(self.styles_list, self.styles_list[0])
         slider_percentile = widgets.FloatRangeSlider(
             value=[0.01, 0.99],
             min=0,
@@ -520,14 +463,13 @@ class animation_app(HBox):
 
         checkbox_rolling_median = deawidgets.create_checkbox(
             self.rolling_median,
-            "Apply rolling median<br>to produce smooth, <br> cloud-free animations",
-            layout={"width": "90%",
-                   "height": "4em"},
+            "Apply rolling median to produce smooth, cloud-free animations",
+            layout={"width": "90%", "height": "4em"},
         )
         text_rolling_median_window = widgets.IntText(
             value=20,
             step=1,
-            description="</br>Rolling window (timesteps)",
+            description="Rolling window (timesteps)",
             layout={
                 "width": "85%",
                 "margin": "0px",
@@ -537,17 +479,13 @@ class animation_app(HBox):
         )
 
         # Expandable advanced section
-        text_interval = widgets.IntText(
-            value=100, description="", step=50, layout={"width": "95%"}
-        )
+        text_interval = widgets.IntText(value=100, description="", step=50, layout={"width": "95%"})
         text_resolution = widgets.FloatText(
             value=30,
             description="",
             layout={"width": "95%", "margin": "0px", "padding": "0px"},
         )
-        text_width = widgets.IntText(
-            value=900, description="", step=50, layout={"width": "95%"}
-        )
+        text_width = widgets.IntText(value=900, description="", step=50, layout={"width": "95%"})
         dropdown_resampling = deawidgets.create_dropdown(
             self.resample_list,
             self.resample_freq,
@@ -555,7 +493,9 @@ class animation_app(HBox):
             layout={"width": "95%"},
         )
         checkbox_cloud_mask = deawidgets.create_checkbox(
-            self.cloud_mask, "Mask out cloudy <br> pixels", layout={"width": "95%", "height": "auto"}
+            self.cloud_mask,
+            "Mask out cloudy pixels",
+            layout={"width": "95%", "height": "auto"},
         )
         slider_power = widgets.FloatSlider(
             value=1.0,
@@ -646,13 +586,9 @@ class animation_app(HBox):
         dropdown_styles.observe(self.update_styles, "value")
 
         slider_percentile.observe(self.update_slider_percentile, "value")
-        floatslider_max_cloud_cover.observe(
-            self.update_floatslider_max_cloud_cover, "value"
-        )
+        floatslider_max_cloud_cover.observe(self.update_floatslider_max_cloud_cover, "value")
         checkbox_rolling_median.observe(self.update_checkbox_rolling_median, "value")
-        text_rolling_median_window.observe(
-            self.update_text_rolling_median_window, "value"
-        )
+        text_rolling_median_window.observe(self.update_text_rolling_median_window, "value")
         dropdown_output.observe(self.update_output, "value")
         run_button.on_click(self.run_app)
         draw_control.on_draw(update_geojson)
@@ -824,7 +760,7 @@ class animation_app(HBox):
     # Add DE Africa Coastlines overlay
     def update_deacoastlines(self, change):
         self.deacoastlines = change.new
-        
+
     # Apply cloud mask in load_ard
     def update_checkbox_cloud_mask(self, change):
         self.cloud_mask = change.new
@@ -911,14 +847,10 @@ class animation_app(HBox):
                     fname = (
                         f"{self.dealayer}_{site}_{self.start_date}_"
                         f"{self.end_date}_{self.style}_{self.resolution:.0f}m."
-                        f"{self.output_format}".replace(" ", "")
-                        .replace(",", "")
-                        .lower()
+                        f"{self.output_format}".replace(" ", "").replace(",", "").lower()
                     )
 
-                    print(
-                        f"\nExporting animation for {site}.\nThis may take several minutes..."
-                    )
+                    print(f"\nExporting animation for {site}.\nThis may take several minutes...")
 
                 ############
                 # Plotting #
@@ -937,6 +869,4 @@ class animation_app(HBox):
 
         else:
             with self.status_info:
-                print(
-                    'Please draw a valid rectangle on the map, then press "Generate animation".'
-                )
+                print('Please draw a valid rectangle on the map, then press "Generate animation".')

@@ -1025,7 +1025,7 @@ def parallel_apply(ds, dim, func, *args):
     with ProcessPoolExecutor() as executor:
 
         # Apply func in parallel
-        groups = [group for (i, group) in ds.groupby(dim)]
+        groups = [group.squeeze(dim=dim) for (i, group) in ds.groupby(dim)]
         to_iterate = (groups, *(repeat(i, len(groups)) for i in args))
         out_list = list(tqdm(executor.map(func, *to_iterate), total=len(groups)))
 
