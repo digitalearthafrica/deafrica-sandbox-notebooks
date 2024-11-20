@@ -1,7 +1,7 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
 default_language_version:
-    python: python3.10.6
+    python: python3.10.12
 
 default_stages: [pre-commit, pre-push]
 
@@ -27,9 +27,8 @@ repos:
       - id: isort
         name: isort (python)
         args:
-            - "--config"
-            - "Tools/"
-            - "--resolve-all-configs"
+            - "--settings-path"
+            - "Tools/pyproject.toml"
 -   repo: https://github.com/pycqa/flake8
     rev: 7.0.0
     hooks:

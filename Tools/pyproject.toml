@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "deafrica-tools"
 # reflect version changes in deafrica_tools/__init__.py
-version = "2.4.6"
+version = "2.5.3"
 description = "Functions and algorithms for analysing Digital Earth Africa data."
 authors = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
 maintainers = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
@@ -21,7 +21,6 @@ classifiers=[
     'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
-    'Programming Language :: Python :: 3.12',
     'Intended Audience :: Science/Research',
     'Topic :: Scientific/Engineering :: GIS',
 ]
@@ -51,7 +50,7 @@ dependencies= [
     "numexpr",
     "numpy",
     "odc-algo",
-    "odc-geo",
+    "odc-geo>=0.4.2",
     "odc-ui",
     "OWSLib",
     "packaging",
@@ -60,16 +59,18 @@ dependencies= [
     "pyproj",
     "pystac-client",  # for pystac
     "python-dateutil",
-    "pyTMD > 2",
+    "pyTMD >= 2.1.5",
     "pytz",
     "rasterio",
     "rasterstats",
     "requests",
+    "rioxarray",
     "scikit-image",
     "scikit-learn",
     "scipy",
     "seaborn",
     "shapely",
+    "timescale",
     "tqdm",
     "xarray",
     "gcsfs",
@@ -81,8 +82,7 @@ tests = [
 ]
 lint = [
     "black[jupyter]",
-    # TODO remove constraint after the next sandbox image upgrade
-    "flake8==6.0.0",
+    "flake8",
     "isort>=5.0.0",
     "pre-commit",
 ]
