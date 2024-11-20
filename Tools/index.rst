@@ -12,20 +12,21 @@ Core modules
 .. autosummary::
    :toctree: gen
 
-   deafrica_tools.areaofinterest
-   deafrica_tools.bandindices
-   deafrica_tools.classification
-   deafrica_tools.coastal
-   deafrica_tools.dask
-   deafrica_tools.datahandling
-   deafrica_tools.load_era5
-   deafrica_tools.load_isda
-   deafrica_tools.load_soil_moisture
-   deafrica_tools.plotting
-   deafrica_tools.spatial
-   deafrica_tools.temporal
-   deafrica_tools.waterbodies
-   deafrica_tools.wetlands
+       deafrica_tools.areaofinterest
+       deafrica_tools.bandindices
+       deafrica_tools.classification
+       deafrica_tools.coastal
+       deafrica_tools.dask
+       deafrica_tools.datahandling
+       deafrica_tools.externaldrive
+       deafrica_tools.load_era5
+       deafrica_tools.load_isda
+       deafrica_tools.load_soil_moisture
+       deafrica_tools.plotting
+       deafrica_tools.spatial
+       deafrica_tools.temporal
+       deafrica_tools.waterbodies
+       deafrica_tools.wetlands
 
 Apps and widgets
 -----------------
@@ -35,16 +36,16 @@ Apps and widgets
 .. autosummary::
    :toctree: gen
    
-   deafrica_tools.app.animations
-   deafrica_tools.app.changefilmstrips
-   deafrica_tools.app.crophealth
-   deafrica_tools.app.deacoastlines
-   deafrica_tools.app.forestmonitoring
-   deafrica_tools.app.geomedian
-   deafrica_tools.app.imageexport
-   deafrica_tools.app.wetlandsinsighttool
-   deafrica_tools.app.widgetconstructors
-   deafrica_tools.app.planetbasemap
+       deafrica_tools.app.animations
+       deafrica_tools.app.changefilmstrips
+       deafrica_tools.app.crophealth
+       deafrica_tools.app.deacoastlines
+       deafrica_tools.app.forestmonitoring
+       deafrica_tools.app.geomedian
+       deafrica_tools.app.imageexport
+       deafrica_tools.app.wetlandsinsighttool
+       deafrica_tools.app.widgetconstructors
+   
 
 License
 -------
