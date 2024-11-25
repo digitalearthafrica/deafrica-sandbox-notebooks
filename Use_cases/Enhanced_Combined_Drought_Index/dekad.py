@@ -262,3 +262,38 @@ def read_table(path: str) -> pd.DataFrame:
     for key, val in metadata.items():
         df.attrs[key] = val
     return df
+
+def get_max_value(index, da):
+    return da.isel(time_lag=index)
+
+def get_correlation(reference_drought_index, comparison_drought_index):
+    # Identify pixels that are NaN across all dekads
+    # in the comparison index.
+    all_nan_mask = comparison_drought_index.isnull().all(dim='dekad')
+
+    lags=[0, 10]
+    corr_list = []
+    for time_lag in range(lags[0], lags[1]):
+        # Modify the time lag
+        time_lag += abs(lags[0]) + 1
+        # Pearson's correlation coefficient
+        corr = xr.corr(reference_drought_index, comparison_drought_index.shift(dekad=time_lag), dim="dekad")
+        modified_corr = np.abs(corr).assign_coords(time_lag=time_lag).expand_dims({"time_lag": 1})
+        corr_list.append(modified_corr)
+
+    da_corr = xr.concat(corr_list, dim="time_lag")
+
+    # Get the maximum modified correlation value for each pixel.
+    max_corr = da_corr.max(dim="time_lag", skipna=True)
+
+    # For each pixel get the the time lag at which the maximum
+    # correlation value occurs.
+    max_time_lag = xr.apply_ufunc(
+            get_max_value,
+            # Replace NaNs with -np.inf to ensure they are ignored in the argmax calculation.
+            da_corr.fillna(-np.inf).argmax(dim="time_lag"),
+            kwargs={"da": da_corr.time_lag},
+            vectorize=True,
+            dask="allowed",)
+    max_time_lag = max_time_lag.where(~all_nan_mask)
+    return dict(corr=max_corr, lag=max_time_lag)
