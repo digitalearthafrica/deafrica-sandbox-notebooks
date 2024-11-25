@@ -241,3 +241,24 @@ def max_consecutive_ones(arr: np.ndarray) -> int:
             count = 0
 
     return result
+
+def read_table(path: str) -> pd.DataFrame:
+    """Read a Parquet file with Conflux metadata.
+
+    Arguments
+    ---------
+    path : str
+        Path to Parquet file.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with attrs set.
+    """
+    table = pq_read_table(path)
+    df = table.to_pandas()
+    meta_json = table.schema.metadata[PARQUET_META_KEY]
+    metadata = json.loads(meta_json)
+    for key, val in metadata.items():
+        df.attrs[key] = val
+    return df
