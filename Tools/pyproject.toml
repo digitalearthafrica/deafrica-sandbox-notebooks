@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "deafrica-tools"
 # reflect version changes in deafrica_tools/__init__.py
-version = "2.5.4"
+version = "2.5.5"
 description = "Functions and algorithms for analysing Digital Earth Africa data."
 authors = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
 maintainers = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
@@ -21,10 +21,11 @@ classifiers=[
     'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
     'Intended Audience :: Science/Research',
     'Topic :: Scientific/Engineering :: GIS',
 ]
-requires-python = ">=3.9,<3.12"
+requires-python = ">=3.9"
 dependencies= [
     "aiohttp",
     "aiobotocore[boto3]", # for boto3
