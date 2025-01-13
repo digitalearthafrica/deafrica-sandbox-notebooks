@@ -126,7 +126,11 @@ def loadplanet(lon_range: tuple, lat_range: tuple, threshold_nvdi: float, thresh
     )
     planet_tile.base = True
 
-    # Converting the water polygon to GeoData
+    # Identify columns with non-serializable data in the water polygons
+    non_serializable = polygons.select_dtypes(include=["datetime64[ns]", "datetime64"]).columns
+    # Drop columns
+    polygons = polygons.drop(columns=non_serializable)
+    # Converting the water polygons to GeoData
     geo_data = GeoData(
         geo_dataframe=polygons,
         style={
