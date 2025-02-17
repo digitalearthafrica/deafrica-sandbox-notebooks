@@ -3,17 +3,11 @@ Functions for planet imagery and interacting with DE Africa dataset.
 """
 
 import os
-
-os.environ["LOCALTILESERVER_CLIENT_PREFIX"] = (
-    f"{os.environ['JUPYTERHUB_SERVICE_PREFIX']}/proxy/{{port}}"
-)
-
 import warnings
 from datetime import datetime
 
 import datacube
 import numpy as np
-from datacube.utils.cog import write_cog
 from ipyleaflet import (
     FullScreenControl,
     GeoData,
@@ -25,6 +19,7 @@ from ipyleaflet import (
     basemaps,
 )
 from localtileserver import TileClient, get_leaflet_tile_layer
+from odc.geo.xr import write_cog
 
 from deafrica_tools.bandindices import calculate_indices
 from deafrica_tools.waterbodies import get_waterbodies
@@ -32,6 +27,10 @@ from deafrica_tools.waterbodies import get_waterbodies
 # Turn off all warnings.
 warnings.filterwarnings("ignore")
 warnings.simplefilter("ignore")
+
+os.environ["LOCALTILESERVER_CLIENT_PREFIX"] = (
+    f"{os.environ['JUPYTERHUB_SERVICE_PREFIX']}/proxy/{{port}}"
+)
 
 
 def get_last_calendar_month() -> tuple[int, int]:
@@ -68,6 +67,10 @@ def loadplanet(lon_range: tuple, lat_range: tuple, threshold_nvdi: float, thresh
 
     # Select all water bodies located within the bounding box
     polygons = get_waterbodies(bbox, crs="EPSG:4326")
+    # Identify columns with non-serializable data in the water polygons
+    non_serializable = polygons.select_dtypes(include=["datetime64[ns]", "datetime64"]).columns
+    # Drop columns
+    polygons = polygons.drop(columns=non_serializable)
 
     # Get the year and month of the previous calendar month.
     year, month = get_last_calendar_month()
@@ -126,7 +129,11 @@ def loadplanet(lon_range: tuple, lat_range: tuple, threshold_nvdi: float, thresh
     )
     planet_tile.base = True
 
-    # Converting the water polygon to GeoData
+    # Identify columns with non-serializable data in the water polygons
+    non_serializable = polygons.select_dtypes(include=["datetime64[ns]", "datetime64"]).columns
+    # Drop columns
+    polygons = polygons.drop(columns=non_serializable)
+    # Converting the water polygons to GeoData
     geo_data = GeoData(
         geo_dataframe=polygons,
         style={
