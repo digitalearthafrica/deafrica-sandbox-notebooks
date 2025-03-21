@@ -138,7 +138,7 @@ def get_interest_period(dekad: np.datetime64, ip: int) -> list[np.datetime64]:
     ----------
     dekad : np.datetime64
         Dekad to get the interest period for.
-        Will always be the end dekad of the interest period
+        This will always be the end dekad of the interest period
     ip : int
         Number of dekads in an interest period.
 
