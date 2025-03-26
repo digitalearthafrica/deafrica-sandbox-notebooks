@@ -7,10 +7,10 @@ on:
   # or 
   # 2) by clicking the 'Run workflow' button on the Actions tab.
   push:
-    branches:
-      - main
-    paths:
-      - 'Tools/**'
+   branches:
+     - poeditor_po
+   paths:
+     - 'Tools/**'
   workflow_dispatch:
             
 # Groups together all the jobs that run in the workflow. 
@@ -48,15 +48,15 @@ jobs:
         - name: Download Terms 
           env:
             POEDITOR_API_TOKEN: ${{ secrets.POEDITOR_API_TOKEN }}
-            POEDITOR_PROJECT_ID: "489085"
+            POEDITOR_PROJECT_ID: "715168"
           run: |
             # Configure the git credentials
             git config user.name github-actions
             git config user.email github-actions@github.com
 
             # Run the download_terms.py script
-            python .github/workflows/scripts/download_terms.py 
- 
+            python .github/workflows/scripts/download_terms.py
+
             # Stage the downloaded translation files 
             git add Tools/deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.mo Tools/deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.po
 
