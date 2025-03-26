@@ -4,14 +4,19 @@ name: Publish deafrica-tools to PyPI
 # Define which events can cause the workflow to run. 
 on:
   # Triggers the workflow to run  when 
-  # 1) a push is made to the main branch that includes changes to any file in the `Tools/` directory,
+  # 1) a push is made to the main branch that includes changes to any file in the `Tools/` 
+  # directory except the translation files,
   # or
-  # by clicking the 'Run workflow' button on the Actions tab.
+  # 2) by clicking the 'Run workflow' button on the Actions tab.
   push:
     branches:
       - main
     paths:
       - 'Tools/**'
+      - '!Tools/deafrica_tools/locales/**'
+      - '!Tools/**/*.po'
+      - '!Tools/**/*.mo'
+      - '!Tools/**/*.pot'      
   workflow_dispatch:
 
 # Groups together all the jobs that run in the workflow. 
@@ -45,21 +50,12 @@ jobs:
         with:
           python-version: "3.10.6" # Version range or exact version of a Python version to use, using SemVer's version range syntax
           architecture: 'x64' # optional x64 or x86. Defaults to x64 if not specified.
-      - name: Install GDAL development headers
-        run: |
-          sudo apt-add-repository ppa:ubuntugis/ubuntugis-unstable
-          sudo apt-get update
-          sudo apt-get install libgdal-dev
-      - name: Install Poetry 1.5.0
-        run: |
-          curl -sSL https://install.python-poetry.org | python3 - --version 1.5.0
-          poetry --version
-      - name: Read the pyproject.toml, resolve and install the dependencies
-        run: poetry install --verbose
-      - name: Build the source (sdist) and wheel archives
-        run: poetry build --verbose
-      - name: Set credentials for the PyPI repository
-        run: poetry config pypi-token.pypi ${{ secrets.PYPI_API_TOKEN }}
+      - name: Install pypa/build
+        run: python3 -m pip install build --user
+      - name: Build a binary wheel and a source tarball
+        run: python3 -m build --sdist --wheel --outdir dist/ .
       - name: Publish distribution 📦 to PyPI
-        run: poetry publish
-    
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          packages-dir: Tools/dist/

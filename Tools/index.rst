@@ -18,12 +18,14 @@ Core modules
    deafrica_tools.coastal
    deafrica_tools.dask
    deafrica_tools.datahandling
+   deafrica_tools.externaldrive
    deafrica_tools.load_era5
    deafrica_tools.load_isda
    deafrica_tools.load_soil_moisture
    deafrica_tools.plotting
    deafrica_tools.spatial
    deafrica_tools.temporal
+   deafrica_tools.waterbodies
    deafrica_tools.wetlands
 
 Apps and widgets
@@ -43,6 +45,7 @@ Apps and widgets
    deafrica_tools.app.imageexport
    deafrica_tools.app.wetlandsinsighttool
    deafrica_tools.app.widgetconstructors
+   
 
 License
 -------
