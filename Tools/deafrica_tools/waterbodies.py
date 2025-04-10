@@ -6,8 +6,11 @@ Last modified: November 2023
 from datetime import datetime
 
 import geopandas as gpd
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from matplotlib.patches import Patch
 from owslib.etree import etree
 from owslib.fes import PropertyIsEqualTo
 from owslib.wfs import WebFeatureService
@@ -209,3 +212,93 @@ def display_time_series(wb_timeseries: pd.DataFrame = None) -> None:
 
     # Display the plot
     fig.show()
+
+
+def plot_last_valid_obs(waterbodies: gpd.GeoDataFrame):
+    """
+    Plot the waterbodies in based on the value in the "last_valid_obs" column.
+    Parameters
+    ----------
+    waterbodies: gpd.GeoDataFrame
+        Waterbodies to plot
+
+    Returns
+    -------
+
+    """
+    assert "last_valid_obs" in waterbodies.columns
+
+    # Assuming 'polygons' is a GeoDataFrame and you already have it loaded
+    df = waterbodies.copy(deep=True)
+
+    # List of conditions to color the polygons by
+    conditions = [
+        (df["last_valid_obs"] >= 0) & (df["last_valid_obs"] <= 10),
+        (df["last_valid_obs"] > 10) & (df["last_valid_obs"] <= 20),
+        (df["last_valid_obs"] > 20) & (df["last_valid_obs"] <= 30),
+        (df["last_valid_obs"] > 30) & (df["last_valid_obs"] <= 40),
+        (df["last_valid_obs"] > 40) & (df["last_valid_obs"] <= 50),
+        (df["last_valid_obs"] > 50) & (df["last_valid_obs"] <= 60),
+        (df["last_valid_obs"] > 60) & (df["last_valid_obs"] <= 70),
+        (df["last_valid_obs"] > 70) & (df["last_valid_obs"] <= 80),
+        (df["last_valid_obs"] > 80) & (df["last_valid_obs"] <= 90),
+        (df["last_valid_obs"] > 90) & (df["last_valid_obs"] <= 100),
+    ]
+
+    # List of corresponding colors
+    colors = [
+        "#fde725",
+        "#b5de2b",
+        "#6ece58",
+        "#35b779",
+        "#1f9e89",
+        "#26828e",
+        "#31688e",
+        "#3e4989",
+        "#482878",
+        "#440154",
+    ]
+
+    # Create a new column based on conditions
+    df["color"] = np.select(conditions, colors, default="hatch")
+
+    # Plot the polygons by color
+    fig, ax = plt.subplots(figsize=(10, 10))
+
+    # Separate colored polygons from those with hatch
+    hatched = df[df["color"] == "hatch"]
+    colored = df[df["color"] != "hatch"]
+
+    # Plot the colored polygons
+    colored.plot(ax=ax, color=colored["color"], edgecolor="none", linewidth=0.5)
+
+    # Plot the hatched polygons
+    hatched.plot(ax=ax, hatch="xx", facecolor="none", edgecolor="#23d9f1", linewidth=0.5)
+
+    # Create the legend manually
+    legend_elements = [
+        Patch(color="#fde725", label="0 <= wet percentage <= 10"),
+        Patch(color="#b5de2b", label="10 < wet percentage <= 20"),
+        Patch(color="#6ece58", label="20 < wet percentage <= 30"),
+        Patch(color="#35b779", label="30 < wet percentage <= 40"),
+        Patch(color="#1f9e89", label="40 < wet percentage <= 50"),
+        Patch(color="#26828e", label="50 < wet percentage <= 60"),
+        Patch(color="#31688e", label="60 < wet percentage <= 70"),
+        Patch(color="#3e4989", label="70 < wet percentage <= 80"),
+        Patch(color="#482878", label="80 < wet percentage <= 90"),
+        Patch(color="#440154", label="90 < wet percentage <= 100"),
+        Patch(
+            facecolor="none", hatch="xx", edgecolor="#23d9f1", label="No valid observation"
+        ),  # Add hatch legend
+    ]
+
+    # Add the legend to the plot
+    ax.legend(
+        handles=legend_elements,
+        title="Last Valid Observation",
+        loc="upper left",
+        bbox_to_anchor=(1, 1),
+    )
+
+    # Show the plot
+    plt.show()
