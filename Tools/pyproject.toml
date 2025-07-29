@@ -62,7 +62,6 @@ dependencies= [
     "pyproj",
     "pystac-client",  # for pystac
     "python-dateutil",
-    "pyTMD >= 2.1.5",
     "pytz",
     "rasterio",
     "rasterstats",
