@@ -2,29 +2,13 @@
 Coastal analyses on Digital Earth Africa data.
 """
 
-import os
-from typing import Any
-
 import geopandas as gpd
-import matplotlib.pyplot as plt
-import numpy as np
-import odc.algo
-import odc.geo.xr
 import pandas as pd
-import pyproj
-import pyTMD.io
-import pyTMD.utilities
 import requests
-import timescale
 import xarray as xr
-from odc.geo.geobox import GeoBox
-from odc.geo.xr import xr_reproject
 from owslib.wfs import WebFeatureService
 from pandas.plotting import register_matplotlib_converters
-from scipy import stats
 from shapely.geometry import box
-
-from deafrica_tools.datahandling import parallel_apply
 
 # Fix converters for tidal plot
 register_matplotlib_converters()
@@ -48,7 +32,6 @@ def pixel_tides(*args, **kwargs):
         "Please install and use the `eo-tides` package instead:\n"
         "https://geoscienceaustralia.github.io/eo-tides/migration/"
     )
-
 
 
 def tidal_tag(
@@ -111,10 +94,10 @@ def tidal_tag(
 
     """
     from eo_tides.model import model_tides
+
     # If custom tide modelling locations are not provided, use the
     # dataset centroid
     if not tidepost_lat or not tidepost_lon:
-
         tidepost_lon, tidepost_lat = ds.odc.geobox.geographic_extent.centroid.coords[0]
         print(
             f"Setting tide modelling location from dataset centroid: "
@@ -132,7 +115,7 @@ def tidal_tag(
         model_tides_kwargs["model"] = "FES2014"
     if "directory" not in model_tides_kwargs:
         model_tides_kwargs["directory"] = "/var/share/tide_models"
-        
+
     model = model_tides_kwargs["model"]
     print(f"Modelling tides using {model} tidal model")
     tide_df = model_tides(
@@ -146,7 +129,6 @@ def tidal_tag(
     # If tides cannot be successfully modeled (e.g. if the centre of the
     # xarray dataset is located is over land), raise an exception
     if tide_df.tide_m.isnull().all():
-
         raise ValueError(
             f"Tides could not be modelled for dataset centroid located "
             f"at {tidepost_lon:.2f}, {tidepost_lat:.2f}. This can occur if "
@@ -160,7 +142,6 @@ def tidal_tag(
 
     # Optionally calculate the tide phase for each observation
     if ebb_flow:
-
         # Model tides for a time 15 minutes prior to each previously
         # modelled satellite acquisition time. This allows us to compare
         # tide heights to see if they are rising or falling.
@@ -186,7 +167,6 @@ def tidal_tag(
     # If swap_dims = True, make tide height the primary dimension
     # instead of time
     if swap_dims:
-
         # Swap dimensions and sort by tide height
         ds = ds.swap_dims({"time": "tide_m"})
         ds = ds.sortby("tide_m")
@@ -304,9 +284,9 @@ def transect_distances(transects_gdf, lines_gdf, mode="distance"):
         warnings.filterwarnings("ignore", category=ShapelyDeprecationWarning)
 
         # Assert that both datasets use the same CRS
-        assert transects_gdf.crs == lines_gdf.crs, (
-            "Please ensure both " "input datasets use the same CRS."
-        )
+        assert (
+            transects_gdf.crs == lines_gdf.crs
+        ), "Please ensure both input datasets use the same CRS."
 
         # Run distance calculations
         distance_df = transects_gdf.apply(lambda x: _intersect_dist(x, lines_gdf), axis=1)
