@@ -5,7 +5,6 @@ Coastal analyses on Digital Earth Africa data.
 import geopandas as gpd
 import pandas as pd
 import requests
-import xarray as xr
 from owslib.wfs import WebFeatureService
 from pandas.plotting import register_matplotlib_converters
 from shapely.geometry import box
@@ -34,148 +33,12 @@ def pixel_tides(*args, **kwargs):
     )
 
 
-def tidal_tag(
-    ds,
-    ebb_flow=False,
-    swap_dims=False,
-    tidepost_lat=None,
-    tidepost_lon=None,
-    return_tideposts=False,
-    **model_tides_kwargs,
-):
-    """
-    Takes an xarray.Dataset and returns the same dataset with a new
-    `tide_m` variable giving the height of the tide at the exact
-    moment of each satellite acquisition.
-
-    The function models tides at the centroid of the dataset by default,
-    but a custom tidal modelling location can be specified using
-    `tidepost_lat` and `tidepost_lon`.
-
-    The default settings use the FES2014 global tidal model, implemented
-    using the pyTMD Python package. FES2014 was produced by NOVELTIS,
-    LEGOS, CLS Space Oceanography Division and CNES. It is distributed
-    by AVISO, with support from CNES (http://www.aviso.altimetry.fr/).
-
-    Parameters
-    ----------
-    ds : xarray.Dataset
-        An xarray.Dataset object with x, y and time dimensions
-    ebb_flow : bool, optional
-        An optional boolean indicating whether to compute if the
-        tide phase was ebbing (falling) or flowing (rising) for each
-        observation. The default is False; if set to True, a new
-        `ebb_flow` variable will be added to the dataset with each
-        observation labelled with 'Ebb' or 'Flow'.
-    swap_dims : bool, optional
-        An optional boolean indicating whether to swap the `time`
-        dimension in the original xarray.Dataset to the new
-        `tide_m` variable. Defaults to False.
-    tidepost_lat, tidepost_lon : float or int, optional
-        Optional coordinates used to model tides. The default is None,
-        which uses the centroid of the dataset as the tide modelling
-        location.
-    return_tideposts : bool, optional
-        An optional boolean indicating whether to return the `tidepost_lat`
-        and `tidepost_lon` location used to model tides in addition to the
-        xarray.Dataset. Defaults to False.
-    **model_tides_kwargs :
-        Optional parameters passed to the `eo_tides.model.model_tides`
-        function. Important parameters include "model" and "directory",
-        used to specify the tide model to use and the location of its files.
-
-    Returns
-    -------
-    The original xarray.Dataset with a new `tide_m` variable giving
-    the height of the tide (and optionally, its ebb-flow phase) at the
-    exact moment of each satellite acquisition (if `return_tideposts=True`,
-    the function will also return the `tidepost_lon` and `tidepost_lat`
-    location used in the analysis).
-
-    """
-    from eo_tides.model import model_tides
-
-    # If custom tide modelling locations are not provided, use the
-    # dataset centroid
-    if not tidepost_lat or not tidepost_lon:
-        tidepost_lon, tidepost_lat = ds.odc.geobox.geographic_extent.centroid.coords[0]
-        print(
-            f"Setting tide modelling location from dataset centroid: "
-            f"{tidepost_lon:.2f}, {tidepost_lat:.2f}"
-        )
-
-    else:
-        print(
-            f"Using user-supplied tide modelling location: "
-            f"{tidepost_lon:.2f}, {tidepost_lat:.2f}"
-        )
-
-    # Use tidal model to compute tide heights for each observation:
-    if "model" not in model_tides_kwargs:
-        model_tides_kwargs["model"] = "FES2014"
-    if "directory" not in model_tides_kwargs:
-        model_tides_kwargs["directory"] = "/var/share/tide_models"
-
-    model = model_tides_kwargs["model"]
-    print(f"Modelling tides using {model} tidal model")
-    tide_df = model_tides(
-        x=tidepost_lon,
-        y=tidepost_lat,
-        time=ds.time,
-        crs="EPSG:4326",
-        **model_tides_kwargs,
+def tidal_tag(*args, **kwargs):
+    raise ImportError(
+        "The `tidal_tag` function has been removed and is no longer available in this package.\n"
+        "Please install and use the `eo-tides` package instead:\n"
+        "https://geoscienceaustralia.github.io/eo-tides/migration/"
     )
-
-    # If tides cannot be successfully modeled (e.g. if the centre of the
-    # xarray dataset is located is over land), raise an exception
-    if tide_df.tide_m.isnull().all():
-        raise ValueError(
-            f"Tides could not be modelled for dataset centroid located "
-            f"at {tidepost_lon:.2f}, {tidepost_lat:.2f}. This can occur if "
-            f"this coordinate occurs over land. Please manually specify "
-            f"a tide modelling location located over water using the "
-            f"`tidepost_lat` and `tidepost_lon` parameters."
-        )
-
-    # Assign tide heights to the dataset as a new variable
-    ds["tide_m"] = xr.DataArray(tide_df.tide_m, coords=[ds.time])
-
-    # Optionally calculate the tide phase for each observation
-    if ebb_flow:
-        # Model tides for a time 15 minutes prior to each previously
-        # modelled satellite acquisition time. This allows us to compare
-        # tide heights to see if they are rising or falling.
-        print("Modelling tidal phase (e.g. ebb or flow)")
-        tide_pre_df = model_tides(
-            x=tidepost_lon,
-            y=tidepost_lat,
-            time=(ds.time - pd.Timedelta("15 min")),
-            crs="EPSG:4326",
-            **model_tides_kwargs,
-        )
-
-        # Compare tides computed for each timestep. If the previous tide
-        # was higher than the current tide, the tide is 'ebbing'. If the
-        # previous tide was lower, the tide is 'flowing'
-        tidal_phase = [
-            "Ebb" if i else "Flow" for i in tide_pre_df.tide_m.values > tide_df.tide_m.values
-        ]
-
-        # Assign tide phase to the dataset as a new variable
-        ds["ebb_flow"] = xr.DataArray(tidal_phase, coords=[ds.time])
-
-    # If swap_dims = True, make tide height the primary dimension
-    # instead of time
-    if swap_dims:
-        # Swap dimensions and sort by tide height
-        ds = ds.swap_dims({"time": "tide_m"})
-        ds = ds.sortby("tide_m")
-        ds = ds.drop_vars("time")
-
-    if return_tideposts:
-        return ds, tidepost_lon, tidepost_lat
-    else:
-        return ds
 
 
 def tidal_stats(*args, **kwargs):
