@@ -228,7 +228,7 @@ def calculate_vegetation_loss(ds, product="s2", threshold=-0.15):
         threshold = threshold_otsu(ds_change_ndvi.fillna(0).values)
 
     vegetation_loss = ds_change_ndvi < threshold
-    vegetation_loss = vegetation_loss.where(vegetation_loss)
+    vegetation_loss = vegetation_loss.where(vegetation_loss == True)
 
     # Determine the total area that experienced vegetation loss each year
     count_vegetation_loss = vegetation_loss.count(dim=["x", "y"])
@@ -266,7 +266,7 @@ def plot_possible_mining(
     background_image = ds[index].isel(time=0)
 
     # Determine the mining areas: vegetation loss & one year of water occurance
-    mining_area = vegetation_loss_sum.where(water_frequency_sum)
+    mining_area = vegetation_loss_sum.where(water_frequency_sum == True)
     mining_area = xr.where(mining_area >= 0, 1, 0)
 
     # Vectorize and buffer the mining area
@@ -285,13 +285,15 @@ def plot_possible_mining(
     )
 
     # Find all vegetation loss within the buffer, and check if these are also mining areas
-    vegetation_loss_buffer = vegetation_loss_sum.where(mining_area_buffer)
+    vegetation_loss_buffer = vegetation_loss_sum.where(mining_area_buffer == True)
     vegetation_loss_buffer = xr.where(vegetation_loss_buffer > 0, True, False)
-    vegetation_loss_buffer = vegetation_loss_buffer.where(vegetation_loss_buffer)
+    vegetation_loss_buffer = vegetation_loss_buffer.where(
+        vegetation_loss_buffer == True
+    )
 
-    water_observed_buffer = water_frequency_sum.where(mining_area_buffer)
+    water_observed_buffer = water_frequency_sum.where(mining_area_buffer == True)
     water_observed_buffer = xr.where(water_observed_buffer > 0, True, False)
-    water_observed_buffer = water_observed_buffer.where(water_observed_buffer)
+    water_observed_buffer = water_observed_buffer.where(water_observed_buffer == True)
 
     # Construct and save the figure
     plt.figure(figsize=(12, 12))
@@ -335,10 +337,12 @@ def plot_vegetationloss_mining(
     print("...................................................................")
 
     vegetation_loss_mininig = vegetation_loss.where(
-        (vegetation_loss) & (vegetation_loss_buffer)
+        (vegetation_loss == True) & (vegetation_loss_buffer == True)
     )
     total_vegetation_loss_mininig = vegetation_loss_mininig.count(dim=["x", "y"])
-    total_vegetation_loss = vegetation_loss.where(vegetation_loss).count(dim=["x", "y"])
+    total_vegetation_loss = vegetation_loss.where(vegetation_loss == True).count(
+        dim=["x", "y"]
+    )
 
     vegetation_loss_mininig_area = (
         total_vegetation_loss_mininig * calculate_area_per_pixel(ds.x.resolution)
