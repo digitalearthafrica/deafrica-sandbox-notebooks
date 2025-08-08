@@ -48,31 +48,55 @@ def calculate_area_per_pixel(resolution):
     return area_per_pixel
 
 
-def convert_to_2d(geometry: MultiPolygon) -> MultiPolygon:
+def convert_3D_polygon_to_2D(poly_3D: Polygon) -> Polygon:
     """
-    Convert a 3D MultiPolygon into a 2D MultiPolygon.
+    Convert a 3D Polygon into a 2D Polygon.
 
     Parameters
     ----------
-    geometry : MultiPolygon
-        3D MultiPolygon
+    poly_3D : Polygon
+        3D Polygon
 
     Returns
     -------
-    MultiPolygon
-        2D MultiPolygon
+    Polygon
+        2D Polygon
     """
-    if geometry.has_z:
-        if geometry.geom_type == "MultiPolygon":
-            polygons = []
-            for part in geometry.geoms:
-                # Extract only x and y coordinates (ignoring the Z coordinate)
-                coords_2d = [(x, y) for x, y, *_ in part.exterior.coords]
-                polygon = Polygon(coords_2d)
-                polygons.append(polygon)
-            return MultiPolygon(polygons)
+    # Exterior ring without Z
+    exterior_2d = [(x, y) for x, y, *_ in poly_3D.exterior.coords]
+
+    # Interior rings without Z
+    interiors_2d = [
+        [(x, y) for x, y, *_ in interior.coords] for interior in poly_3D.interiors
+    ]
+
+    poly_2D = Polygon(exterior_2d, interiors_2d)
+    return poly_2D
+
+
+def convert_3D_geometry_to_2D(
+    geom_3D: Polygon | MultiPolygon,
+) -> Polygon | MultiPolygon:
+    """
+    Convert a 3D MultiPolygon or Polygon into a 2D geometry.
+
+    Parameters
+    ----------
+    geom_3D : Polygon | MultiPolygon
+        3D MultiPolygon or Polygon
+
+    Returns
+    -------
+    Polygon | MultiPolygon
+        2D geometry
+    """
+    if geometry.geom_type == "Polygon":
+        return convert_3D_polygon_to_2D(geom_3D)
+    elif geometry.geom_type == "MultiPolygon":
+        parts = [convert_3D_polygon_to_2D(part) for part in geom_3D.geoms]
+        return MultiPolygon(parts)
     else:
-        return geometry
+        return geom_3D
 
 
 def load_vector_file(vector_file):
@@ -94,7 +118,7 @@ def load_vector_file(vector_file):
         # Read vector file into GeoDataFrame
         gdf = gpd.read_file(vector_file)
 
-    gdf["geometry"] = gdf["geometry"].apply(convert_to_2d)
+    gdf["geometry"] = gdf["geometry"].apply(convert_3D_geometry_to_2D)
     # Get geometry from GeoDataFrame
     geom = geometry.Geometry(gdf.unary_union, gdf.crs)
 
@@ -204,7 +228,7 @@ def calculate_vegetation_loss(ds, product="s2", threshold=-0.15):
         threshold = threshold_otsu(ds_change_ndvi.fillna(0).values)
 
     vegetation_loss = ds_change_ndvi < threshold
-    vegetation_loss = vegetation_loss.where(vegetation_loss == True)
+    vegetation_loss = vegetation_loss.where(vegetation_loss)
 
     # Determine the total area that experienced vegetation loss each year
     count_vegetation_loss = vegetation_loss.count(dim=["x", "y"])
@@ -242,7 +266,7 @@ def plot_possible_mining(
     background_image = ds[index].isel(time=0)
 
     # Determine the mining areas: vegetation loss & one year of water occurance
-    mining_area = vegetation_loss_sum.where(water_frequency_sum == True)
+    mining_area = vegetation_loss_sum.where(water_frequency_sum)
     mining_area = xr.where(mining_area >= 0, 1, 0)
 
     # Vectorize and buffer the mining area
@@ -261,15 +285,13 @@ def plot_possible_mining(
     )
 
     # Find all vegetation loss within the buffer, and check if these are also mining areas
-    vegetation_loss_buffer = vegetation_loss_sum.where(mining_area_buffer == True)
+    vegetation_loss_buffer = vegetation_loss_sum.where(mining_area_buffer)
     vegetation_loss_buffer = xr.where(vegetation_loss_buffer > 0, True, False)
-    vegetation_loss_buffer = vegetation_loss_buffer.where(
-        vegetation_loss_buffer == True
-    )
+    vegetation_loss_buffer = vegetation_loss_buffer.where(vegetation_loss_buffer)
 
-    water_observed_buffer = water_frequency_sum.where(mining_area_buffer == True)
+    water_observed_buffer = water_frequency_sum.where(mining_area_buffer)
     water_observed_buffer = xr.where(water_observed_buffer > 0, True, False)
-    water_observed_buffer = water_observed_buffer.where(water_observed_buffer == True)
+    water_observed_buffer = water_observed_buffer.where(water_observed_buffer)
 
     # Construct and save the figure
     plt.figure(figsize=(12, 12))
@@ -313,12 +335,10 @@ def plot_vegetationloss_mining(
     print("...................................................................")
 
     vegetation_loss_mininig = vegetation_loss.where(
-        (vegetation_loss == True) & (vegetation_loss_buffer == True)
+        (vegetation_loss) & (vegetation_loss_buffer)
     )
     total_vegetation_loss_mininig = vegetation_loss_mininig.count(dim=["x", "y"])
-    total_vegetation_loss = vegetation_loss.where(vegetation_loss == True).count(
-        dim=["x", "y"]
-    )
+    total_vegetation_loss = vegetation_loss.where(vegetation_loss).count(dim=["x", "y"])
 
     vegetation_loss_mininig_area = (
         total_vegetation_loss_mininig * calculate_area_per_pixel(ds.x.resolution)
