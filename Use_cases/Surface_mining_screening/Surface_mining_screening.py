@@ -90,9 +90,9 @@ def convert_3D_geometry_to_2D(
     Polygon | MultiPolygon
         2D geometry
     """
-    if geometry.geom_type == "Polygon":
+    if geom_3D.geom_type == "Polygon":
         return convert_3D_polygon_to_2D(geom_3D)
-    elif geometry.geom_type == "MultiPolygon":
+    elif geom_3D.geom_type == "MultiPolygon":
         parts = [convert_3D_polygon_to_2D(part) for part in geom_3D.geoms]
         return MultiPolygon(parts)
     else:
