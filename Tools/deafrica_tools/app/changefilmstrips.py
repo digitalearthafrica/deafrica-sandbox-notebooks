@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from datacube.utils.geometry import CRS, assign_crs
+from eo_tides.eo import tag_tides
 from ipyleaflet import basemap_to_tiles, basemaps
 from odc.algo import geomedian_with_mads
 from odc.ui import select_on_a_map
@@ -130,7 +131,6 @@ def run_filmstrip_app(
         )
 
     else:
-
         print("Starting analysis...")
 
         # Connect to datacube database
@@ -168,9 +168,11 @@ def run_filmstrip_app(
         # Optionally calculate tides for each timestep in the satellite
         # dataset and drop any observations outside this range
         if tide_range != (0.0, 1.0):
-            from deafrica_tools.coastal import tidal_tag
-
-            ds = tidal_tag(ds=ds, tidepost_lat=None, tidepost_lon=None)
+            ds = tag_tides(
+                ds=ds,
+                model="FES2014",
+                directory="/var/share/tide_models",
+            )
             min_tide, max_tide = ds.tide_height.quantile(tide_range).values
             ds = ds.sel(time=(ds.tide_height >= min_tide) & (ds.tide_height <= max_tide))
             ds = ds.drop("tide_height")
