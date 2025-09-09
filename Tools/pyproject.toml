@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "deafrica-tools"
 # reflect version changes in deafrica_tools/__init__.py
-version = "2.5.8"
+version = "2.5.11"
 description = "Functions and algorithms for analysing Digital Earth Africa data."
 authors = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
 maintainers = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
@@ -34,6 +34,7 @@ dependencies= [
     "dask-ml",
     "dask-gateway",
     "datacube[performance,s3]",
+    "eo-tides",
     "fiona",
     "folium",
     "fsspec",
@@ -61,7 +62,6 @@ dependencies= [
     "pyproj",
     "pystac-client",  # for pystac
     "python-dateutil",
-    "pyTMD >= 2.1.5",
     "pytz",
     "rasterio",
     "rasterstats",
