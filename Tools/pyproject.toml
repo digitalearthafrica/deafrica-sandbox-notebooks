@@ -34,6 +34,7 @@ dependencies= [
     "dask-ml",
     "dask-gateway",
     "datacube[performance,s3]",
+    "eo-tides",
     "fiona",
     "folium",
     "fsspec",
@@ -61,7 +62,6 @@ dependencies= [
     "pyproj",
     "pystac-client",  # for pystac
     "python-dateutil",
-    "pyTMD >= 2.1.5",
     "pytz",
     "rasterio",
     "rasterstats",

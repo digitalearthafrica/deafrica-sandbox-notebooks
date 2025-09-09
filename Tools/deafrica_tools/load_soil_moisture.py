@@ -3,7 +3,7 @@ import numpy as np
 
 # function to load soil moisture data
 def load_soil_moisture(lat, lon, time, product = 'surface', grid = 'nearest'):
-    product_baseurl = 'https://thredds.nci.org.au/thredds/dodsC/ub8/global/GRAFS/'
+    product_baseurl = 'https://dapds00.nci.org.au/thredds/dodsC/ub8/global/GRAFS/'
     assert product in ['surface', 'rootzone'], 'product parameter must be surface or root-zone'
     # lat, lon grid
     if grid == 'nearest':
