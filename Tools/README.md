@@ -11,19 +11,19 @@ This module is automatically installed on the Digital Earth Africa Sandbox. If f
 You can install the latest version of `deafrica-tools` from PyPI using:
 
 ```
-python -m pip install --extra-index-url="https://packages.dea.ga.gov.au" deafrica-tools 
+python -m pip install deafrica-tools 
 ```
 
 or install the package directly from the `Tools` directory to incorperate local changes:
 
 ```
-python -m pip install --extra-index-url="https://packages.dea.ga.gov.au" Tools/
+python -m pip install Tools/
 ```
        
 To install this module from the source on any other system with `pip`:
 
 ```
-python -m pip install --extra-index-url="https://packages.dea.ga.gov.au" git+https://github.com/digitalearthafrica/deafrica-sandbox-notebooks.git#subdirectory=Tools
+python -m pip install  git+https://github.com/digitalearthafrica/deafrica-sandbox-notebooks.git#subdirectory=Tools
 ```
 
 

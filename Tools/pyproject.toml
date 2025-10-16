@@ -1,14 +1,11 @@
-# pyproject.toml
 [build-system]
 requires = ["setuptools>=61.0", "wheel", "setuptools-scm"]
 build-backend = "setuptools.build_meta"
 
-
 [project]
 name = "deafrica-tools"
-version = "2.4.4"
 # reflect version changes in deafrica_tools/__init__.py
-
+version = "2.5.11"
 description = "Functions and algorithms for analysing Digital Earth Africa data."
 authors = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
 maintainers = [{name = "Digital Earth Africa", email = "systems@digitalearthafrica.org"}]
@@ -28,10 +25,8 @@ classifiers=[
     'Intended Audience :: Science/Research',
     'Topic :: Scientific/Engineering :: GIS',
 ]
-requires-python = ">=3.9,<3.12"
+requires-python = ">=3.9"
 dependencies= [
-    # Version constraints should match those in 
-    # https://github.com/digitalearthafrica/deafrica-sandbox/blob/main/docker/requirements.in
     "aiohttp",
     "aiobotocore[boto3]", # for boto3
     "branca",
@@ -39,6 +34,7 @@ dependencies= [
     "dask-ml",
     "dask-gateway",
     "datacube[performance,s3]",
+    "eo-tides",
     "fiona",
     "folium",
     "fsspec",
@@ -51,39 +47,51 @@ dependencies= [
     "ipython",
     "ipywidgets",
     "joblib",
-    "localtileserver",
+    "localtileserver==0.10.3",
+    "rio-tiler==6.7.0",
     "matplotlib",
     "numexpr",
     "numpy",
     "odc-algo",
-    "odc-geo",
+    "odc-geo>=0.4.2",
     "odc-ui",
-    "owslib",
+    "OWSLib",
     "packaging",
     "pandas",
+    "plotly",
     "pyproj",
     "pystac-client",  # for pystac
     "python-dateutil",
-    "pyTMD > 2",
     "pytz",
     "rasterio",
     "rasterstats",
     "requests",
+    "rioxarray",
     "scikit-image",
     "scikit-learn",
     "scipy",
     "seaborn",
     "shapely",
+    "timescale",
     "tqdm",
     "xarray",
     "gcsfs",
-    # Code style
-    "black",
-    "flake8==6.0.0", # remove constraint in the next sandbox image upgrade
-    "isort",
-    # Testing
+]
+
+[project.optional-dependencies]
+tests = [
     "pytest",
 ]
+lint = [
+    "black[jupyter]",
+    "flake8",
+    "isort>=5.0.0",
+    "pre-commit",
+]
+dev = [
+    "deafrica_tools[tests, lint]",
+]
+
 [project.urls]
 Homepage = "https://github.com/digitalearthafrica/deafrica-sandbox-notebooks"
 Repository = "https://github.com/digitalearthafrica/deafrica-sandbox-notebooks"
@@ -97,11 +105,5 @@ packages = ["deafrica_tools"]
 line-length = 100
 
 [tool.isort]
-skip_gitignore = true
-# Configure isort to be compatible with black.
-multi_line_output = 3
-include_trailing_comma = true
-force_grid_wrap = 0
-use_parentheses = true
-ensure_newline_before_comments = true
-line_length = 100
+profile = "black"
+

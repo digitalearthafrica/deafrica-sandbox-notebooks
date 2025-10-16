@@ -125,6 +125,7 @@ def load_ard(
 
     Sentinel-2:
         * s2_l2a
+        * s2_l2a_c1
 
     Sentinel-1:
         * s1_rtc
@@ -140,7 +141,7 @@ def load_ard(
         A list of product names to load data from. For example:
 
         * Landsat C2: ``['ls5_sr', 'ls7_sr', 'ls8_sr', 'ls9_sr']``
-        * Sentinel-2: ``['s2_l2a']``
+        * Sentinel-2: ``['s2_l2a', 's2_l2a_c1']``
         * Sentinel-1: ``['s1_rtc']``
 
     min_gooddata : float, optional
@@ -256,7 +257,7 @@ def load_ard(
             "Please provide a list of product names to load data from. "
             "Valid options are: Landsat C2 SR: ['ls5_sr', 'ls7_sr', 'ls8_sr', 'ls9_sr'], or "
             "Landsat C2 ST: ['ls5_st', 'ls7_st', 'ls8_st', 'ls9_st'], or "
-            "Sentinel-2: ['s2_l2a'], or"
+            "Sentinel-2: ['s2_l2a', 's2_l2a_c1'], or"
             "Sentinel-1: ['s1_rtc'], or"
         )
     
@@ -611,6 +612,28 @@ def load_ard(
             if band == "surface_temperature":
                 ds[band] = ds[band] * 0.00341802 + 149.0
 
+        # add back attrs that are lost during scaling calcs
+        for band in ds.data_vars:
+            ds[band].attrs.update(attrs)
+    
+    if product == "s2_l2a_c1":
+        if verbose:
+            print("Re-scaling Sentinel-2 C1 data")
+
+        sr_bands = ["coastal", "red", "green", "blue", "rededge1", "rededge2", 
+                    "rededge3", "nir", "nir08", "nir09", "swir16", "swir22"]
+        
+        if mask_pixel_quality == False:
+            # set nodata to NaNs before rescaling
+            # in the case where masking hasn't already done this
+            for band in ds.data_vars:
+                if band not in qa:
+                    ds[band] = odc.algo.to_f32(ds[band])
+
+        for band in ds.data_vars:
+            if band in sr_bands:
+                ds[band] = ds[band] - 1000
+        
         # add back attrs that are lost during scaling calcs
         for band in ds.data_vars:
             ds[band].attrs.update(attrs)
@@ -1025,7 +1048,7 @@ def parallel_apply(ds, dim, func, *args):
     with ProcessPoolExecutor() as executor:
 
         # Apply func in parallel
-        groups = [group for (i, group) in ds.groupby(dim)]
+        groups = [group.squeeze(dim=dim) for (i, group) in ds.groupby(dim)]
         to_iterate = (groups, *(repeat(i, len(groups)) for i in args))
         out_list = list(tqdm(executor.map(func, *to_iterate), total=len(groups)))
 
