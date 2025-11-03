@@ -1,9 +1,11 @@
-from google.oauth2.credentials import Credentials
+import getpass
 import os
+
+from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
-import getpass
-from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 
 # See https://developers.google.com/workspace/drive/api/guides/api-specific-auth#drive-scopes
 # If modifying these scopes, delete the file token.json.
@@ -63,6 +65,7 @@ def create_access_token(
     # time.
     token_json = os.path.join(gdrive_credentials_dir, "token.json")
     if os.path.exists(token_json):
+        print(f"✅ Found existing access token: {token_json}")
         creds = Credentials.from_authorized_user_file(token_json, SCOPES)
     # If there are no (valid) credentials available, let the user log in.
     if not creds or not creds.valid:
@@ -85,3 +88,60 @@ def create_access_token(
                 token.write(creds.to_json())
             print(f"✅ Saved access token to {token_json}")
     return creds
+
+
+def get_folder_id(folder_name: str, creds: Credentials) -> str:
+    """
+    Get the unique, opaque ID for a folder in Google Drive.
+
+    If multiple folders have the same name, returns the ID for the first
+    folder.
+
+    Parameters
+    ----------
+    folder_name : str
+        Name of the folder to search for.
+
+    creds : Credentials
+        Google OAuth2 Credentials object for accessing Google Drive.
+
+    Returns
+    -------
+    str
+        Unique ID for the folder on Google Drive.
+    """
+
+    try:
+        service = build("drive", "v3", credentials=creds)
+
+        # Call the Drive v3 API
+        results = (
+            service.files()
+            .list(
+                q=f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder'",
+                fields="files(id, name, parents)",
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True,
+            )
+            .execute()
+        )
+
+        items = results.get("files", [])
+
+        if not items:
+            print(f"No folder with the name {folder_name} found.")
+            return None
+        else:
+            print(f"Found the following folder(s) matching the name '{folder_name}':")
+            for item in items:
+                print(f"Name: {item['name']} ID: {item['id']}")
+            if len(items) > 1:
+                print(
+                    f"Found multiple folders matching the name {folder_name}. \n"
+                    "Returning id for firs folder."
+                )
+            return items[0]["id"]
+
+    except HttpError as error:
+        # TODO(developer) - Handle errors from drive API.
+        print(f"An error occurred: {error}")
