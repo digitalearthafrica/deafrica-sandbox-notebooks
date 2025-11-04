@@ -1,23 +1,109 @@
-import getpass
+import json
 import os
 
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
+import yaml
+from pydrive2.auth import GoogleAuth
 
 # See https://developers.google.com/workspace/drive/api/guides/api-specific-auth#drive-scopes
 # If modifying these scopes, delete the file token.json.
-SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+# View and edit Drive files created or opened by the app.
+# SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+# View and manage all your Drive files.
+SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 
-def create_access_token(
+def write_settings_file(
     gdrive_credentials_dir: str = "/home/jovyan/Supplementary_data/DriveCredentials",
-) -> Credentials:
+):
     """
-    Create the `token.json` file that stores the user's Google Drive
-    access and refresh tokens.
+    Write setting file for custom pydrive2 authentication
+
+    Parameters
+    ----------
+    gdrive_credentials_dir : str, optional
+        Directory where Google Drive credentials are stored,
+        by default "/home/jovyan/Supplementary_data/DriveCredentials".
+        This directory should contain the `credentials.json` file.
+        This is where the pydrive2 client will look for the user's
+        credentials and where it will save the `token.json` file.
+
+    Returns
+    -------
+    str
+        Path to the created settings.yaml file
+    """
+    settings_yaml = os.path.join(gdrive_credentials_dir, "settings.yaml")
+    if not os.path.exists(settings_yaml):
+        gdrive_config = {
+            "client_config_backend": "file",
+            "client_config_file": os.path.join(gdrive_credentials_dir, "credentials.json"),
+            "save_credentials": True,
+            "save_credentials_backend": "file",
+            "save_credentials_file": os.path.join(gdrive_credentials_dir, "token.json"),
+            "get_refresh_token": True,
+            "oauth_scope": SCOPES,
+        }
+        with open(settings_yaml, "w") as file:
+            # Use default_flow_style=False for block style (more readable)
+            # Use sort_keys=False to preserve the dictionary's key order
+            # (Python 3.7+ ensures this by default)
+            yaml.dump(gdrive_config, file, default_flow_style=False, sort_keys=False)
+        print(f"Wrote settings file for custom pydrive2 authentication to: {settings_yaml}")
+    else:
+        print(f"✅ Found existing settings file: {settings_yaml}")
+    return settings_yaml
+
+
+def update_redirect_uris(
+    gdrive_credentials_dir: str = "/home/jovyan/Supplementary_data/DriveCredentials",
+):
+    """
+    Update the redirect URI in the credentials.json file to
+    "urn:ietf:wg:oauth:2.0:oob" for out-of-band authentication.
+
+    Parameters
+    ----------
+    gdrive_credentials_dir : str, optional
+        Directory where Google Drive credentials are stored,
+        by default "/home/jovyan/Supplementary_data/DriveCredentials".
+        This directory should contain the `credentials.json` file.
+    """
+    # Read settings file
+    settings_yaml = os.path.join(gdrive_credentials_dir, "settings.yaml")
+    with open(settings_yaml, "r") as f:
+        settings = yaml.safe_load(f)
+
+    credentials_json = settings["client_config_file"]
+    if not os.path.exists(credentials_json):
+        raise FileNotFoundError(
+            f"❌ Credentials file {credentials_json} not found:\n"
+            "💡 Solution: Make sure you've uploaded the Google Drive credentials file "
+            f"to the expected directory {gdrive_credentials_dir}.\n"
+            f"🔍 Checked path: {os.path.abspath(credentials_json)}"
+        )
+    else:
+        print(f"✅ Found credentials: {credentials_json}")
+
+    with open(credentials_json, "r") as file:
+        creds_data = json.load(file)
+
+    if creds_data["installed"]["redirect_uris"] == ["urn:ietf:wg:oauth:2.0:oob"]:
+        return
+    else:
+        # Update redirect URIs
+        creds_data["installed"]["redirect_uris"] = ["urn:ietf:wg:oauth:2.0:oob"]
+
+        with open(credentials_json, "w") as file:
+            json.dump(creds_data, file, indent=4)
+
+        print(f"Updated redirect URIs in {credentials_json} to support out-of-band authentication.")
+
+
+def authenticate(
+    gdrive_credentials_dir: str = "/home/jovyan/Supplementary_data/DriveCredentials",
+) -> GoogleAuth:
+    """
+    Authorize and authenticate and return Google Drive Authentication object.
 
     Parameters
     ----------
@@ -30,8 +116,8 @@ def create_access_token(
 
     Returns
     -------
-    Credentials
-        Google OAuth2 Credentials object for accessing Google Drive.
+    GoogleAuth
+        Google OAuth2 object for accessing Google Drive.
     """
 
     # Check if this was set before and inform the user
@@ -47,101 +133,21 @@ def create_access_token(
     # Set the environment variable
     os.environ["GDRIVE_CREDENTIALS_DIR"] = gdrive_credentials_dir
 
-    # Check if credentials have been uploaded
-    credentials_json = os.path.join(gdrive_credentials_dir, "credentials.json")
-    if not os.path.exists(credentials_json):
-        raise FileNotFoundError(
-            f"❌ Credentials file {credentials_json} not found:\n"
-            "💡 Solution: Make sure you've uploaded the Google Drive credentials file "
-            f"to the expected directory {gdrive_credentials_dir}.\n"
-            f"🔍 Checked path: {os.path.abspath(credentials_json)}"
-        )
-    else:
-        print(f"✅ Found credentials: {credentials_json}")
+    # Write pydrive2 settings file and update redirect URIs in credentials.json
+    settings_yaml = write_settings_file(gdrive_credentials_dir)
+    update_redirect_uris(gdrive_credentials_dir)
 
-    creds = None
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
     # time.
-    token_json = os.path.join(gdrive_credentials_dir, "token.json")
+    with open(settings_yaml, "r") as f:
+        settings = yaml.safe_load(f)
+    token_json = settings["save_credentials_file"]
+
+    gauth = GoogleAuth(settings_file=settings_yaml)
     if os.path.exists(token_json):
         print(f"✅ Found existing access token: {token_json}")
-        creds = Credentials.from_authorized_user_file(token_json, SCOPES)
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(credentials_json, SCOPES)
-            # Get the authorization URL
-            flow.redirect_uri = "urn:ietf:wg:oauth:2.0:oob"
-            auth_url, _ = flow.authorization_url(prompt="consent")
-            print("Please go to the following URL in your browser:")
-            print(auth_url)
-            # Prompt the user to enter the authorization code
-            auth_code = getpass.getpass("Enter the authorization code here: ").strip()
-            # Exchange the code for credentials
-            flow.fetch_token(code=auth_code)
-            creds = flow.credentials
-            # Save the credentials for the next run
-            with open(token_json, "w") as token:
-                token.write(creds.to_json())
-            print(f"✅ Saved access token to {token_json}")
-    return creds
-
-
-def get_folder_id(folder_name: str, creds: Credentials) -> str:
-    """
-    Get the unique, opaque ID for a folder in Google Drive.
-
-    If multiple folders have the same name, returns the ID for the first
-    folder.
-
-    Parameters
-    ----------
-    folder_name : str
-        Name of the folder to search for.
-
-    creds : Credentials
-        Google OAuth2 Credentials object for accessing Google Drive.
-
-    Returns
-    -------
-    str
-        Unique ID for the folder on Google Drive.
-    """
-
-    try:
-        service = build("drive", "v3", credentials=creds)
-
-        # Call the Drive v3 API
-        results = (
-            service.files()
-            .list(
-                q=f"name='{folder_name}' and mimeType='application/vnd.google-apps.folder'",
-                fields="files(id, name, parents)",
-                supportsAllDrives=True,
-                includeItemsFromAllDrives=True,
-            )
-            .execute()
-        )
-
-        items = results.get("files", [])
-
-        if not items:
-            print(f"No folder with the name {folder_name} found.")
-            return None
-        else:
-            print(f"Found the following folder(s) matching the name '{folder_name}':")
-            for item in items:
-                print(f"Name: {item['name']} ID: {item['id']}")
-            if len(items) > 1:
-                print(
-                    f"Found multiple folders matching the name {folder_name}. \n"
-                    "Returning id for firs folder."
-                )
-            return items[0]["id"]
-
-    except HttpError as error:
-        # TODO(developer) - Handle errors from drive API.
-        print(f"An error occurred: {error}")
+        gauth.LoadCredentialsFile()
+    else:
+        gauth.CommandLineAuth()
+    return gauth
