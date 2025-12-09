@@ -25,7 +25,8 @@ from datacube.utils.geometry import assign_crs
 from sklearn.base import ClusterMixin
 from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.mixture import GaussianMixture
-from sklearn.model_selection import BaseCrossValidator, KFold, ShuffleSplit
+from sklearn.model_selection import KFold, ShuffleSplit
+from sklearn.model_selection._split import BaseCrossValidator   # optional, private
 from sklearn.utils import check_random_state
 from tqdm.auto import tqdm
 
