@@ -59,6 +59,7 @@ dependencies= [
     "packaging",
     "pandas",
     "plotly",
+    "pydrive2[fsspec]",  # for externaldrive
     "pyproj",
     "pystac-client",  # for pystac
     "python-dateutil",
