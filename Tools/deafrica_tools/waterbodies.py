@@ -4,12 +4,14 @@ Last modified: November 2023
 """
 
 from datetime import datetime
+from io import StringIO
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import requests
 from matplotlib.patches import Patch
 from owslib.etree import etree
 from owslib.fes import PropertyIsEqualTo
@@ -351,5 +353,8 @@ def get_water_quality_summary(
         + f"waterbody/{wb_id}/water_quality_summaries/csv?start_date={start_date}&end_date={end_date}"
     )
 
-    wq_timeseries = pd.read_csv(url)
+    with requests.get(url, stream=True, timeout=(10, 300)) as response:
+        response.raise_for_status()
+        lines = [line.decode("utf-8") for line in response.iter_lines() if line]
+        wq_timeseries = pd.read_csv(StringIO("\n".join(lines)))
     return wq_timeseries
