@@ -141,7 +141,11 @@ def get_time_series(
         API_ADDRESS
         + f"waterbody/{wb_id}/observations/csv?start_date={start_date}&end_date={end_date}"
     )
-    wb_timeseries = pd.read_csv(url)
+    with requests.get(url, stream=True, timeout=(10, 300)) as response:
+        response.raise_for_status()
+        lines = [line.decode("utf-8") for line in response.iter_lines() if line]
+        wb_timeseries = pd.read_csv(StringIO("\n".join(lines)))
+
     # Tidy up the dataframe.
     wb_timeseries = wb_timeseries.set_index("date")
     wb_timeseries.index = pd.to_datetime(wb_timeseries.index)
