@@ -361,6 +361,10 @@ def get_water_quality_summary(
         response.raise_for_status()
         lines = [line.decode("utf-8") for line in response.iter_lines() if line]
         wq_timeseries = pd.read_csv(StringIO("\n".join(lines)))
+
+    # Tidy up the dataframe.
+    wq_timeseries = wq_timeseries.set_index("date")
+    wq_timeseries.index = pd.to_datetime(wq_timeseries.index)
     return wq_timeseries
 
 
