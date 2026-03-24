@@ -362,3 +362,41 @@ def get_water_quality_summary(
         lines = [line.decode("utf-8") for line in response.iter_lines() if line]
         wq_timeseries = pd.read_csv(StringIO("\n".join(lines)))
     return wq_timeseries
+
+
+def get_water_quality_rankings(
+    geohash: str = None,
+    waterbody: pd.Series = None,
+) -> pd.DataFrame:
+    """Gets the annual water quality rankings for a waterbody.
+    Specify either a GeoDataFrame row or a geohash.
+
+    Parameters
+    ----------
+    geohash : str
+        The geohash/uid for a waterbody in DE Africa Water Bodies.
+    waterbody : pd.Series
+        One row of a GeoDataFrame representing a waterbody.
+    Returns
+    -------
+    pd.DataFrame
+        A time series for the waterbody.
+    """
+    if waterbody is not None and geohash is not None:
+        raise ValueError("One of waterbody and geohash must be None")
+    if waterbody is None and geohash is None:
+        raise ValueError("One of waterbody and geohash must be specified")
+
+    if geohash is not None:
+        wb = get_waterbody(geohash)
+        wb_id = wb.wb_id.item()
+    else:
+        wb_id = waterbody.wb_id.item()
+
+    url = API_ADDRESS + f"waterbody/{wb_id}/water_quality_rankings/csv"
+
+    with requests.get(url, stream=True, timeout=(10, 300)) as response:
+        response.raise_for_status()
+        lines = [line.decode("utf-8") for line in response.iter_lines() if line]
+        wq_timeseries = pd.read_csv(StringIO("\n".join(lines)))
+    return wq_timeseries
