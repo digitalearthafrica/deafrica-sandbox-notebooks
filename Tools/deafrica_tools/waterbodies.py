@@ -4,12 +4,14 @@ Last modified: November 2023
 """
 
 from datetime import datetime
+from io import StringIO
 
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import requests
 from matplotlib.patches import Patch
 from owslib.etree import etree
 from owslib.fes import PropertyIsEqualTo
@@ -139,12 +141,18 @@ def get_time_series(
         API_ADDRESS
         + f"waterbody/{wb_id}/observations/csv?start_date={start_date}&end_date={end_date}"
     )
-    wb_timeseries = pd.read_csv(url)
+    with requests.get(url, stream=True, timeout=(10, 300)) as response:
+        response.raise_for_status()
+        lines = [line.decode("utf-8") for line in response.iter_lines() if line]
+        wb_timeseries = pd.read_csv(StringIO("\n".join(lines)))
+
     # Tidy up the dataframe.
     wb_timeseries = wb_timeseries.set_index("date")
     wb_timeseries.index = pd.to_datetime(wb_timeseries.index)
     # Create a rolling median for the wet time series
-    wb_timeseries["percent_wet_rolling_median"] = wb_timeseries["percent_wet"].rolling(3).median()
+    wb_timeseries["percent_wet_rolling_median"] = (
+        wb_timeseries["percent_wet"].rolling(3).median()
+    )
 
     return wb_timeseries
 
@@ -273,7 +281,9 @@ def plot_last_valid_obs(waterbodies: gpd.GeoDataFrame):
     colored.plot(ax=ax, color=colored["color"], edgecolor="none", linewidth=0.5)
 
     # Plot the hatched polygons
-    hatched.plot(ax=ax, hatch="xx", facecolor="none", edgecolor="#23d9f1", linewidth=0.5)
+    hatched.plot(
+        ax=ax, hatch="xx", facecolor="none", edgecolor="#23d9f1", linewidth=0.5
+    )
 
     # Create the legend manually
     legend_elements = [
@@ -288,7 +298,10 @@ def plot_last_valid_obs(waterbodies: gpd.GeoDataFrame):
         Patch(color="#482878", label="80 < wet percentage <= 90"),
         Patch(color="#440154", label="90 < wet percentage <= 100"),
         Patch(
-            facecolor="none", hatch="xx", edgecolor="#23d9f1", label="No valid observation"
+            facecolor="none",
+            hatch="xx",
+            edgecolor="#23d9f1",
+            label="No valid observation",
         ),  # Add hatch legend
     ]
 
@@ -302,3 +315,92 @@ def plot_last_valid_obs(waterbodies: gpd.GeoDataFrame):
 
     # Show the plot
     plt.show()
+
+
+def get_water_quality_summary(
+    geohash: str = None,
+    waterbody: pd.Series = None,
+    start_date: str = "2000-01-01",
+    end_date: str = datetime.now().strftime("%Y-%m-%d"),
+) -> pd.DataFrame:
+    """Gets the annual water quality summaries for a waterbody.
+    Specify either a GeoDataFrame row or a geohash.
+
+    Parameters
+    ----------
+    geohash : str
+        The geohash/uid for a waterbody in DE Africa Water Bodies.
+    waterbody : pd.Series
+        One row of a GeoDataFrame representing a waterbody.
+    start_date : str
+        Start date for the time range to filter the timeseries to.
+    end_date : str
+        End date for the time range to filter the timeseries to.
+    Returns
+    -------
+    pd.DataFrame
+        A time series for the waterbody.
+    """
+    if waterbody is not None and geohash is not None:
+        raise ValueError("One of waterbody and geohash must be None")
+    if waterbody is None and geohash is None:
+        raise ValueError("One of waterbody and geohash must be specified")
+
+    if geohash is not None:
+        wb = get_waterbody(geohash)
+        wb_id = wb.wb_id.item()
+    else:
+        wb_id = waterbody.wb_id.item()
+
+    url = (
+        API_ADDRESS
+        + f"waterbody/{wb_id}/water_quality_summaries/csv?start_date={start_date}&end_date={end_date}"
+    )
+
+    with requests.get(url, stream=True, timeout=(10, 300)) as response:
+        response.raise_for_status()
+        lines = [line.decode("utf-8") for line in response.iter_lines() if line]
+        wq_timeseries = pd.read_csv(StringIO("\n".join(lines)))
+
+    # Tidy up the dataframe.
+    wq_timeseries = wq_timeseries.set_index("date")
+    wq_timeseries.index = pd.to_datetime(wq_timeseries.index)
+    return wq_timeseries
+
+
+def get_water_quality_rankings(
+    geohash: str = None,
+    waterbody: pd.Series = None,
+) -> pd.DataFrame:
+    """Gets the annual water quality rankings for a waterbody.
+    Specify either a GeoDataFrame row or a geohash.
+
+    Parameters
+    ----------
+    geohash : str
+        The geohash/uid for a waterbody in DE Africa Water Bodies.
+    waterbody : pd.Series
+        One row of a GeoDataFrame representing a waterbody.
+    Returns
+    -------
+    pd.DataFrame
+        A time series for the waterbody.
+    """
+    if waterbody is not None and geohash is not None:
+        raise ValueError("One of waterbody and geohash must be None")
+    if waterbody is None and geohash is None:
+        raise ValueError("One of waterbody and geohash must be specified")
+
+    if geohash is not None:
+        wb = get_waterbody(geohash)
+        wb_id = wb.wb_id.item()
+    else:
+        wb_id = waterbody.wb_id.item()
+
+    url = API_ADDRESS + f"waterbody/{wb_id}/water_quality_rankings/csv"
+
+    with requests.get(url, stream=True, timeout=(10, 300)) as response:
+        response.raise_for_status()
+        lines = [line.decode("utf-8") for line in response.iter_lines() if line]
+        wq_timeseries = pd.read_csv(StringIO("\n".join(lines)))
+    return wq_timeseries

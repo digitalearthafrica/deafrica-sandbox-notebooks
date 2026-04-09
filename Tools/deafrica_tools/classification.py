@@ -20,12 +20,13 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from dask_ml.wrappers import ParallelPostFit
-from datacube.utils import geometry
-from datacube.utils.geometry import assign_crs
+from odc.geo.geom import Geometry
+from odc.geo.xr import assign_crs
 from sklearn.base import ClusterMixin
 from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.mixture import GaussianMixture
-from sklearn.model_selection import BaseCrossValidator, KFold, ShuffleSplit
+from sklearn.model_selection import KFold, ShuffleSplit
+from sklearn.model_selection._split import BaseCrossValidator   # optional, private
 from sklearn.utils import check_random_state
 from tqdm.auto import tqdm
 
@@ -415,7 +416,7 @@ def _get_training_data_for_shp(
         dc_query.pop("dask_chunks", None)
 
     # set up query based on polygon
-    geom = geometry.Geometry(geom=gdf.iloc[index].geometry, crs=gdf.crs)
+    geom = Geometry(geom=gdf.iloc[index].geometry, crs=gdf.crs)
     q = {"geopolygon": geom}
 
     # merge polygon query with user supplied query params
