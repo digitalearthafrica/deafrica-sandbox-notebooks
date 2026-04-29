@@ -1,14 +1,15 @@
 """
 Functions to retrieve ERA5 gridded climate data.
 
-Updated Apr 2025 to directly access Zarr format data in PDS
-
+Updated Apr 2026
 """
 
 import numpy as np
 import xarray as xr
+import gcsfs
 from odc.geo.xr import assign_crs
 from dask.diagnostics import ProgressBar
+
 
 ERA5_VARS = [
     "air_pressure_at_mean_sea_level",
@@ -34,7 +35,9 @@ ERA5_dict = {
     "surface_pressure": "surface_pressure",
 }
 
-ARCO_FULL_URL = "gs://gcp-public-data-arco-era5/ar/full_37-1h-0p25deg-chunk-1.zarr-v3"
+ARCO_BUCKET_PATH = (
+    "gcp-public-data-arco-era5/ar/full_37-1h-0p25deg-chunk-1.zarr-v3"
+)
 
 
 def _parse_time_range(time):
@@ -59,6 +62,32 @@ def _normalise_lon_bounds(lon):
     return lon_min, lon_max
 
 
+def _open_era5_zarr(chunks=None, consolidated=True):
+    """
+    Open public ARCO ERA5 Zarr using anonymous GCS access.
+    """
+
+    fs = gcsfs.GCSFileSystem(token="anon")
+
+    store = fs.get_mapper(ARCO_BUCKET_PATH)
+
+    try:
+        ds = xr.open_zarr(
+            store,
+            consolidated=consolidated,
+            chunks=chunks,
+        )
+    except PermissionError:
+        print("Permission error with consolidated=True. Retrying with consolidated=False...")
+        ds = xr.open_zarr(
+            store,
+            consolidated=False,
+            chunks=chunks,
+        )
+
+    return ds
+
+
 def load_era5(
     var,
     lat,
@@ -66,54 +95,52 @@ def load_era5(
     time,
     reduce_func="mean",
     resample="1D",
-    chunks=None,
+    chunks={"time": 24, "latitude": 200, "longitude": 200},
     compute=False,
     show_progress=True,
 ):
     """
-    Load an ERA5 variable from ARCO-ERA5 Zarr, subset to AOI/time, and resample.
+    Load ERA5 variable from public ARCO ERA5 Zarr.
 
     Parameters
     ----------
     var : str
-        Friendly ERA5 variable name. Must be one of ERA5_VARS.
+        One of ERA5_VARS.
 
-    lat : tuple/list
-        Latitude bounds as (min_lat, max_lat).
+    lat : list/tuple
+        Latitude range as (min_lat, max_lat).
 
-    lon : tuple/list
-        Longitude bounds as (min_lon, max_lon).
+    lon : list/tuple
+        Longitude range as (min_lon, max_lon).
 
-    time : str, np.datetime64, or tuple/list
-        Single date or date range, e.g. "2024-01-01" or ("2024-01-01", "2024-01-31").
+    time : str, np.datetime64, list or tuple
+        Single date or date range.
 
     reduce_func : str or callable
-        Resampling reducer. Options: "mean", "sum", "min", "max", or callable such as np.mean.
+        "mean", "sum", "min", "max", or a NumPy function.
 
     resample : str
-        Resampling frequency, e.g. "1D", "1M", "6H".
+        Resampling frequency, e.g. "1D", "1M".
 
-    chunks : dict or None
-        Optional Dask chunks. Example:
-        {"time": 24, "latitude": 200, "longitude": 200}
+    chunks : dict
+        Dask chunks.
 
     compute : bool
-        If True, loads the result into memory immediately.
+        If True, loads result into memory.
 
     show_progress : bool
-        If True, prints progress messages and shows Dask ProgressBar when compute=True.
+        If True, prints progress updates.
 
     Returns
     -------
     xarray.Dataset
-        ERA5 subset with dimensions renamed to lat/lon and CRS assigned as EPSG:4326.
     """
 
     if var not in ERA5_dict:
         raise ValueError(f"var must be one of {list(ERA5_dict)}. Got: {var}")
 
     if len(lat) != 2 or len(lon) != 2:
-        raise ValueError("lat and lon must each contain exactly two values: (min, max)")
+        raise ValueError("lat and lon must each have two values: (min, max)")
 
     date_from, date_to = _parse_time_range(time)
 
@@ -121,24 +148,20 @@ def load_era5(
     lon_min, lon_max = _normalise_lon_bounds(lon)
 
     if show_progress:
-        print(f"Opening ERA5 Zarr dataset...")
+        print("Opening ERA5 Zarr dataset...")
         print(f"Variable: {var}")
-        print(f"Time range: {date_from} to {date_to}")
-        print(f"Lat range: {lat_min} to {lat_max}")
-        print(f"Lon range: {lon_min} to {lon_max}")
+        print(f"Mapped ERA5 name: {ERA5_dict[var]}")
+        print(f"Time: {date_from} to {date_to}")
+        print(f"Latitude: {lat_min} to {lat_max}")
+        print(f"Longitude: {lon_min} to {lon_max}")
 
-    ds = xr.open_zarr(
-        ARCO_FULL_URL,
-        consolidated=True,
-        storage_options={"token": "anon"},
-        chunks=chunks,
-    )
+    ds = _open_era5_zarr(chunks=chunks)
 
     arco_name = ERA5_dict[var]
 
     if arco_name not in ds.data_vars:
         raise KeyError(
-            f"'{arco_name}' not found in ARCO dataset. "
+            f"'{arco_name}' not found in ERA5 dataset. "
             f"Available variables include: {list(ds.data_vars)[:30]}"
         )
 
@@ -151,7 +174,7 @@ def load_era5(
 
     if da.sizes.get("time", 0) == 0:
         raise ValueError(
-            f"No ERA5 data found for time range {date_from} to {date_to}."
+            f"No ERA5 data found from {date_from} to {date_to}."
         )
 
     if show_progress:
@@ -163,9 +186,8 @@ def load_era5(
         ).sortby("longitude")
 
     if show_progress:
-        print("Selecting spatial subset...")
+        print("Selecting AOI...")
 
-    # ERA5 latitude is usually descending, so slice must go max to min
     da = da.sel(
         latitude=slice(lat_max, lat_min),
         longitude=slice(lon_min, lon_max),
@@ -173,15 +195,17 @@ def load_era5(
 
     if da.sizes.get("latitude", 0) == 0 or da.sizes.get("longitude", 0) == 0:
         raise ValueError(
-            "No ERA5 grid cells found within the requested lat/lon bounds. "
-            "Try expanding your AOI slightly."
+            "No ERA5 pixels found for this AOI. "
+            "Try expanding the latitude/longitude bounds slightly."
         )
 
     if show_progress:
         print(f"Subset size: {dict(da.sizes)}")
-        print(f"Resampling using: {reduce_func}")
+        print(f"Resampling to {resample} using {reduce_func}...")
 
     if isinstance(reduce_func, str):
+        reduce_func = reduce_func.lower()
+
         if reduce_func == "mean":
             da = da.resample(time=resample).mean()
         elif reduce_func == "sum":
@@ -192,12 +216,14 @@ def load_era5(
             da = da.resample(time=resample).max()
         else:
             raise ValueError(
-                "reduce_func must be one of: 'mean', 'sum', 'min', 'max', or a callable"
+                "reduce_func must be 'mean', 'sum', 'min', 'max', or a callable."
             )
     else:
         da = da.resample(time=resample).reduce(reduce_func)
 
-    out = da.to_dataset(name=var).rename(
+    out = da.to_dataset(name=var)
+
+    out = out.rename(
         {
             "latitude": "lat",
             "longitude": "lon",
@@ -208,7 +234,7 @@ def load_era5(
 
     if compute:
         if show_progress:
-            print("Computing/loading ERA5 data into memory...")
+            print("Computing data now...")
 
         if show_progress:
             with ProgressBar():
