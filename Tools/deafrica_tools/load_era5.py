@@ -16,9 +16,7 @@ ERA5_VARS = [
     "air_temperature_at_2_metres",
     "eastward_wind_at_10_metres",
     "northward_wind_at_10_metres",
-    "total_precipitation_6hr",
-    "total_precipitation_12hr",
-    "total_precipitation_24hr",
+    "total_precipitation",
     "sea_surface_temperature",
     "surface_pressure",
 ]
@@ -28,9 +26,7 @@ ERA5_dict = {
     "air_temperature_at_2_metres": "2m_temperature",
     "eastward_wind_at_10_metres": "10m_u_component_of_wind",
     "northward_wind_at_10_metres": "10m_v_component_of_wind",
-    "total_precipitation_6hr": "total_precipitation_6hr",
-    "total_precipitation_12hr": "total_precipitation_12hr",
-    "total_precipitation_24hr": "total_precipitation_24hr",
+    "total_precipitation": "total_precipitation",
     "sea_surface_temperature": "sea_surface_temperature",
     "surface_pressure": "surface_pressure",
 }
@@ -95,7 +91,7 @@ def load_era5(
     time,
     reduce_func="mean",
     resample="1D",
-    chunks={"time": 24, "latitude": 200, "longitude": 200},
+    chunks="auto",
     compute=False,
     show_progress=True,
 ):
