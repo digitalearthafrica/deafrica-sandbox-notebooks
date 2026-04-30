@@ -32,7 +32,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from skimage.filters import threshold_li
 from matplotlib.patches import Patch
-from datacube.utils import geometry
+from odc.geo.geom import Geometry
 from datacube.utils import masking
 from deafrica_tools.spatial import xr_rasterize
 
@@ -46,7 +46,7 @@ def get_geometry(gdf):
     gdf_crs = f"EPSG:{gdf.crs.to_epsg()}"
     gdf_geom = gdf.loc[0, "geometry"].__geo_interface__
 
-    geom = geometry.Geometry(gdf_geom, gdf_crs)
+    geom = Geometry(gdf_geom, gdf_crs)
     return geom
 
 

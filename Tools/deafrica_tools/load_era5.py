@@ -184,9 +184,19 @@ def load_era5(
     if show_progress:
         print("Selecting AOI...")
 
+    # --- SNAP TO ERA5 GRID ---
+    snapped = da.sel(
+        latitude=list((lat_min, lat_max)),
+        longitude=list((lon_min, lon_max)),
+        method="nearest"
+    )
+    
+    lat_range = slice(snapped.latitude.max().values, snapped.latitude.min().values)
+    lon_range = slice(snapped.longitude.min().values, snapped.longitude.max().values)
+    
     da = da.sel(
-        latitude=slice(lat_max, lat_min),
-        longitude=slice(lon_min, lon_max),
+        latitude=lat_range,
+        longitude=lon_range,
     )
 
     if da.sizes.get("latitude", 0) == 0 or da.sizes.get("longitude", 0) == 0:
