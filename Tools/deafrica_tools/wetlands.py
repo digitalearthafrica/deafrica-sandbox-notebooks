@@ -15,7 +15,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import xarray as xr
-from datacube.utils import geometry, masking
+from datacube.utils import masking
+from odc.geo.geom import Geometry
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from skimage import exposure
 
@@ -92,7 +93,7 @@ def WIT_drill(
     # add geom to dc query dict
     if isinstance(gdf, datacube.utils.geometry._base.Geometry):
         gdf = gpd.GeoDataFrame({"col1": ["name"], "geometry": gdf.geom}, crs=gdf.crs)
-    geom = geometry.Geometry(geom=gdf.iloc[0].geometry, crs=gdf.crs)
+    geom = Geometry(geom=gdf.iloc[0].geometry, crs=gdf.crs)
     query = {"geopolygon": geom, "time": time}
 
     # Create a datacube instance
