@@ -12,3 +12,7 @@ dask-worker-space
 # Vscode config
 **/.vscode/
 
+# Secrets and credentials
+**/.env
+**/credentials.json
+**/token.json

@@ -16,9 +16,16 @@ and provide further examples for advanced users.
    :maxdepth: 1
    :glob:
 
-   Lake_baringo_grazing/index.rst
-   Okavango/index.rst
-   Surface_mining_screening/Surface_mining_screening.ipynb
+   
+   
+    Coastlines_change_and_impact/index.rst
+    Enhanced_Combined_Drought_Index/index.rst
+    Lake_baringo_grazing/index.rst
+    Limpopo_River_Basin/index.rst
+    Monitoring_water_extent/index.rst
+    Okavango/index.rst
+    Surface_mining_screening/Surface_mining_screening.ipynb
+    surface_water_count/index.rst
 
 These notebooks can also be found in your home folder on the sandbox, or
 accessed from GitHub at:

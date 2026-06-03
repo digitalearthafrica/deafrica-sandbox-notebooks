@@ -1,0 +1,8 @@
+client_config_backend: file
+client_config_file: /home/jovyan/Supplementary_data/DriveCredentials/credentials.json
+save_credentials: true
+save_credentials_backend: file
+save_credentials_file: /home/jovyan/Supplementary_data/DriveCredentials/token.json
+get_refresh_token: true
+oauth_scope:
+- https://www.googleapis.com/auth/drive
