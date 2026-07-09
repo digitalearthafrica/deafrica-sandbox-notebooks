@@ -1874,6 +1874,7 @@ def display_surface_mining_screening_ui():
     ))
 
     update_aoi_box()
+    update_aoi_shape_box()
     update_product_controls()
 
     display(widgets.VBox([controls_row, output_panel]))
@@ -2081,6 +2082,59 @@ def process_data_memory_safe(
     return ds, water_frequency_sum, mask
 
 
+
+def _plot_vegetation_loss_timeseries_safe(
+    ds,
+    vegetation_loss_bool,
+    veg_loss_in_buffer_mask,
+    product="s2_semiannual",
+    out_png=None,
+    dpi=150,
+):
+    """
+    Save/display a vegetation-loss time-series plot.
+    This mirrors the original notebook time-series output but keeps it optional.
+    """
+    pix_area = pixel_area_km2_from_coords(ds)
+    years = pd.to_datetime(vegetation_loss_bool.time.values).year
+
+    loss_any = vegetation_loss_bool.fillna(False).astype(np.uint8)
+    loss_any_area = loss_any.sum(dim=["y", "x"]).values * pix_area
+
+    buf = veg_loss_in_buffer_mask
+    if buf.dtype != bool:
+        buf = (buf == 1)
+    buf = buf.fillna(False).astype(bool)
+
+    loss_in_buffer = (loss_any == 1) & buf
+    loss_in_buffer_area = loss_in_buffer.sum(dim=["y", "x"]).values * pix_area
+
+    fig, ax = plt.subplots(figsize=(11, 4))
+    ax.plot(years, loss_any_area, marker="o", label="Any vegetation loss (km²)")
+    ax.plot(years, loss_in_buffer_area, marker="^", label="Vegetation loss in mining buffer (km²)")
+    ax.grid(True)
+    ax.set_xlabel("Year")
+    ax.set_ylabel("Area (km²)")
+    ax.set_title("Annual vegetation loss")
+    ax.legend()
+
+    if out_png is not None:
+        out_png = Path(out_png)
+        out_png.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(out_png, dpi=dpi, bbox_inches="tight")
+
+    plt.show()
+    plt.close(fig)
+
+
+def _normalise_plot_outputs(plot_outputs=None, make_plots=False):
+    """Return a clean list of plot outputs requested by the UI."""
+    if plot_outputs is None:
+        return ["Possible mining map"] if make_plots else []
+    if isinstance(plot_outputs, str):
+        return [plot_outputs]
+    return list(plot_outputs)
+
 def run_surface_mining_screening_safe(
     vector_file: str,
     start_date: str,
@@ -2096,6 +2150,7 @@ def run_surface_mining_screening_safe(
     export_geotiffs: bool = False,
     export_yearly_loss_geotiffs: bool = False,
     make_plots: bool = False,
+    plot_outputs: list | tuple | None = None,
     dpi: int = 150,
 ):
     """
@@ -2173,15 +2228,45 @@ def run_surface_mining_screening_safe(
         )
         print("Saved yearly vegetation-loss GeoTIFFs.")
 
-    if make_plots:
-        plot_possible_mining_map(
-            ds=ds,
-            veg_loss_in_buffer_mask=veg_loss_in_buffer_mask,
-            product=product,
-            out_png=out_dir / "Possible_Mining.png",
-        )
-        plt.close("all")
-        gc.collect()
+    selected_plot_outputs = _normalise_plot_outputs(plot_outputs=plot_outputs, make_plots=make_plots)
+
+    if selected_plot_outputs:
+        print("Creating selected plot outputs...")
+
+        if "Possible mining map" in selected_plot_outputs:
+            plot_possible_mining_map(
+                ds=ds,
+                veg_loss_in_buffer_mask=veg_loss_in_buffer_mask,
+                product=product,
+                out_png=out_dir / "Possible_Mining.png",
+            )
+            plt.close("all")
+            gc.collect()
+
+        if "Vegetation loss time series" in selected_plot_outputs:
+            _plot_vegetation_loss_timeseries_safe(
+                ds=ds,
+                vegetation_loss_bool=veg_loss_bool,
+                veg_loss_in_buffer_mask=veg_loss_in_buffer_mask,
+                product=product,
+                out_png=out_dir / "veg_loss_timeseries.png",
+                dpi=dpi,
+            )
+            plt.close("all")
+            gc.collect()
+
+        if "Two-panel RGB + vegetation loss" in selected_plot_outputs:
+            plot_rgb_and_mining_veg_loss_by_year(
+                ds=ds,
+                vegetation_loss_bool=veg_loss_bool,
+                veg_loss_in_buffer_mask=veg_loss_in_buffer_mask,
+                product=product,
+                out_png=out_dir / "RGB_and_VegLoss_From_Mining.png",
+                dpi=dpi,
+                max_years_in_legend=12,
+            )
+            plt.close("all")
+            gc.collect()
 
     result = {
         "out_dir": str(out_dir),
@@ -2225,7 +2310,9 @@ def display_surface_mining_screening_ui(
     Product behaviour
     -----------------
     - Semi-annual GeoMAD: uses year-only date controls.
+    - Annual GeoMAD: uses year-only date controls.
     - Sentinel-2 imagery: shows month controls and statistic tools.
+    - Sentinel-1: shows month controls and statistic tools.
 
     Area unit behaviour
     -------------------
@@ -2306,52 +2393,66 @@ def display_surface_mining_screening_ui(
     # Help / instruction panel shown at the top of the UI
     # ------------------------------------------------------------------
     help_text = widgets.HTML("""
-  <h4>How to use the tool</h4>
+<h4>Surface Mining Screening Tool</h4>
+
+<p>
+This tool screens possible surface-mining areas by detecting vegetation loss over time
+and comparing the loss with nearby water occurrence. Use <b>Preview Size</b> first to
+check whether your AOI and date range are safe for the notebook memory.
+</p>
 
 <p>
 <b>Step 1: Select Area of Interest</b><br>
-Upload a zipped shapefile or enter latitude, longitude, and buffer distance.
+Upload a zipped shapefile, or enter latitude/longitude and create a buffer. A circular
+buffer is useful for a quick search around a point because it treats all directions equally.
+A square or rectangular AOI is useful when you want a bounding-box style area, easier
+comparison with map tiles, or a more conventional rectangular study area.
 </p>
 
 <p>
 <b>Step 2: Choose Product</b><br>
-Semi-annual GeoMAD uses pre-composited Sentinel-2 semi-annual GeoMAD data.<br>
-Annual GeoMAD uses pre-composited Sentinel-2 annual GeoMAD data.<br>
-Sentinel-2 imagery loads Sentinel-2 images directly and creates yearly composites.<br>
-Sentinel-1 loads radar imagery and uses RVI for vegetation-loss screening.
+<b>Semi-annual GeoMAD</b>: best first choice for stable, cloud-reduced Sentinel-2 composites.
+It is usually lighter than loading many individual scenes.<br>
+<b>Annual GeoMAD</b>: good for longer-term yearly vegetation change analysis with fewer time steps.<br>
+<b>Sentinel-2 imagery</b>: use when you need a custom month range or custom statistic, but it is heavier because it loads direct imagery.<br>
+<b>Sentinel-1</b>: radar option that can work in cloudy areas. It uses VV/VH radar information and RVI instead of NDVI.
 </p>
 
 <p>
 <b>Step 3: Select Date Range</b><br>
-For Semi-annual GeoMAD, Annual GeoMAD, and Sentinel-1, choose start and end years.<br>
-For Sentinel-2 imagery, choose start and end years and months.
+Annual and semi-annual GeoMAD products use year-based controls. Sentinel-2 imagery and
+Sentinel-1 also show month controls so you can restrict the image season.
 </p>
 
 <p>
-<b>Step 4: Choose Sentinel-2 Statistic</b><br>
-This option appears only when Sentinel-2 imagery is selected.
-Available statistics include Median, Mean, Minimum, Maximum, Standard deviation, and Geomedian.
+<b>Step 4: Choose Image Statistic</b><br>
+This appears for Sentinel-2 imagery and Sentinel-1. <b>Median</b> is the safest default and
+is usually robust to outliers. <b>Mean</b> is useful for average conditions but can be affected
+by outliers. <b>Minimum</b> and <b>Maximum</b> are useful for extremes. <b>Standard deviation</b>
+highlights variability. <b>Geomedian</b> is robust for multi-band imagery but is more memory intensive.
 </p>
 
 <p>
 <b>Step 5: Set Processing Options</b><br>
-Choose vegetation-loss threshold, mining buffer distance, area unit, resolution, and output folder.
+Choose vegetation-loss threshold, mining buffer distance, area unit, resolution, output folder,
+and optional outputs. Start with a coarser resolution and small AOI before increasing detail.
 </p>
 
 <p>
 <b>Step 6: Preview Before Running</b><br>
-Use Preview Size to check AOI size, estimated pixels, and whether the job is safe to run.
+Use Preview Size to view the AOI on a map, estimate the AOI area and pixel count, and check whether the job is safe to run.
 </p>
 
 <p>
-<b>Step 7: Run Processing</b>
-Click Run Safe only after checking the preview.
+<b>Step 7: Run Processing</b><br>
+Click Run Safe only after the preview status says the settings are OK.
 </p>
 
 <h4>Recommended first test</h4>
 
 <p>
-AOI buffer: 1–2 km, Product: Annual GeoMAD or Semi-annual GeoMAD, Resolution: 30 m or 60 m, Date range: 2–3 years, Export GeoTIFFs: Off, Create plots: Off
+AOI buffer: 1–2 km, Product: Annual GeoMAD or Semi-annual GeoMAD, Resolution: 30 m or 60 m,
+Date range: 2–3 years, Export GeoTIFFs: Off, Plot outputs: Possible mining map only.
 </p>
 """)
 
@@ -2388,6 +2489,48 @@ AOI buffer: 1–2 km, Product: Annual GeoMAD or Semi-annual GeoMAD, Resolution: 
         layout=widgets.Layout(width="240px"),
     )
 
+    aoi_shape = widgets.ToggleButtons(
+        options=["Circle buffer", "Square/rectangle"],
+        value="Circle buffer",
+        description="Shape:",
+        button_style="",
+        layout=widgets.Layout(width="360px"),
+    )
+
+    rect_width_km = widgets.FloatText(
+        value=4,
+        description="Width km:",
+        layout=widgets.Layout(width="240px"),
+    )
+
+    rect_height_km = widgets.FloatText(
+        value=4,
+        description="Height km:",
+        layout=widgets.Layout(width="240px"),
+    )
+
+    circle_shape_box = widgets.VBox([
+        buffer_km_input,
+        widgets.HTML("<small>Circle buffer is best for a quick search around a central point.</small>"),
+    ])
+
+    rectangle_shape_box = widgets.VBox([
+        rect_width_km,
+        rect_height_km,
+        widgets.HTML("<small>Square/rectangle creates a bounding-box AOI around the point.</small>"),
+    ])
+
+    dynamic_shape_box = widgets.VBox([circle_shape_box])
+
+    aoi_map_output = widgets.Output(layout=widgets.Layout(height="280px", overflow="auto"))
+
+    preview_aoi_button = widgets.Button(
+        description="Preview AOI Map",
+        button_style="info",
+        icon="map",
+        layout=widgets.Layout(width="170px"),
+    )
+
     shapefile_box = widgets.VBox([
         widgets.HTML("<b>Upload zipped shapefile</b>"),
         shapefile_upload,
@@ -2395,10 +2538,11 @@ AOI buffer: 1–2 km, Product: Annual GeoMAD or Semi-annual GeoMAD, Resolution: 
     ])
 
     latlon_box = widgets.VBox([
-        widgets.HTML("<b>Enter latitude, longitude, and AOI buffer</b>"),
+        widgets.HTML("<b>Enter latitude, longitude, and AOI shape</b>"),
         lat_input,
         lon_input,
-        buffer_km_input,
+        aoi_shape,
+        dynamic_shape_box,
     ])
 
     dynamic_aoi_box = widgets.VBox([shapefile_box])
@@ -2416,6 +2560,10 @@ AOI buffer: 1–2 km, Product: Annual GeoMAD or Semi-annual GeoMAD, Resolution: 
         value="s2_semiannual",
         description="Product:",
         layout=widgets.Layout(width="300px"),
+    )
+
+    product_note = widgets.HTML(
+        "<small><b>Semi-annual GeoMAD:</b> cloud-reduced composite; good first option for screening.</small>"
     )
 
     sentinel_stat_select = widgets.Dropdown(
@@ -2517,7 +2665,17 @@ AOI buffer: 1–2 km, Product: Annual GeoMAD or Semi-annual GeoMAD, Resolution: 
 
     export_core_tifs = widgets.Checkbox(value=False, description="Export core GeoTIFFs")
     export_yearly_tifs = widgets.Checkbox(value=False, description="Export yearly vegetation-loss GeoTIFFs")
-    make_plots = widgets.Checkbox(value=False, description="Create plots")
+
+    plot_outputs = widgets.SelectMultiple(
+        options=[
+            "Possible mining map",
+            "Vegetation loss time series",
+            "Two-panel RGB + vegetation loss",
+        ],
+        value=("Possible mining map",),
+        description="Plots:",
+        layout=widgets.Layout(width="360px", height="95px"),
+    )
 
     preview_button = widgets.Button(
         description="Preview Size",
@@ -2548,19 +2706,80 @@ AOI buffer: 1–2 km, Product: Annual GeoMAD or Semi-annual GeoMAD, Resolution: 
         dynamic_aoi_box.children = [shapefile_box] if aoi_mode.value == "Upload shapefile" else [latlon_box]
         last_preview["ok"] = False
 
+    def update_aoi_shape_box(change=None):
+        if aoi_shape.value == "Circle buffer":
+            dynamic_shape_box.children = [circle_shape_box]
+        else:
+            dynamic_shape_box.children = [rectangle_shape_box]
+        last_preview["ok"] = False
+
+    def create_rectangular_aoi_from_latlon(lat, lon, width_km, height_km, output_crs="EPSG:6933"):
+        if width_km <= 0 or height_km <= 0:
+            raise ValueError("Rectangle width and height must be greater than 0 km.")
+        from shapely.geometry import Point, box
+        import geopandas as gpd
+        point_gdf = gpd.GeoDataFrame(geometry=[Point(lon, lat)], crs="EPSG:4326")
+        projected = point_gdf.to_crs(output_crs)
+        cx = float(projected.geometry.iloc[0].x)
+        cy = float(projected.geometry.iloc[0].y)
+        half_w = float(width_km) * 1000.0 / 2.0
+        half_h = float(height_km) * 1000.0 / 2.0
+        rect = box(cx - half_w, cy - half_h, cx + half_w, cy + half_h)
+        return gpd.GeoDataFrame(geometry=[rect], crs=output_crs).to_crs("EPSG:4326")
+
+    def display_aoi_map(aoi_gdf):
+        with aoi_map_output:
+            clear_output()
+            try:
+                gdf4326 = aoi_gdf.to_crs("EPSG:4326")
+                minx, miny, maxx, maxy = gdf4326.total_bounds
+                center = ((miny + maxy) / 2.0, (minx + maxx) / 2.0)
+
+                try:
+                    from ipyleaflet import Map, GeoData, basemaps, LayersControl
+                    m = Map(
+                        center=center,
+                        zoom=12,
+                        basemap=basemaps.OpenStreetMap.Mapnik,
+                        layout=widgets.Layout(width="100%", height="260px"),
+                    )
+                    geo_layer = GeoData(
+                        geo_dataframe=gdf4326,
+                        name="AOI",
+                        style={"color": "red", "fillColor": "red", "opacity": 1, "weight": 2, "fillOpacity": 0.15},
+                    )
+                    m.add_layer(geo_layer)
+                    m.add_control(LayersControl())
+                    display(m)
+                except Exception:
+                    # Fallback if ipyleaflet is not installed.
+                    try:
+                        display(gdf4326.explore())
+                    except Exception:
+                        print("AOI bounds:", gdf4326.total_bounds)
+                        display(gdf4326)
+            except Exception as exc:
+                print("Could not display AOI map:", exc)
+
     def update_product_controls(change=None):
         supports_month_and_stat = mining_product.value in ["s2_imagery", "s1"]
 
-        if mining_product.value == "s2_imagery":
+        if mining_product.value == "s2_semiannual":
+            product_note.value = "<small><b>Semi-annual GeoMAD:</b> cloud-reduced Sentinel-2 composite; good first option for screening recent vegetation change.</small>"
+        elif mining_product.value == "s2":
+            product_note.value = "<small><b>Annual GeoMAD:</b> yearly cloud-reduced Sentinel-2 composite; useful for longer-term annual change with fewer timesteps.</small>"
+        elif mining_product.value == "s2_imagery":
+            product_note.value = "<small><b>Sentinel-2 imagery:</b> direct optical imagery. Use this when you need a custom month range or statistic, but expect heavier processing.</small>"
             statistic_title.value = "<b>Sentinel-2 statistic</b>"
             month_title.value = "<b>Sentinel-2 month range</b>"
-            statistic_note.value = "<small>Used to composite Sentinel-2 imagery by year. Median is safest; Geomedian is heavier.</small>"
-            month_note.value = "<small>Month controls appear for Sentinel-2 imagery.</small>"
+            statistic_note.value = "<small>Median is safest. Mean shows average conditions. Min/Max show extremes. Standard deviation shows variability. Geomedian is robust but heavier.</small>"
+            month_note.value = "<small>Use months to focus on the season of interest, for example the dry season or peak vegetation season.</small>"
         elif mining_product.value == "s1":
+            product_note.value = "<small><b>Sentinel-1:</b> radar imagery for cloudy areas. This workflow uses VV/VH information and RVI rather than NDVI.</small>"
             statistic_title.value = "<b>Sentinel-1 statistic</b>"
             month_title.value = "<b>Sentinel-1 month range</b>"
-            statistic_note.value = "<small>Used to composite Sentinel-1 RTC imagery by year. Median is safest; Geomedian is heavier.</small>"
-            month_note.value = "<small>Month controls appear for Sentinel-1.</small>"
+            statistic_note.value = "<small>Median is safest for radar composites. Mean may be useful for average backscatter/RVI, while Min/Max highlight extremes.</small>"
+            month_note.value = "<small>Use months to focus on a consistent seasonal window and reduce seasonal noise.</small>"
 
         month_box.layout.display = "block" if supports_month_and_stat else "none"
         sentinel_stat_box.layout.display = "block" if supports_month_and_stat else "none"
@@ -2598,19 +2817,40 @@ AOI buffer: 1–2 km, Product: Annual GeoMAD or Semi-annual GeoMAD, Resolution: 
         if aoi_mode.value == "Upload shapefile":
             aoi_gdf = read_uploaded_shapefile_fn(shapefile_upload)
         else:
-            aoi_gdf = create_aoi_from_latlon_fn(
-                lat=lat_input.value,
-                lon=lon_input.value,
-                buffer_km=buffer_km_input.value,
-            )
+            if aoi_shape.value == "Circle buffer":
+                aoi_gdf = create_aoi_from_latlon_fn(
+                    lat=lat_input.value,
+                    lon=lon_input.value,
+                    buffer_km=buffer_km_input.value,
+                )
+            else:
+                aoi_gdf = create_rectangular_aoi_from_latlon(
+                    lat=lat_input.value,
+                    lon=lon_input.value,
+                    width_km=rect_width_km.value,
+                    height_km=rect_height_km.value,
+                )
         vector_file = save_aoi_gdf_to_temp_file_fn(aoi_gdf)
         return aoi_gdf, vector_file
+
+    def on_preview_aoi_clicked(button):
+        with output:
+            clear_output()
+            try:
+                aoi_gdf, vector_file = prepare_aoi_file()
+                display_aoi_map(aoi_gdf)
+                print("AOI map preview updated.")
+                print(f"Temporary AOI file: {vector_file}")
+            except Exception as e:
+                print("Error:")
+                print(e)
 
     def on_preview_clicked(button):
         with output:
             clear_output()
             try:
                 aoi_gdf, vector_file = prepare_aoi_file()
+                display_aoi_map(aoi_gdf)
                 start_dt, end_dt = build_date_strings()
                 area_km2, pixel_estimate = estimate_aoi_pixels_fn(
                     aoi_gdf,
@@ -2668,7 +2908,7 @@ AOI buffer: 1–2 km, Product: Annual GeoMAD or Semi-annual GeoMAD, Resolution: 
                 print("\nRunning memory-safe surface mining screening...")
 
                 threshold = parse_threshold(threshold_input.value)
-                sentinel_statistic = sentinel_stat_select.value if mining_product.value == "s2_imagery" else None
+                sentinel_statistic = sentinel_stat_select.value if mining_product.value in ["s2_imagery", "s1"] else None
 
                 result = run_surface_mining_screening_safe_fn(
                     vector_file=last_preview["vector_file"],
@@ -2684,7 +2924,8 @@ AOI buffer: 1–2 km, Product: Annual GeoMAD or Semi-annual GeoMAD, Resolution: 
                     area_unit=area_unit.value,
                     export_geotiffs=bool(export_core_tifs.value),
                     export_yearly_loss_geotiffs=bool(export_yearly_tifs.value),
-                    make_plots=bool(make_plots.value),
+                    make_plots=bool(plot_outputs.value),
+                    plot_outputs=list(plot_outputs.value),
                 )
 
                 print("\nFinished.")
@@ -2728,13 +2969,19 @@ AOI buffer: 1–2 km, Product: Annual GeoMAD or Semi-annual GeoMAD, Resolution: 
         out_dir_input,
         sentinel_stat_select,
         buffer_km_input,
+        rect_width_km,
+        rect_height_km,
         lat_input,
         lon_input,
+        aoi_shape,
+        plot_outputs,
     ]:
         widget.observe(invalidate_preview, names="value")
 
     aoi_mode.observe(update_aoi_box, names="value")
+    aoi_shape.observe(update_aoi_shape_box, names="value")
     mining_product.observe(update_product_controls, names="value")
+    preview_aoi_button.on_click(on_preview_aoi_clicked)
     preview_button.on_click(on_preview_clicked)
     run_button.on_click(on_run_clicked)
     clear_button.on_click(on_clear_clicked)
@@ -2761,16 +3008,20 @@ AOI buffer: 1–2 km, Product: Annual GeoMAD or Semi-annual GeoMAD, Resolution: 
         widgets.HTML("<h3>AOI</h3>"),
         aoi_mode,
         dynamic_aoi_box,
-    ], layout=widgets.Layout(width="360px", **panel_style))
+        preview_aoi_button,
+        widgets.HTML("<b>AOI map preview</b>"),
+        aoi_map_output,
+    ], layout=widgets.Layout(width="390px", **panel_style))
 
     product_panel = widgets.VBox([
         widgets.HTML("<h3>Product & Date</h3>"),
         mining_product,
+        product_note,
         start_year,
         end_year,
         month_box,
         sentinel_stat_box,
-    ], layout=widgets.Layout(width="340px", **panel_style))
+    ], layout=widgets.Layout(width="360px", **panel_style))
 
     processing_panel = widgets.VBox([
         widgets.HTML("<h3>Processing Safety</h3>"),
@@ -2783,7 +3034,9 @@ AOI buffer: 1–2 km, Product: Annual GeoMAD or Semi-annual GeoMAD, Resolution: 
         out_dir_input,
         export_core_tifs,
         export_yearly_tifs,
-        make_plots,
+        widgets.HTML("<b>Optional plot outputs</b>"),
+        plot_outputs,
+        widgets.HTML("<small>The two-panel plot is useful but heavier. Start with only the possible mining map.</small>"),
         widgets.HTML("<br>"),
         widgets.HBox([preview_button, run_button, clear_button]),
     ], layout=widgets.Layout(width="390px", **panel_style))
@@ -2804,6 +3057,7 @@ AOI buffer: 1–2 km, Product: Annual GeoMAD or Semi-annual GeoMAD, Resolution: 
     ))
 
     update_aoi_box()
+    update_aoi_shape_box()
     update_product_controls()
 
     display(widgets.VBox([intro_panel, controls_row, output_panel]))
