@@ -1,29 +1,54 @@
-# This is a basic workflow to help you get started with Actions
+name: Trigger deafrica-docs Build
 
-name: CI
-
-# Controls when the action will run. 
 on:
-  # Triggers the workflow on push or pull request events but only for the master branch
   push:
     branches:
       - main
 
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+permissions:
+  contents: read
+
+concurrency:
+  group: trigger-deafrica-docs-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
+  trigger-build:
+    name: Trigger Read the Docs build
     runs-on: ubuntu-latest
 
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - name: RTD Trigger Build Webhook for deafrica-docs
-        uses: joelwmale/webhook-action@fd99bb3b8272237103e349e9bb4d9b0ead9a217c
-        with:
-          url: ${{ secrets.RTD_WEBHOOK_URL }}
-          headers: '{"Authorization": "token ${{ secrets.RTD_TOKEN }}"}'
-          body: ''
+      - name: Trigger deafrica-docs build
+        env:
+          RTD_BUILD_URL: ${{ secrets.RTD_WEBHOOK_URL }}
+          RTD_TOKEN: ${{ secrets.RTD_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          response_file="$(mktemp)"
+
+          http_status="$(
+            curl \
+              --silent \
+              --show-error \
+              --output "$response_file" \
+              --write-out "%{http_code}" \
+              --request POST \
+              --header "Authorization: Token ${RTD_TOKEN}" \
+              "${RTD_BUILD_URL}"
+          )"
+
+          echo "Read the Docs response status: ${http_status}"
+
+          if [[ -s "$response_file" ]]; then
+            cat "$response_file"
+          fi
+
+          if [[ "$http_status" != "202" ]]; then
+            echo "::error::Read the Docs did not accept the build request."
+            exit 1
+          fi
+
+          echo "Read the Docs build triggered successfully."

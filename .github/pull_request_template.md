@@ -1,14 +1,32 @@
 ### Proposed changes
-Include a brief description of the changes being proposed, and why they are necessary.
 
-### Checklist (replace `[ ]` with `[x]` to check off)
-- [ ] Remove any unused Python packages from `Load packages`
-- [ ] Remove any unused/empty code cells
-- [ ] Remove any guidance cells (e.g. `General advice`)
-- [ ] Ensure that all code cells follow the [PEP8 standard](https://www.python.org/dev/peps/pep-0008/) for code. The `jupyterlab_code_formatter` tool can be used to format code cells to a consistent style: select each code cell, then click `Edit` and then one of the `Apply X Formatter` options (`YAPF` or `Black` are recommended)
-- [ ] Include relevant tags in the first notebook cell and re-use tags if possible
-- [ ] Ensure appropriate colour schemes  have been used to maximise accessibility for vision impairment. Test your images or learn more with [Coblis](https://www.color-blindness.com/coblis-color-blindness-simulator/) or [TPGI](https://www.tpgi.com/color-contrast-checker/)
-- [ ] Clear all outputs, run notebook from start to finish, and save the notebook in the state where all cells have been sequentially evaluated
+Provide a brief description of the proposed changes and explain why they are necessary.
 
-### Closes issues (optional)
-- Closes Issue #000
+### Checklist
+
+Replace `[ ]` with `[x]` to mark each completed item.
+
+* [ ] Remove any unused Python packages from the **Load packages** section.
+* [ ] Remove any unused or empty code cells.
+* [ ] Remove guidance cells, such as **General advice**.
+* [ ] Ensure that all code cells follow the [PEP 8 style guide](https://peps.python.org/pep-0008/). The `jupyterlab_code_formatter` extension can be used to apply consistent formatting. Select a code cell, click **Edit**, and choose one of the **Apply X Formatter** options. Black or YAPF is recommended.
+* [ ] Add relevant tags to the first notebook cell and reuse existing tags where appropriate.
+* [ ] Use accessible colour schemes that maximise readability for users with colour-vision impairments. Test figures using [Coblis](https://www.color-blindness.com/coblis-color-blindness-simulator/) or the [TPGi Colour Contrast Analyser](https://www.tpgi.com/color-contrast-checker/).
+* [ ] Clear all existing outputs, run the notebook from start to finish, and save it after all cells have been evaluated sequentially without errors.
+
+### Additional notebook checks
+
+* [ ] Include a clear title, purpose, inputs, and expected outputs.
+* [ ] Use descriptive variable and function names, and remove duplicated or commented-out code.
+* [ ] Use relative file paths and ensure all required dependencies are documented.
+* [ ] Validate user inputs, date ranges, products, and areas of interest.
+* [ ] Handle missing values, no-data pixels, and common errors clearly.
+* [ ] Confirm that units, coordinate reference systems, and spatial resolutions are correct.
+* [ ] Add clear titles, labels, legends, units, and accessible colour schemes to all figures.
+* [ ] Remove passwords, API keys, private links, and personal file paths.
+* [ ] Confirm that the notebook produces the expected outputs without errors or unexplained warnings.
+
+
+### Related issues
+
+* Closes #000
