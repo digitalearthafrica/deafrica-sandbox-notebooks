@@ -340,7 +340,7 @@ def convert_ch4(
 
     return ds_out
 
-def plot_density_with_quantile(
+def plot_density(
     ch4_ppb,
     quantile=0.05,
     time_dim="time",
