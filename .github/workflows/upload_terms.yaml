@@ -7,7 +7,7 @@ on:
     paths:
       - "Tools/deafrica_tools/**"
       - ".github/workflows/scripts/upload_terms.py"
-      - ".github/workflows/upload_terms.yml"
+      - ".github/workflows/upload_terms.yaml"
       - "!Tools/deafrica_tools/locales/**"
       - "!Tools/**/*.po"
       - "!Tools/**/*.mo"
@@ -19,7 +19,7 @@ on:
     paths:
       - "Tools/deafrica_tools/**"
       - ".github/workflows/scripts/upload_terms.py"
-      - ".github/workflows/upload_terms.yml"
+      - ".github/workflows/upload_terms.yaml"
       - "!Tools/deafrica_tools/locales/**"
       - "!Tools/**/*.po"
       - "!Tools/**/*.mo"
