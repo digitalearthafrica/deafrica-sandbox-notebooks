@@ -482,7 +482,7 @@ def plot_density(
         fontsize=11
     )
 
-    ax.set_title(f"{title}\n{plot_time}", fontsize=14, fontweight="bold")
+    ax.set_title(title, fontsize=14, fontweight="bold")
     ax.set_xlabel("Methane concentration (ppb)")
     ax.set_ylabel("Density")
     ax.grid(True, alpha=0.3)
