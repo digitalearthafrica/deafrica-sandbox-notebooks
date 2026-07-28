@@ -7,7 +7,7 @@ on:
     paths:
       - "Tools/deafrica_tools/**"
       - ".github/workflows/scripts/upload_terms.py"
-      - ".github/workflows/upload_terms.yml"
+      - ".github/workflows/upload_terms.yaml"
       - "!Tools/deafrica_tools/locales/**"
       - "!Tools/**/*.po"
       - "!Tools/**/*.mo"
@@ -19,7 +19,7 @@ on:
     paths:
       - "Tools/deafrica_tools/**"
       - ".github/workflows/scripts/upload_terms.py"
-      - ".github/workflows/upload_terms.yml"
+      - ".github/workflows/upload_terms.yaml"
       - "!Tools/deafrica_tools/locales/**"
       - "!Tools/**/*.po"
       - "!Tools/**/*.mo"
@@ -39,12 +39,13 @@ jobs:
     name: Extract and upload source terms
     runs-on: ubuntu-latest
 
-    env:
-      POT_FILE: ${{ runner.temp }}/deafrica_tools.pot
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+
+      - name: Set POT file path
+        run: echo "POT_FILE=${RUNNER_TEMP}/deafrica_tools.pot" >> "$GITHUB_ENV"
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -60,6 +61,7 @@ jobs:
           python -m pip install babel poeditor
 
       - name: Extract translation terms
+        id: extract
         run: |
           set -euo pipefail
 
@@ -73,19 +75,21 @@ jobs:
 
           # A POT file always contains one header msgid.
           # More than one msgid means at least one term was extracted.
-          term_count="$(grep -c '^msgid ' "${POT_FILE}")"
+          term_count="$(grep -c '^msgid ' "${POT_FILE}" || true)"
 
           if [[ "${term_count}" -le 1 ]]; then
-            echo "::error::No translation terms were extracted."
-            exit 1
+            echo "::warning::No translation terms were extracted; skipping upload."
+            echo "has_terms=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Extracted $((term_count - 1)) translation entries."
+            echo "has_terms=true" >> "$GITHUB_OUTPUT"
           fi
-
-          echo "Extracted $((term_count - 1)) translation entries."
 
       - name: Upload terms to POEditor
         if: >
           github.event_name != 'pull_request' &&
-          github.ref == 'refs/heads/main'
+          github.ref == 'refs/heads/main' &&
+          steps.extract.outputs.has_terms == 'true'
         env:
           POEDITOR_API_TOKEN: ${{ secrets.POEDITOR_API_TOKEN }}
           POEDITOR_PROJECT_ID: "715168"
