@@ -39,12 +39,13 @@ jobs:
     name: Extract and upload source terms
     runs-on: ubuntu-latest
 
-    env:
-      POT_FILE: ${{ runner.temp }}/deafrica_tools.pot
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+
+      - name: Set POT file path
+        run: echo "POT_FILE=${RUNNER_TEMP}/deafrica_tools.pot" >> "$GITHUB_ENV"
 
       - name: Set up Python
         uses: actions/setup-python@v7
