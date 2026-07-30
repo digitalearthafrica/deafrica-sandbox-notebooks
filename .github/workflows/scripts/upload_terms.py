@@ -1,28 +1,86 @@
-
-   
 import os
 import sys
+import time
+from pathlib import Path
+
 from poeditor import POEditorAPI
 
-project_id = os.environ['POEDITOR_PROJECT_ID']
-api_token = os.environ['POEDITOR_API_TOKEN']
-client = POEditorAPI(api_token=api_token)
 
-project = client.view_project_details(project_id)
-print(f"Before update, {project['name']} (id: {project['id']}) has {project['terms']} terms.")
+def main() -> int:
+    project_id = os.getenv("POEDITOR_PROJECT_ID")
+    api_token = os.getenv("POEDITOR_API_TOKEN")
 
-for file_path in sys.argv[1:]:
-    print(f"Uploading file {file_path}...")
-    update_results = client.update_terms(
-        project_id=project_id,
-        file_path=file_path
-    )
+    if not project_id:
+        print(
+            "Error: POEDITOR_PROJECT_ID is not set.",
+            file=sys.stderr,
+        )
+        return 1
 
-    terms = update_results['terms']
-    print("Terms updated:")
-    for k, v in terms.items():
-        print(f"\t{k}: {v}")
+    if not api_token:
+        print(
+            "Error: POEDITOR_API_TOKEN is not set.",
+            file=sys.stderr,
+        )
+        return 1
+
+    file_paths = [Path(path) for path in sys.argv[1:]]
+
+    if not file_paths:
+        print(
+            "Usage: python upload_french.py <file1.po> [file2.po ...]",
+            file=sys.stderr,
+        )
+        return 1
+
+    missing_files = [path for path in file_paths if not path.is_file()]
+
+    if missing_files:
+        for path in missing_files:
+            print(
+                f"Error: File not found: {path}",
+                file=sys.stderr,
+            )
+        return 1
+
+    client = POEditorAPI(api_token=api_token)
+
+    try:
+        project = client.view_project_details(project_id)
+
+        print(
+            f"Uploading French translations to {project['name']} "
+            f"(id: {project['id']})."
+        )
+
+        for index, file_path in enumerate(file_paths):
+            print(f"Uploading French translation file: {file_path}")
+
+            result = client.upload(
+                project_id=project_id,
+                updating=client.UPDATING_TRANSLATIONS,
+                file_path=str(file_path),
+                language_code="fr",
+                overwrite=True,
+            )
+
+            print(f"Upload result for {file_path}:")
+            print(result)
+
+            if index < len(file_paths) - 1:
+                print("Waiting before the next upload...")
+                time.sleep(20)
+
+        print("French translation upload completed successfully.")
+        return 0
+
+    except Exception as error:
+        print(
+            f"POEditor translation upload failed: {error}",
+            file=sys.stderr,
+        )
+        return 1
 
 
-project = client.view_project_details(project_id)
-print(f"After update, {project['name']} (id: {project['id']}) has {project['terms']} terms.")
+if __name__ == "__main__":
+    raise SystemExit(main())
