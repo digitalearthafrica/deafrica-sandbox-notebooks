@@ -1,30 +1,104 @@
 name: Upload Terms to POEditor
 
-# Controls when the action will run. 
 on:
-  # Triggers the workflow on push or pull request events but only for the main branch
   push:
-   branches:
-     - main
+    branches:
+      - main
+    paths:
+      - "Tools/deafrica_tools/**"
+      - ".github/workflows/scripts/upload_terms.py"
+      - ".github/workflows/upload_terms.yaml"
+      - "!Tools/deafrica_tools/locales/**"
+      - "!Tools/**/*.po"
+      - "!Tools/**/*.mo"
+      - "!Tools/**/*.pot"
+
   pull_request:
-   branches:
-     - main
+    branches:
+      - main
+    paths:
+      - "Tools/deafrica_tools/**"
+      - ".github/workflows/scripts/upload_terms.py"
+      - ".github/workflows/upload_terms.yaml"
+      - "!Tools/deafrica_tools/locales/**"
+      - "!Tools/**/*.po"
+      - "!Tools/**/*.mo"
+      - "!Tools/**/*.pot"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: poeditor-terms-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  upload:
+  extract-and-upload:
+    name: Extract and upload source terms
     runs-on: ubuntu-latest
+
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v1
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install poeditor babel
-    - name: Extract terms
-      run: pybabel extract -o deafrica_tools.pot Tools/deafrica_tools/*
-    - name: Upload terms
-      env:
-        POEDITOR_API_TOKEN:  ${{ secrets.POEDITOR_API_TOKEN }}
-        POEDITOR_PROJECT_ID: "715168"
-      run: |
-        python .github/workflows/scripts/upload_terms.py deafrica_tools.pot
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set POT file path
+        run: echo "POT_FILE=${RUNNER_TEMP}/deafrica_tools.pot" >> "$GITHUB_ENV"
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+
+          python -m pip install --upgrade pip
+          python -m pip install babel poeditor
+
+      - name: Extract translation terms
+        id: extract
+        run: |
+          set -euo pipefail
+
+          pybabel extract \
+            --project="deafrica-tools" \
+            --sort-output \
+            --output="${POT_FILE}" \
+            Tools/deafrica_tools
+
+          echo "Generated POT file: ${POT_FILE}"
+
+          # A POT file always contains one header msgid.
+          # More than one msgid means at least one term was extracted.
+          term_count="$(grep -c '^msgid ' "${POT_FILE}" || true)"
+
+          if [[ "${term_count}" -le 1 ]]; then
+            echo "::warning::No translation terms were extracted; skipping upload."
+            echo "has_terms=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Extracted $((term_count - 1)) translation entries."
+            echo "has_terms=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload terms to POEditor
+        if: >
+          github.event_name != 'pull_request' &&
+          github.ref == 'refs/heads/main' &&
+          steps.extract.outputs.has_terms == 'true'
+        env:
+          POEDITOR_API_TOKEN: ${{ secrets.POEDITOR_API_TOKEN }}
+          POEDITOR_PROJECT_ID: "715168"
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${POEDITOR_API_TOKEN:-}" ]]; then
+            echo "::error::POEDITOR_API_TOKEN is not configured."
+            exit 1
+          fi
+
+          python .github/workflows/scripts/upload_terms.py "${POT_FILE}"
