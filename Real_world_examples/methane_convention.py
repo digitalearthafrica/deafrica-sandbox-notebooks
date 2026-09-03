@@ -117,8 +117,8 @@ def convert_ch4(
     ch4_ppb,
     surface_pressure,
     area_m2=None,
-    background="quantile",
-    background_quantile=0.05,
+    background=None,
+    background_quantile=0,
     spatial_dims=("lat", "lon"),
     clip_negative=True,
     valid_mask=None,
@@ -301,7 +301,7 @@ def convert_ch4(
         "ch4_kg_m2": ("kg m-2", "Methane mass per unit area"),
         "ch4_g_m2": ("g m-2", "Methane mass per unit area"),
         "ch4_tonnes_km2": ("tonnes km-2", "Methane mass per unit area"),
-        "tonnes_per_pixel": ("tonnes pixel-1", "Methane mass per pixel"),
+        "tonnes": ("tonnes pixel-1", "Methane mass per pixel"),
         "total_tonnes": ("tonnes", "Total methane mass over valid pixels"),
         "total_kg": ("kg", "Total methane mass over valid pixels"),
         "mean_kg_m2": ("kg m-2", "Mean methane mass per unit area"),
@@ -309,14 +309,17 @@ def convert_ch4(
         "total_mol": ("mol", "Total methane amount over valid pixels"),
     }
 
-    outputs = {
-        "background_ppb": background_ppb,
-        "delta_ppb": delta_ppb,
+
+    outputs_map = {
+        # "delta_ppb": delta_ppb,
         "ch4_mol_m2": ch4_mol_m2,
         "ch4_kg_m2": ch4_kg_m2,
         "ch4_g_m2": ch4_g_m2,
         "ch4_tonnes_km2": ch4_tonnes_km2,
-        "tonnes_per_pixel": tonnes_per_pixel,
+        "tonnes": tonnes_per_pixel,
+    }
+
+    outputs = {
         "total_tonnes": total_tonnes,
         "total_kg": total_kg,
         "mean_kg_m2": mean_kg_m2,
@@ -331,14 +334,16 @@ def convert_ch4(
     ds_out = xr.Dataset(outputs)
 
     ds_out.attrs["mass_type"] = mass_type
-    ds_out.attrs["background"] = str(background)
-    ds_out.attrs["background_quantile"] = background_quantile
-    ds_out.attrs["note"] = (
-        "For emission studies, use methane enhancement above background, "
-        "not total atmospheric XCH4."
-    )
 
-    return ds_out
+    for name, da in outputs_map.items():
+        da.attrs["units"] = attrs[name][0]
+        da.attrs["long_name"] = attrs[name][1]
+
+    ds_map = xr.Dataset(outputs_map)
+
+    ds_map.attrs["mass_type"] = mass_type
+
+    return ds_out, ds_map
 
 def plot_density(
     ch4_ppb,
