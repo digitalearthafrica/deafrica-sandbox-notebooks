@@ -1,0 +1,6 @@
+landcover_class,landcover_name,n,P_lowHFI,P_q95,fallback_to_all_points
+10,Tree Cover,222,0.9800357158694949,1.0,False
+20,Shrubland,145,0.7845405420741519,0.975600004196167,False
+30,Grassland,140,0.7201714246400766,0.9701000273227691,False
+40,Cropland,31,0.8892500102519989,0.9620000123977661,False
+90,Herbaceous Wetland,3,0.8752352951149291,1.0,True

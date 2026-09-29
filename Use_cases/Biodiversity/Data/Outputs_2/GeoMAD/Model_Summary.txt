@@ -1,0 +1,38 @@
+1. STUDY DESIGN & DATA
+   Occurrence Points (Presences): 541
+   Background Points (Pseudo-absences): 541
+   Training Set: 664 samples (80.0% of total)
+   Test Set: 168 samples (20.0% of total)
+   Initial Environmental Variables: 13
+
+2. VARIABLE SELECTION & FEATURE ENGINEERING
+   VIF Threshold: 2000.0
+   Final Retained Predictors (13): blue, green, red, red_edge_1, red_edge_2, red_edge_3, nir, nir_narrow, swir_1, swir_2, emad, smad, bcmad
+   Variables Excluded by VIF (0): None
+   Zero-Variance Variables Removed (0): None
+
+3. RANDOM FOREST MODEL CONFIGURATION
+   Number of Trees: 500
+   max_features (features per split): 3
+   Random Seed: 42
+
+4. MODEL PERFORMANCE EVALUATION
+   Area Under ROC Curve (AUC): 0.7130
+   Optimal Classification Threshold (Youden's J): 0.4740
+   Sensitivity (True Positive Rate): 0.8807
+   Specificity (True Negative Rate): 0.4576
+   Accuracy (Overall): 0.7321
+   Precision (Positive Predictive Value): 0.7500
+   F1-Score (Harmonic Mean): 0.8101
+   Confusion Matrix:
+     True Negatives: 27, False Positives: 32
+     False Negatives: 13, True Positives: 96
+
+5. SPATIAL PREDICTIONS
+   High Insect Diversity Area (>75th Percentile): 144986.06 km²
+   Diversity Index Range: 0.0015 to 1.0000
+
+6. TOP 3 MOST IMPORTANT PREDICTORS
+   1. smad (Importance: 0.0262)
+   2. bcmad (Importance: 0.0196)
+   3. swir_2 (Importance: 0.0185)
