@@ -1,0 +1,37 @@
+1. STUDY DESIGN & DATA
+   Occurrence Points (Presences): 541
+   Background Points (Pseudo-absences): 541
+   Training Set: 664 samples (80.0% of total)
+   Test Set: 168 samples (20.0% of total)
+   Initial Environmental Variables: 13
+
+2. VARIABLE SELECTION & FEATURE ENGINEERING
+   Collinearity Screening: none (no VIF step)
+   Final Retained Predictors (13): B02, B03, B04, B05, B06, B07, B08, B11, B12, B8A, BCMAD, EMAD, SMAD
+   Zero-Variance Variables Removed (0): None
+
+3. RANDOM FOREST MODEL CONFIGURATION
+   Number of Trees: 500
+   max_features (features per split): 3
+   Random Seed: 42
+
+4. MODEL PERFORMANCE EVALUATION
+   Area Under ROC Curve (AUC): 0.7149
+   Optimal Classification Threshold (Youden's J): 0.6540
+   Sensitivity (True Positive Rate): 0.6881
+   Specificity (True Negative Rate): 0.6610
+   Accuracy (Overall): 0.6786
+   Precision (Positive Predictive Value): 0.7895
+   F1-Score (Harmonic Mean): 0.7353
+   Confusion Matrix:
+     True Negatives: 39, False Positives: 20
+     False Negatives: 34, True Positives: 75
+
+5. SPATIAL PREDICTIONS
+   High Insect Diversity Area (>75th Percentile): 144894.69 km²
+   Diversity Index Range: 0.0034 to 1.0000
+
+6. TOP 3 MOST IMPORTANT PREDICTORS
+   1. BCMAD (Importance: 0.0262)
+   2. SMAD (Importance: 0.0238)
+   3. B02 (Importance: 0.0208)

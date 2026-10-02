@@ -1,0 +1,37 @@
+1. STUDY DESIGN & DATA
+   Occurrence Points (Presences): 541
+   Background Points (Pseudo-absences): 541
+   Training Set: 664 samples (80.0% of total)
+   Test Set: 168 samples (20.0% of total)
+   Initial Environmental Variables: 3
+
+2. VARIABLE SELECTION & FEATURE ENGINEERING
+   Collinearity Screening: none (no VIF step)
+   Final Retained Predictors (3): brightness, greenness, wetness
+   Zero-Variance Variables Removed (0): None
+
+3. RANDOM FOREST MODEL CONFIGURATION
+   Number of Trees: 500
+   max_features (features per split): 1
+   Random Seed: 42
+
+4. MODEL PERFORMANCE EVALUATION
+   Area Under ROC Curve (AUC): 0.6782
+   Optimal Classification Threshold (Youden's J): 0.6300
+   Sensitivity (True Positive Rate): 0.6055
+   Specificity (True Negative Rate): 0.6780
+   Accuracy (Overall): 0.6310
+   Precision (Positive Predictive Value): 0.7765
+   F1-Score (Harmonic Mean): 0.6804
+   Confusion Matrix:
+     True Negatives: 40, False Positives: 19
+     False Negatives: 43, True Positives: 66
+
+5. SPATIAL PREDICTIONS
+   High Insect Diversity Area (>75th Percentile): 0.00 km²
+   Diversity Index Range: 0.0000 to 1.0000
+
+6. TOP 3 MOST IMPORTANT PREDICTORS
+   1. greenness (Importance: 0.1220)
+   2. wetness (Importance: 0.0006)
+   3. brightness (Importance: -0.0351)
