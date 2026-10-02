@@ -1,0 +1,38 @@
+1. STUDY DESIGN & DATA
+   Occurrence Points (Presences): 541
+   Background Points (Pseudo-absences): 541
+   Training Set: 664 samples (80.0% of total)
+   Test Set: 168 samples (20.0% of total)
+   Initial Environmental Variables: 7
+
+2. VARIABLE SELECTION & FEATURE ENGINEERING
+   VIF Threshold: 2000.0
+   Final Retained Predictors (7): canopy_height, population_impact, greenness, mean_temperature, brightness, precipitation_sum, wetness
+   Variables Excluded by VIF (0): None
+   Zero-Variance Variables Removed (0): None
+
+3. RANDOM FOREST MODEL CONFIGURATION
+   Number of Trees: 500
+   max_features (features per split): 2
+   Random Seed: 42
+
+4. MODEL PERFORMANCE EVALUATION
+   Area Under ROC Curve (AUC): 0.7411
+   Optimal Classification Threshold (Youden's J): 0.6620
+   Sensitivity (True Positive Rate): 0.7339
+   Specificity (True Negative Rate): 0.6102
+   Accuracy (Overall): 0.6905
+   Precision (Positive Predictive Value): 0.7767
+   F1-Score (Harmonic Mean): 0.7547
+   Confusion Matrix:
+     True Negatives: 36, False Positives: 23
+     False Negatives: 29, True Positives: 80
+
+5. SPATIAL PREDICTIONS
+   High Insect Diversity Area (>75th Percentile): 0.00 km²
+   Diversity Index Range: 0.0000 to 1.0000
+
+6. TOP 3 MOST IMPORTANT PREDICTORS
+   1. mean_temperature (Importance: 0.0387)
+   2. precipitation_sum (Importance: 0.0125)
+   3. population_impact (Importance: 0.0000)

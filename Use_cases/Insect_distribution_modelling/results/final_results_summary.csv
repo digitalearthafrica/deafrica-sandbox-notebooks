@@ -1,0 +1,2 @@
+Best_treatment,Best_background_design,Selected_variables,CV_AUC,CV_TSS,Holdout_AUC,Holdout_TSS,N_occurrence_records
+Climate_wet_mean,Environmental_stratified,"bio15, bio18, bio14, bio19, dry_lower, geomad_ndvi, geomad_emad, geomad_smad",0.7578235761770287,0.4201097405732848,0.7579062410123669,0.4183069696098167,610

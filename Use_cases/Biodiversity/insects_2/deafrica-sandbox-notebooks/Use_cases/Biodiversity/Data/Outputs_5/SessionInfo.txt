@@ -1,0 +1,7 @@
+Analysis Date: 2026-09-27 13:20:39
+
+Python Session Information:
+Python: 3.12.3 (main, Jan  8 2026, 11:30:50) [GCC 13.3.0]
+Platform: Linux-6.12.88-119.157.amzn2023.x86_64-x86_64-with-glibc2.39
+numpy: 2.2.6
+pandas: 2.3.3
