@@ -48,11 +48,96 @@ jobs:
 
           python .github/workflows/scripts/download_terms.py
 
-          # Compile the French PO file into a binary MO file.
-          pybabel compile \
-            --directory Tools/deafrica_tools/locales \
-            --locale fr \
-            --domain deafrica_tools
+          python - <<'PYCOMPILE'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          from babel.messages.pofile import read_po
+          from babel.messages.mofile import write_mo
+
+          po = Path("Tools/deafrica_tools/locales/fr/LC_MESSAGES/deafrica_tools.po")
+          mo = po.with_suffix(".mo")
+          # Reviewed literal-percentage documentation entries. Both source and
+          # translation must match; new or changed entries retain normal checks.
+          reviewed = {
+              '3d2ae14a8f6131be9afc144b902744cf6af33770f5e65008e49968323179ff84',
+              'afa80ee78e127377aaa5fc029fb39f7b965b2a6f5605383608828367d907ee82',
+              '4713d6738f229638e270a982b6e0d1360a83d5448bea3e9c80254c019da74289',
+              '8133dc60f9dda4f1ca701f0bba368a03aa8ecdd0a97137161769d5e277bee797',
+              'd1b85297bbd74dcaf630fca18fc0e95c90af3367f9ec5107a196226f70f3cf71',
+              'ef93956dfbea7934b038414baedc13d88d90d4f947cfcb90bf38dab377ea1ec1',
+              '8f4f8443b530daafc66af0ac1f9331ae425b92bce34bf05c5c7fdb5aa6cf8e48',
+              '07fd8ad0f4a6a1a195193612ad9268e376f9589efaf19fcf3d4d7711593c265a',
+              '23ec9d963f2774a98600162c862c3c9fbd601ba3eeed9494cb318bd9b6438bde',
+              'c1b56c60b56e7355eecbd98fe7adc578cddf95487c29673e410d41bafd21dde4',
+              'e9cd506164e2ef3110106e4c3ea1026090437425aea4514698fd193b8867aff2',
+              '752697bd9986085a4622da354d92eea20b8be0c25c559a9c5b327f6202fd4ece',
+              'b6c0c3249bcc5dca5798719ffa242bbd2862572ddde15688cf5b4c80cf42a2e2',
+              '482e2e00cef207006a876986ce9817235a905fc27d339f597813ea13d67fc9b4',
+              '41d8a93e5d16301c8dbe9c3a0773e33197cdc672d30f66b4c52ab0e33c80be4f',
+              '8a59af7c057b5f203a7691de67caca246178dfcd3ebe419626a62d637dcaa289',
+              'b465c3a359648b9a37418c5d3c3b5f20e7eecec6db3fc729ba71bda5776151cd',
+              '11e1cde3945835b3bb94df34cf355c01fea5afefd13535db12f1e05e9a73d879',
+              '734d979356a9035834439ece83abceee62bad743709cb02b87dcdceb51ae32e6',
+              'dc15748581c855284c3fa43f2e68f092ff74ac46cc95c99e4e45a93f61710f99',
+              '05c04de54e985be92e08cecdf72ce0f8c57d80d8297a1ad3df6fd9f5975286d8',
+              '3d165f84a194f632abe01dad9510077d2c3c1364a692c0618c83b01b718e0afc',
+              'eefcf16214b7de6d6cd06cef5a57160483ae9454fa1b118b4e5d9a038dcecb83',
+              'ef0e8ff1e69888241bd4fe16868ae6540ef294b9db056bd763c30afff001da17',
+              'e2faa4152a89745ed821b16086f1452475fc304e2f2295df45e89a9504c95a88',
+              '3e89b5ab8ee7a52573bafccfa28db78fc09d91cff2708ecc22b1b1b3e6f482e5',
+              '9d4a1ff3e95394fc769b1ccb9f6f1781e775111ffb7c1a7c904caf1b7644425d',
+              'b4696bc733c43cbc02c46c4c5d67e7e856047970e3efd5019281216812725b28',
+              'a77af68931107d4d580065ea4065d4f1a3a1d3aa063dfb8533852dabd707711d',
+              '47e47f51e127a8cf33958afcdd351446e622308370e5ded4e8bafb4511699812',
+              '137f8163d72c69d8a5884aec93027a27439ef1d6cb553cb494fa41f121655b3f',
+              'ab933b2dc4bccf5583cef6e3edc8f4cb6e72a52b203c27cd292d1af26a866938',
+              '2de2c814022566a1e9545f8707b496d24c73e0702326e90a7f405f495b43435e',
+              '86b0ced37141dadf6d3a5556eaad11edeba93185688407ceadc0d8e1d0642616',
+              'af84bca7ebc0f3ed5119fb43e514506bd748e3dfb488347bf6179beeb8060220',
+              'bd17b932f28e38713653a47aaaea4b42a69e28e68ffaf0e5feeb445dd83d98f3',
+              'dcfb48625a51ac9a56968d47be713e5aa5fe46af6f83fb2ed5dd9d2bc59c9620',
+              'db58a008fd692c667a600abc17f6b016d4dfa221288cff19df46bcc051df493a',
+              '2d230e268cbc5fa03e2958886371be43c55b55acc58ee6b1622de6712a4fed1f',
+              '30a19112a0a6f755bb69a66c378497a9bd45390e5d262ed780c263222b193eba',
+              'b1afa9ed1e7dd2176b23c3b04ba57a8ec75a77e5fd767ce1ce1616bf34e0234b',
+              'dbe61603bd78f9499cdcf7c5c5c62541aae29e5a3d2a28c0cf1c4f8f35f9d395',
+              'e7f0f53daeead34d8f19bfb3d9b32d97313921343b0e1b25f04340b3a8c40e80',
+              '0a6d319d7d0b44156595a9f295fb9f87b88a1c5a0e65a4095333875d1b97b10d',
+              'a3c79a301c782ae7b317ec4e1eed24b90861fbabfef9528cbc9cd6a6914936fe',
+              'b1ea1242026b62f7af047e6e9d11381d9bfeacd0d3dfcaaacd703d9f6e53d43f',
+              '8cfb009739614723e2f7fdcd4b2dae364f155d6679493a5974a2ee593bf2b230',
+              'c3084a6cebf714db2760ccd6021bf856cefc1455515432380897bf08cb8f8bc6',
+              'c5e21b1e02caec4175cb7b86a3b4d0d3b1437975eeeba0b3f2ffd9284032fe19',
+              '45f8a67216b3739fdecd6dddde3cae003ebd9d2d29c08b1c0dd5979aa217e87e',
+          }
+          with po.open("rb") as stream:
+              catalog = read_po(stream, locale="fr", domain="deafrica_tools")
+          exempted = 0
+          for message in catalog:
+              digest = hashlib.sha256(json.dumps(
+                  [message.id, message.string, message.context],
+                  ensure_ascii=False,
+              ).encode()).hexdigest()
+              if digest in reviewed:
+                  message.flags.discard("python-format")
+                  exempted += 1
+          errors = list(catalog.check())
+          for message, issues in errors:
+              for issue in issues:
+                  print(f"{po}:{message.lineno}: {issue}")
+          if errors:
+              raise SystemExit(f"{len(errors)} invalid translation entries")
+          temporary = mo.with_suffix(".mo.tmp")
+          try:
+              with temporary.open("wb") as stream:
+                  write_mo(stream, catalog)
+              os.replace(temporary, mo)
+          finally:
+              temporary.unlink(missing_ok=True)
+          print(f"Compiled {mo}; {exempted} reviewed percentage entries exempted")
+          PYCOMPILE
 
       - name: Commit translation updates
         run: |
