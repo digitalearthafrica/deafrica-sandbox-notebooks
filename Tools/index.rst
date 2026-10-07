@@ -19,9 +19,12 @@ Core modules
    deafrica_tools.dask
    deafrica_tools.datahandling
    deafrica_tools.externaldrive
+   deafrica_tools.load_africapolis
    deafrica_tools.load_era5
    deafrica_tools.load_isda
    deafrica_tools.load_soil_moisture
+   deafrica_tools.load_wapor
+   deafrica_tools.methane_convention
    deafrica_tools.plotting
    deafrica_tools.spatial
    deafrica_tools.temporal
