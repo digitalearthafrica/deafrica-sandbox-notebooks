@@ -2,7 +2,7 @@ name: Publish deafrica-tools to PyPI
 
 on:
   # Publish when a deafrica-tools version tag is pushed.
-  # Example: deafrica-tools-v0.3.1
+  # Example: deafrica-tools-v2.5.21
   push:
     tags:
       - "deafrica-tools-v*"
@@ -10,9 +10,17 @@ on:
   # Allows a manual release after the package version has been updated.
   workflow_dispatch:
 
+# Serialize releases without cancelling an upload already in progress.
+concurrency:
+  group: deafrica-tools-pypi
+  cancel-in-progress: false
+
+permissions: {}
+
 jobs:
   build:
     name: Build deafrica-tools distributions
+    timeout-minutes: 15
     runs-on: ubuntu-latest
 
     permissions:
@@ -25,6 +33,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v7
@@ -34,13 +44,36 @@ jobs:
 
       - name: Install build tools
         run: |
-          python -m pip install --upgrade pip
           python -m pip install build twine
 
       - name: Build source distribution and wheel
         run: |
           rm -rf dist build
           python -m build --sdist --wheel --outdir dist/
+
+      - name: Check release tag matches built package version
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python - <<'PYTHON'
+          import os
+          from email.parser import BytesParser
+          from pathlib import Path
+          from zipfile import ZipFile
+          from packaging.version import Version
+
+          wheel, = Path("dist").glob("*.whl")
+          with ZipFile(wheel) as archive:
+              metadata_file, = [name for name in archive.namelist()
+                                if name.endswith(".dist-info/METADATA")]
+              metadata = BytesParser().parsebytes(archive.read(metadata_file))
+          tag_version = os.environ["RELEASE_TAG"].removeprefix("deafrica-tools-v")
+          package_version = metadata["Version"]
+          if Version(tag_version) != Version(package_version):
+              raise SystemExit(f"Tag version {tag_version} differs from package version {package_version}")
+          print(f"Verified release version: {package_version}")
+          PYTHON
 
       - name: Validate distributions
         run: |
@@ -53,9 +86,12 @@ jobs:
           path: Tools/dist/
           if-no-files-found: error
           retention-days: 7
+          # Wheels and source archives are already compressed.
+          compression-level: 0
 
   publish:
     name: Publish deafrica-tools to PyPI
+    timeout-minutes: 10
     needs: build
     runs-on: ubuntu-latest
 

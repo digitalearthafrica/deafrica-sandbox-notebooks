@@ -32,10 +32,10 @@ python -m pip install  git+https://github.com/digitalearthafrica/deafrica-sandbo
 
 The code in this module is an adaptation of code from the [Digital Earth Australia](https://github.com/GeoscienceAustralia/dea-notebooks) `dea-tools` package. If you use any of the code in this repository in your work, please reference them using the following citation:
 
-    Krause, C., Dunn, B., Bishop-Taylor, R., Adams, C., Burton, C., Alger, M., Chua, S., Phillips, C., Newey, V., Kouzoubov, K., Leith, A., Ayers, D., Hicks, A., DEA Notebooks contributors 2021. Digital Earth Australia notebooks and tools repository. Geoscience Australia, Canberra. https://doi.org/10.26186/145234
+    Burton, C., Neema, V., Boamah, E., Chong, E., Adams, C., Wellington, M., Sadiki, M., Moghaddam, N., Liu, L., Bishop-Taylor, R., Yuan, F., Leith, A., Jorand, C., Halabisky, M., Rebelo, L-M, and DE Africa Notebooks contributors (2024). Digital Earth Africa notebooks and tools repository.  Geoscience Australia, Canberra. https://doi.org/10.26186/148997
     
     
-## Translation
+<!-- ## Translation
 
 Translation of the module into other languages is done using `gettext` and `pot/po/mo` files.
 
@@ -55,4 +55,4 @@ This `_()` function is declared as a global after [`deafrica_tools.set_lang('fr'
 
 Calling `deafrica_tools.set_lang()` with no argument will use the language set by JupyterLab under **Settings -> Language**.
 
-See [wetlandsinsighttool.py](deafrica_tools/app/wetlandsinsighttool.py) as an example.
+See [wetlandsinsighttool.py](deafrica_tools/app/wetlandsinsighttool.py) as an example. -->

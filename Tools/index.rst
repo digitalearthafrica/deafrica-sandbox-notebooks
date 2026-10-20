@@ -1,13 +1,16 @@
 DE Africa Tools Package
 =======================
 
-``deafrica_tools`` is a Python package contains several modules with functions to load, analyse
-and output data from Digital Earth Africa. It is automatically installed in the Digital Earth 
-Africa Sandbox environment. More information on installing this package can be found on the `Tools
-<https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Tools/>`_ section of the GitHub repository.
+``deafrica_tools`` is a Python package containing modules for loading,
+analysing, and exporting Digital Earth Africa data. It is automatically
+installed in the Digital Earth Africa Sandbox environment.
+
+For installation instructions, see the `Tools directory
+<https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/tree/master/Tools/>`_
+in the GitHub repository.
 
 Core modules
------------------
+------------
 
 .. autosummary::
    :toctree: gen
@@ -32,13 +35,13 @@ Core modules
    deafrica_tools.wetlands
 
 Apps and widgets
------------------
+----------------
 
-``deafrica_tools`` app subpackages can be accessed through ``deafrica_tools.app``.
+Applications and widgets are available through ``deafrica_tools.app``.
 
 .. autosummary::
    :toctree: gen
-   
+
    deafrica_tools.app.animations
    deafrica_tools.app.changefilmstrips
    deafrica_tools.app.crophealth
@@ -48,23 +51,27 @@ Apps and widgets
    deafrica_tools.app.imageexport
    deafrica_tools.app.wetlandsinsighttool
    deafrica_tools.app.widgetconstructors
-   
 
 License
 -------
-The code in this module is licensed under the Apache License,
-Version 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
 
-Digital Earth Africa data is licensed under the Creative Commons by
-Attribution 4.0 license (https://creativecommons.org/licenses/by/4.0/).
+The code in this package is licensed under the `Apache License, Version 2.0
+<https://www.apache.org/licenses/LICENSE-2.0>`_.
+
+Digital Earth Africa data is licensed under the `Creative Commons
+Attribution 4.0 International License
+<https://creativecommons.org/licenses/by/4.0/>`_.
 
 Contact
 -------
-If you need assistance, please post a question on the Open Data
-Cube Slack channel (http://slack.opendatacube.org/) or on the GIS Stack
-Exchange (https://gis.stackexchange.com/questions/ask?tags=open-data-cube)
-using the `open-data-cube` tag (you can view previously asked questions
-here: https://gis.stackexchange.com/questions/tagged/open-data-cube).
 
-If you would like to report an issue with this script, you can file one on
-Github: https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new
+For assistance, post a question in the `Digital Earth Africa Slack workspace
+<https://join.slack.com/t/digitalearthafrica/shared_invite/zt-4cu3w53g0-IpKwdWM4zOzgg0ijQXbRHg/>`_ or on `GIS Stack Exchange
+<https://gis.stackexchange.com/questions/ask?tags=open-data-cube>`_
+using the ``open-data-cube`` tag.
+
+You can also browse `previous questions tagged open-data-cube
+<https://gis.stackexchange.com/questions/tagged/open-data-cube>`_.
+
+To report an issue with this package, open an issue in the `GitHub repository
+<https://github.com/digitalearthafrica/deafrica-sandbox-notebooks/issues/new>`_.
